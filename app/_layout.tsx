@@ -32,15 +32,19 @@ try {
 }
 
 if (Platform.OS !== 'web') {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+  } catch (e) {
+    console.log('[App] Notifications setup error:', e);
+  }
 }
 
 const queryClient = new QueryClient({
@@ -160,7 +164,7 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   useEffect(() => {
-    console.log('[App] Hoffnungsträger started v2');
+    console.log('[App] Hoffnungsträger started v3');
     SplashScreen.hideAsync();
   }, []);
 
