@@ -146,39 +146,45 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, newSession: any) => {
-      console.log('[AUTH] Auth state changed:', event, 'session:', !!newSession);
+    let subscription: { unsubscribe: () => void } | null = null;
+    try {
+      const result = supabase.auth.onAuthStateChange(async (event: any, newSession: any) => {
+        console.log('[AUTH] Auth state changed:', event, 'session:', !!newSession);
 
-      if (event === 'SIGNED_OUT') {
-        console.log('[AUTH] User signed out');
-        setUser(null);
-        setSession(null);
-        return;
-      }
-
-      if (event === 'TOKEN_REFRESHED') {
-        console.log('[AUTH] Token refreshed successfully');
-        setSession(newSession);
-        return;
-      }
-
-      if (newSession?.user) {
-        setSession(newSession);
-        if (!user) {
-          const profile = await fetchProfile(newSession.user);
-          if (profile) {
-            setUser(profile);
-          }
+        if (event === 'SIGNED_OUT') {
+          console.log('[AUTH] User signed out');
+          setUser(null);
+          setSession(null);
+          return;
         }
-      } else if (!newSession) {
-        console.log('[AUTH] Session lost (null session in state change)');
-        setUser(null);
-        setSession(null);
-      }
-    });
+
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('[AUTH] Token refreshed successfully');
+          setSession(newSession);
+          return;
+        }
+
+        if (newSession?.user) {
+          setSession(newSession);
+          if (!user) {
+            const profile = await fetchProfile(newSession.user);
+            if (profile) {
+              setUser(profile);
+            }
+          }
+        } else if (!newSession) {
+          console.log('[AUTH] Session lost (null session in state change)');
+          setUser(null);
+          setSession(null);
+        }
+      });
+      subscription = result?.data?.subscription ?? null;
+    } catch (e: any) {
+      console.log('[AUTH] onAuthStateChange setup error:', e?.message ?? e);
+    }
 
     return () => {
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, [fetchProfile]);
 

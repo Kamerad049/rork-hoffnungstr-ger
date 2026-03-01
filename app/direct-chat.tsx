@@ -41,8 +41,16 @@ import { useFriends } from '@/providers/FriendsProvider';
 import { getUserById, formatTimeAgo } from '@/lib/utils';
 import type { ChatMessage } from '@/constants/types';
 import * as Haptics from 'expo-haptics';
-import * as ScreenCapture from 'expo-screen-capture';
 import VoiceMessageBubble from '@/components/VoiceMessageBubble';
+
+let ScreenCapture: any = null;
+try {
+  if (Platform.OS !== 'web') {
+    ScreenCapture = require('expo-screen-capture');
+  }
+} catch (e) {
+  console.log('[CHAT] expo-screen-capture not available:', e);
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const WAVE_COUNT = 12;
@@ -113,7 +121,7 @@ export default function DirectChatScreen() {
   }, [partnerId, messages.length]);
 
   useEffect(() => {
-    if (Platform.OS === 'web' || !partnerId) return;
+    if (Platform.OS === 'web' || !partnerId || !ScreenCapture) return;
 
     let subscription: { remove: () => void } | undefined;
 

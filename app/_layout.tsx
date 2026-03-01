@@ -25,7 +25,11 @@ import { SpotifyProvider } from '@/providers/SpotifyProvider';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
 
-SplashScreen.preventAutoHideAsync();
+try {
+  SplashScreen.preventAutoHideAsync();
+} catch (e) {
+  console.log('[App] SplashScreen.preventAutoHideAsync error:', e);
+}
 
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
