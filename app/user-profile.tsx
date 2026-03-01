@@ -14,13 +14,14 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useLiveLocation } from '@/providers/LiveLocationProvider';
 import { getUserById } from '@/lib/utils';
 import type { SocialUser, Reel } from '@/constants/types';
-import { ORDEN_DEFINITIONS, type OrdenDefinition } from '@/constants/orden';
+import type { OrdenDefinition } from '@/constants/orden';
 
 import RankIcon from '@/components/RankIcon';
 import WavingFlag from '@/components/WavingFlag';
 import OrdenBadge from '@/components/OrdenBadge';
 import NowPlayingWidget from '@/components/NowPlayingWidget';
 import { useSpotify } from '@/providers/SpotifyProvider';
+import { useUserOrdenQuery } from '@/providers/OrdenProvider';
 import * as Haptics from 'expo-haptics';
 import { Alert } from 'react-native';
 
@@ -50,18 +51,7 @@ const VALUE_ICONS: Record<string, React.ComponentType<{ size: number; color: str
   'Demut': TreePine,
 };
 
-const MOCK_USER_ORDEN: Record<string, string[]> = {
-  'u1': ['ord_dauerbrenner_b', 'ord_dauerbrenner_s', 'ord_wortfuehrer_b', 'ord_chronist_b', 'ord_flaggentraeger'],
-  'u2': ['ord_dauerbrenner_b', 'ord_wanderer_b', 'ord_wanderer_s', 'ord_bruderschaft', 'ord_fruehaufsteher', 'ord_verteidiger_b'],
-  'u3': ['ord_dauerbrenner_b', 'ord_wortfuehrer_b', 'ord_chronist_b'],
-  'u4': ['ord_dauerbrenner_b', 'ord_dauerbrenner_s', 'ord_flaggentraeger', 'ord_urgestein'],
-  'u5': ['ord_wanderer_b', 'ord_chronist_b', 'ord_verteidiger_b'],
-  'u6': ['ord_dauerbrenner_b', 'ord_dauerbrenner_s', 'ord_dauerbrenner_g', 'ord_wanderer_b', 'ord_wanderer_s', 'ord_fruehaufsteher', 'ord_chronist_b'],
-  'u7': ['ord_bruderschaft', 'ord_flaggentraeger'],
-  'u8': ['ord_dauerbrenner_b', 'ord_wortfuehrer_b', 'ord_wanderer_b'],
-  'u9': ['ord_dauerbrenner_b', 'ord_chronist_b', 'ord_verteidiger_b', 'ord_flaggentraeger'],
-  'u10': ['ord_wanderer_b', 'ord_bruderschaft'],
-};
+
 
 function ReelGridItem({ reel, onPress }: { reel: Reel; onPress: () => void }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -241,14 +231,11 @@ export default function UserProfileScreen() {
     return [];
   }, [userId]);
 
-  const userOrdenIds = useMemo(() => {
-    if (!userId) return new Set<string>();
-    return new Set(MOCK_USER_ORDEN[userId] ?? []);
-  }, [userId]);
+  const { earnedIds: userOrdenIds, earnedOrden: userOrdenAll } = useUserOrdenQuery(userId);
 
   const userOrden = useMemo(() => {
-    return ORDEN_DEFINITIONS.filter(o => userOrdenIds.has(o.id)).slice(0, 5);
-  }, [userOrdenIds]);
+    return userOrdenAll.slice(0, 5);
+  }, [userOrdenAll]);
 
   const currentTabData = useMemo((): Reel[] => {
     switch (activeTab) {

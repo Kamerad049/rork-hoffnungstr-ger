@@ -22,6 +22,7 @@ import { AdminProvider } from '@/providers/AdminProvider';
 import { KaderschmiedeProvider } from '@/providers/KaderschmiedeProvider';
 import { LiveLocationProvider } from '@/providers/LiveLocationProvider';
 import { SpotifyProvider } from '@/providers/SpotifyProvider';
+import { OrdenProvider } from '@/providers/OrdenProvider';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
 import { markTime, measureSinceBoot, trackRender, printReport } from '@/lib/perf';
@@ -202,7 +203,9 @@ export default function RootLayout() {
                                       <KaderschmiedeProvider>
                                         <LiveLocationProvider>
                                           <SpotifyProvider>
-                                            <RootLayoutNav />
+                                            <OrdenProvider>
+                                              <RootLayoutNav />
+                                            </OrdenProvider>
                                           </SpotifyProvider>
                                         </LiveLocationProvider>
                                       </KaderschmiedeProvider>

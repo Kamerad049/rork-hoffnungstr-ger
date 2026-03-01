@@ -36,6 +36,7 @@ export default function UserStampsScreen() {
 
   const stampCount = isOwnProfile ? stamps.length : (profile?.stampCount ?? 0);
 
+  // TODO: Replace with real user_stamps table query when stamps migration is done
   const mockStampedPlaceIds = useMemo(() => {
     if (isOwnProfile) return stamps.map((s) => s.placeId);
     const count = profile?.stampCount ?? 0;

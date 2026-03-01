@@ -69,7 +69,8 @@ import { Radio, Trophy as TrophyIcon } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import type { Reel } from '@/constants/types';
 import OrdenBadge from '@/components/OrdenBadge';
-import { ORDEN_DEFINITIONS, TIER_COLORS, TIER_NAMES, type OrdenDefinition, type EarnedOrden } from '@/constants/orden';
+import { TIER_COLORS, TIER_NAMES, type OrdenDefinition } from '@/constants/orden';
+import { useOrden } from '@/providers/OrdenProvider';
 import { Trophy } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -164,6 +165,7 @@ export default function ProfileScreen() {
   const { allPosts } = usePosts();
   const { activeOwnStories, isStoryViewed, stories } = useStories();
   const { savedReels, userReels, getOwnReels, getArchivedReels, getTaggedReels, archiveReel, unarchiveReel, deleteReel } = useReels();
+  const { ordenDefinitions, earnedIds: ordenEarnedIds } = useOrden();
   const { isSharing: isLiveSharing } = useLiveLocation();
   const { currentTrack, settings: spotifySettings } = useSpotify();
 
@@ -269,16 +271,9 @@ export default function ProfileScreen() {
     );
   }, [ownReels]);
 
-  const MOCK_EARNED_IDS = useMemo(() => new Set([
-    'ord_dauerbrenner_b', 'ord_dauerbrenner_s', 'ord_fruehaufsteher',
-    'ord_wortfuehrer_b', 'ord_wortfuehrer_s', 'ord_verteidiger_b',
-    'ord_bruderschaft', 'ord_wanderer_b', 'ord_wanderer_s',
-    'ord_chronist_b', 'ord_flaggentraeger', 'ord_urgestein',
-  ]), []);
-
   const recentOrden = useMemo(() => {
-    return ORDEN_DEFINITIONS.filter(o => MOCK_EARNED_IDS.has(o.id)).slice(0, 5);
-  }, [MOCK_EARNED_IDS]);
+    return ordenDefinitions.filter(o => ordenEarnedIds.has(o.id)).slice(0, 5);
+  }, [ordenDefinitions, ordenEarnedIds]);
 
   const [loggingOut, setLoggingOut] = useState<boolean>(false);
 
@@ -729,7 +724,7 @@ export default function ProfileScreen() {
             </View>
             <View>
               <Text style={styles.ordenPreviewTitle}>Ordenshalle</Text>
-              <Text style={styles.ordenPreviewSub}>{MOCK_EARNED_IDS.size} Orden errungen</Text>
+              <Text style={styles.ordenPreviewSub}>{ordenEarnedIds.size} Orden errungen</Text>
             </View>
           </View>
           <ChevronRight size={16} color="rgba(191,163,93,0.4)" />
@@ -745,9 +740,9 @@ export default function ProfileScreen() {
               <OrdenBadge orden={orden} earned size="small" showName={false} animate={false} />
             </View>
           ))}
-          {MOCK_EARNED_IDS.size > 5 && (
+          {ordenEarnedIds.size > 5 && (
             <View style={styles.ordenMoreBadge}>
-              <Text style={styles.ordenMoreText}>+{MOCK_EARNED_IDS.size - 5}</Text>
+              <Text style={styles.ordenMoreText}>+{ordenEarnedIds.size - 5}</Text>
             </View>
           )}
         </ScrollView>

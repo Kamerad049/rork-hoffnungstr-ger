@@ -13,10 +13,10 @@ import OrdenBadge from '@/components/OrdenBadge';
 import OrdenCeremony from '@/components/OrdenCeremony';
 import RadarChart from '@/components/RadarChart';
 import {
-  ORDEN_DEFINITIONS, TIER_COLORS, TIER_NAMES, CATEGORY_NAMES,
-  CHARACTER_DIMENSIONS,
-  type OrdenDefinition, type OrdenTier, type OrdenCategory, type EarnedOrden,
+  TIER_COLORS, TIER_NAMES, CATEGORY_NAMES,
+  type OrdenDefinition, type OrdenTier, type OrdenCategory,
 } from '@/constants/orden';
+import { useOrden } from '@/providers/OrdenProvider';
 import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -29,29 +29,13 @@ const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ size: number; colo
   selten: Sparkles,
 };
 
-const MOCK_EARNED: EarnedOrden[] = [
-  { ordenId: 'ord_dauerbrenner_b', earnedAt: new Date(Date.now() - 86400000 * 20).toISOString(), userId: 'me' },
-  { ordenId: 'ord_dauerbrenner_s', earnedAt: new Date(Date.now() - 86400000 * 10).toISOString(), userId: 'me' },
-  { ordenId: 'ord_fruehaufsteher', earnedAt: new Date(Date.now() - 86400000 * 15).toISOString(), userId: 'me' },
-  { ordenId: 'ord_wortfuehrer_b', earnedAt: new Date(Date.now() - 86400000 * 18).toISOString(), userId: 'me' },
-  { ordenId: 'ord_wortfuehrer_s', earnedAt: new Date(Date.now() - 86400000 * 5).toISOString(), userId: 'me' },
-  { ordenId: 'ord_verteidiger_b', earnedAt: new Date(Date.now() - 86400000 * 12).toISOString(), userId: 'me' },
-  { ordenId: 'ord_bruderschaft', earnedAt: new Date(Date.now() - 86400000 * 8).toISOString(), userId: 'me' },
-  { ordenId: 'ord_wanderer_b', earnedAt: new Date(Date.now() - 86400000 * 25).toISOString(), userId: 'me' },
-  { ordenId: 'ord_wanderer_s', earnedAt: new Date(Date.now() - 86400000 * 7).toISOString(), userId: 'me' },
-  { ordenId: 'ord_chronist_b', earnedAt: new Date(Date.now() - 86400000 * 22).toISOString(), userId: 'me' },
-  { ordenId: 'ord_flaggentraeger', earnedAt: new Date(Date.now() - 86400000 * 3).toISOString(), userId: 'me' },
-  { ordenId: 'ord_urgestein', earnedAt: new Date(Date.now() - 86400000 * 30).toISOString(), userId: 'me' },
-];
-
-const MOCK_CHARACTER_VALUES = [72, 85, 60, 55, 78, 45];
-
 type FilterType = 'alle' | OrdenCategory;
 type TierFilter = 'alle' | OrdenTier;
 
 export default function OrdenshalleScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { ordenDefinitions, earnedIds, earnedOrdenMap, characterValues, tierCounts: providerTierCounts, isLoading: ordenLoading } = useOrden();
   const [categoryFilter, setCategoryFilter] = useState<FilterType>('alle');
   const [tierFilter, setTierFilter] = useState<TierFilter>('alle');
   const [selectedOrden, setSelectedOrden] = useState<OrdenDefinition | null>(null);
@@ -64,13 +48,11 @@ export default function OrdenshalleScreen() {
     Animated.timing(headerAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
   }, []);
 
-  const earnedIds = useMemo(() => new Set(MOCK_EARNED.map(e => e.ordenId)), []);
-
-  const earnedCount = useMemo(() => MOCK_EARNED.length, []);
-  const totalCount = ORDEN_DEFINITIONS.length;
+  const earnedCount = earnedIds.size;
+  const totalCount = ordenDefinitions.length;
 
   const filteredOrden = useMemo(() => {
-    let list = ORDEN_DEFINITIONS;
+    let list = ordenDefinitions;
     if (categoryFilter !== 'alle') {
       list = list.filter(o => o.category === categoryFilter);
     }
@@ -84,16 +66,9 @@ export default function OrdenshalleScreen() {
       const tierOrder: OrdenTier[] = ['legendaer', 'gold', 'silber', 'bronze'];
       return tierOrder.indexOf(a.tier) - tierOrder.indexOf(b.tier);
     });
-  }, [categoryFilter, tierFilter, earnedIds]);
+  }, [categoryFilter, tierFilter, earnedIds, ordenDefinitions]);
 
-  const tierCounts = useMemo(() => {
-    const counts: Record<OrdenTier, number> = { bronze: 0, silber: 0, gold: 0, legendaer: 0 };
-    MOCK_EARNED.forEach(e => {
-      const def = ORDEN_DEFINITIONS.find(d => d.id === e.ordenId);
-      if (def) counts[def.tier]++;
-    });
-    return counts;
-  }, []);
+  const tierCounts = providerTierCounts;
 
   const handleOrdenPress = useCallback((orden: OrdenDefinition) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -102,14 +77,14 @@ export default function OrdenshalleScreen() {
   }, []);
 
   const handleTestCeremony = useCallback(() => {
-    const earned = ORDEN_DEFINITIONS.filter(o => earnedIds.has(o.id));
+    const earned = ordenDefinitions.filter(o => earnedIds.has(o.id));
     const random = earned[Math.floor(Math.random() * earned.length)];
     if (random) {
       setSelectedOrden(random);
       setShowDetail(false);
       setShowCeremony(true);
     }
-  }, [earnedIds]);
+  }, [earnedIds, ordenDefinitions]);
 
   const categories: FilterType[] = ['alle', 'aktivitaet', 'gemeinschaft', 'entdecker', 'inhalt', 'selten'];
 
@@ -170,7 +145,7 @@ export default function OrdenshalleScreen() {
         <View style={styles.radarSection}>
           <Text style={styles.sectionTitle}>Charakter-Profil</Text>
           <Text style={styles.sectionSubtitle}>Deine Stärken auf einen Blick</Text>
-          <RadarChart values={MOCK_CHARACTER_VALUES} size={SCREEN_WIDTH - 60} />
+          <RadarChart values={characterValues} size={SCREEN_WIDTH - 60} />
         </View>
 
         <View style={styles.filterSection}>
@@ -296,7 +271,7 @@ export default function OrdenshalleScreen() {
                   <View style={styles.detailEarnedBadge}>
                     <Text style={styles.detailEarnedText}>Errungen ✓</Text>
                     <Text style={styles.detailEarnedDate}>
-                      {new Date(MOCK_EARNED.find(e => e.ordenId === selectedOrden.id)?.earnedAt ?? '').toLocaleDateString('de-DE')}
+                      {new Date(earnedOrdenMap.get(selectedOrden.id)?.earned_at ?? '').toLocaleDateString('de-DE')}
                     </Text>
                   </View>
                 ) : (

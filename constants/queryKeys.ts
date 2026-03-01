@@ -14,4 +14,7 @@ export const queryKeys = {
   stories: () => ['stories'] as const,
   chatMessages: (partnerId: string) => ['chat-messages', partnerId] as const,
   userProfile: (userId: string) => ['user-profile', userId] as const,
+  orders: () => ['orders'] as const,
+  userOrders: (userId: string) => ['user-orders', userId] as const,
+  userValues: (userId: string) => ['user-values', userId] as const,
 } as const;
