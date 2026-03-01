@@ -7,18 +7,18 @@ import { trpc, trpcClient } from '@/lib/trpc';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
-import { FavoritesProvider } from '@/providers/FavoritesProvider';
-import { StampPassProvider } from '@/providers/StampPassProvider';
 import { FriendsProvider } from '@/providers/FriendsProvider';
 import { SocialProvider } from '@/providers/SocialProvider';
 import { PostsProvider } from '@/providers/PostsProvider';
 import { ChatProvider } from '@/providers/ChatProvider';
 import { StoriesProvider } from '@/providers/StoriesProvider';
 import { ReelsProvider } from '@/providers/ReelsProvider';
-import { AdminProvider } from '@/providers/AdminProvider';
-import { NotificationProvider } from '@/providers/NotificationProvider';
+import { FavoritesProvider } from '@/providers/FavoritesProvider';
+import { StampPassProvider } from '@/providers/StampPassProvider';
 import { ReviewProvider } from '@/providers/ReviewProvider';
+import { NotificationProvider } from '@/providers/NotificationProvider';
 import { ModerationProvider } from '@/providers/ModerationProvider';
+import { AdminProvider } from '@/providers/AdminProvider';
 import { KaderschmiedeProvider } from '@/providers/KaderschmiedeProvider';
 import { LiveLocationProvider } from '@/providers/LiveLocationProvider';
 import { SpotifyProvider } from '@/providers/SpotifyProvider';
@@ -164,7 +164,7 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   useEffect(() => {
-    console.log('[App] Hoffnungsträger started v3');
+    console.log('[BOOT] Step D: ALL providers enabled');
     SplashScreen.hideAsync();
   }, []);
 
