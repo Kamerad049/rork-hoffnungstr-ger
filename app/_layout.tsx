@@ -166,18 +166,18 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <AuthProvider>
-              <AdminProvider>
-                <FriendsProvider>
-                  <SocialProvider>
-                    <PostsProvider>
-                      <ChatProvider>
-                        <StoriesProvider>
-                          <ReelsProvider>
-                            <FavoritesProvider>
-                              <StampPassProvider>
-                                <ReviewProvider>
-                                  <NotificationProvider>
-                                    <ModerationProvider>
+              <FriendsProvider>
+                <SocialProvider>
+                  <PostsProvider>
+                    <ChatProvider>
+                      <StoriesProvider>
+                        <ReelsProvider>
+                          <FavoritesProvider>
+                            <StampPassProvider>
+                              <ReviewProvider>
+                                <NotificationProvider>
+                                  <ModerationProvider>
+                                    <AdminProvider>
                                       <KaderschmiedeProvider>
                                         <LiveLocationProvider>
                                           <SpotifyProvider>
@@ -185,18 +185,18 @@ export default function RootLayout() {
                                           </SpotifyProvider>
                                         </LiveLocationProvider>
                                       </KaderschmiedeProvider>
-                                    </ModerationProvider>
-                                  </NotificationProvider>
-                                </ReviewProvider>
-                              </StampPassProvider>
-                            </FavoritesProvider>
-                          </ReelsProvider>
-                        </StoriesProvider>
-                      </ChatProvider>
-                    </PostsProvider>
-                  </SocialProvider>
-                </FriendsProvider>
-              </AdminProvider>
+                                    </AdminProvider>
+                                  </ModerationProvider>
+                                </NotificationProvider>
+                              </ReviewProvider>
+                            </StampPassProvider>
+                          </FavoritesProvider>
+                        </ReelsProvider>
+                      </StoriesProvider>
+                    </ChatProvider>
+                  </PostsProvider>
+                </SocialProvider>
+              </FriendsProvider>
             </AuthProvider>
           </ThemeProvider>
         </QueryClientProvider>
