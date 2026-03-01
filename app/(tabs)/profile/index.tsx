@@ -50,6 +50,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useAuth } from '@/providers/AuthProvider';
+import { trackRender, measureSinceBoot } from '@/lib/perf';
 import { useStampPass } from '@/providers/StampPassProvider';
 import { useLiveLocation } from '@/providers/LiveLocationProvider';
 import { useSocial } from '@/providers/SocialProvider';
@@ -151,6 +152,8 @@ function ReelGridItem({ reel, onPress, onLongPress, showArchiveBadge }: {
 }
 
 export default function ProfileScreen() {
+  trackRender('ProfileScreen');
+  measureSinceBoot('ProfileScreen_render');
   const { colors } = useTheme();
   const router = useRouter();
   const { user, isLoggedIn, isLoading: authLoading, logout } = useAuth();

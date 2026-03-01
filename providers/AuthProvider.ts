@@ -3,6 +3,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { markTime, trackNetwork, trackRender } from '@/lib/perf';
 
 interface AuthUser {
   id: string;
@@ -33,6 +34,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 }
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
+  trackRender('AuthProvider');
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -51,18 +53,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const fetchProfile = useCallback(async (supabaseUser: SupabaseUser): Promise<AuthUser | null> => {
     try {
       console.log('[AUTH] Fetching profile for:', supabaseUser.id);
-      const queryPromise: Promise<{ data: any; error: any }> = Promise.resolve(
-        supabase
-          .from('users')
-          .select('id, display_name, email, is_admin')
-          .eq('id', supabaseUser.id)
-          .single()
-      );
-
-      const { data, error } = await withTimeout(
-        queryPromise,
-        PROFILE_FETCH_TIMEOUT,
-        'fetchProfile',
+      const { data, error } = await trackNetwork('auth.fetchProfile', () =>
+        withTimeout(
+          Promise.resolve(
+            supabase
+              .from('users')
+              .select('id, display_name, email, is_admin')
+              .eq('id', supabaseUser.id)
+              .single()
+          ),
+          PROFILE_FETCH_TIMEOUT,
+          'fetchProfile',
+        )
       );
 
       if (error || !data) {
@@ -101,11 +103,15 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     const initAuth = async () => {
       try {
         console.log('[AUTH] Initializing auth...');
-        const result = await withTimeout(
-          supabase.auth.getSession(),
-          10000,
-          'getSession',
+        markTime('auth_getSession_start');
+        const result = await trackNetwork('auth.getSession', () =>
+          withTimeout(
+            supabase.auth.getSession(),
+            10000,
+            'getSession',
+          )
         ) as { data: { session: Session | null } };
+        markTime('auth_getSession_done');
         const currentSession = result.data.session;
         console.log('[AUTH] Initial session:', currentSession ? 'found' : 'none');
 
@@ -140,6 +146,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         setSession(null);
         setUser(null);
       } finally {
+        markTime('auth_init_complete');
         setIsLoading(false);
       }
     };

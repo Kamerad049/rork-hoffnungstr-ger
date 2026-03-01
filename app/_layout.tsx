@@ -24,6 +24,9 @@ import { LiveLocationProvider } from '@/providers/LiveLocationProvider';
 import { SpotifyProvider } from '@/providers/SpotifyProvider';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
+import { markTime, measureSinceBoot, trackRender, printReport } from '@/lib/perf';
+
+markTime('module_load');
 
 try {
   SplashScreen.preventAutoHideAsync();
@@ -62,10 +65,12 @@ const queryClient = new QueryClient({
 });
 
 function RootLayoutNav() {
+  trackRender('RootLayoutNav');
   const { isLoggedIn, isLoading, user, session } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const hasRedirected = useRef(false);
+  const firstUIRef = useRef(false);
 
   useEffect(() => {
     if (isLoading) {
@@ -87,6 +92,11 @@ function RootLayoutNav() {
       router.replace('/' as any);
     }
   }, [isLoggedIn, isLoading, segments, user, session]);
+
+  if (!firstUIRef.current) {
+    firstUIRef.current = true;
+    measureSinceBoot('RootLayoutNav_first_render');
+  }
 
   return (
     <>
@@ -163,9 +173,12 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  trackRender('RootLayout');
   useEffect(() => {
+    markTime('RootLayout_mounted');
     console.log('[BOOT] Step D: ALL providers enabled');
     SplashScreen.hideAsync();
+    setTimeout(() => printReport(), 5000);
   }, []);
 
   return (

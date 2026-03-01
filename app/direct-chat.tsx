@@ -42,6 +42,7 @@ import { getUserById, formatTimeAgo } from '@/lib/utils';
 import type { ChatMessage } from '@/constants/types';
 import * as Haptics from 'expo-haptics';
 import VoiceMessageBubble from '@/components/VoiceMessageBubble';
+import { trackRender, measureSinceBoot } from '@/lib/perf';
 
 let ScreenCapture: any = null;
 try {
@@ -74,6 +75,8 @@ const MODES: { key: InputMode; label: string; icon: 'image' | 'text' | 'mic' }[]
 ];
 
 export default function DirectChatScreen() {
+  trackRender('DirectChatScreen');
+  measureSinceBoot('DirectChatScreen_render');
   const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();

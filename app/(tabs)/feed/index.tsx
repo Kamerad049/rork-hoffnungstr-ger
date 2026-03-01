@@ -18,6 +18,7 @@ import FeedCardComponent from '@/components/FeedCard';
 import type { PostReactionType } from '@/components/FeedCard';
 import StoryBar from '@/components/StoryBar';
 import type { FeedPost, StoryGroup } from '@/constants/types';
+import { trackRender, measureSinceBoot } from '@/lib/perf';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_HORIZONTAL_PADDING = 24;
@@ -28,6 +29,8 @@ const STORY_BAR_HEIGHT = 100;
 const CARD_HEIGHT = Math.min(CARD_WIDTH * 1.45, SCREEN_HEIGHT - 240);
 
 export default function FeedScreen() {
+  trackRender('FeedScreen');
+  measureSinceBoot('FeedScreen_render');
   const { allPosts } = usePosts();
   const router = useRouter();
   const insets = useSafeAreaInsets();
