@@ -1,0 +1,17 @@
+export const queryKeys = {
+  favorites: (userId: string) => ['favorites', userId] as const,
+  stamps: (userId: string) => ['stamps', userId] as const,
+  placesCount: () => ['places-count'] as const,
+  notifications: (userId: string) => ['notifications', userId] as const,
+  reviews: () => ['reviews'] as const,
+  leaderboard: () => ['leaderboard-users'] as const,
+  flagCount: () => ['active-flag-count'] as const,
+  news: () => ['news'] as const,
+  places: () => ['places'] as const,
+  restaurants: () => ['restaurants'] as const,
+  posts: (userId?: string) => userId ? ['posts', userId] : ['posts'] as const,
+  friends: (userId: string) => ['friends', userId] as const,
+  stories: () => ['stories'] as const,
+  chatMessages: (partnerId: string) => ['chat-messages', partnerId] as const,
+  userProfile: (userId: string) => ['user-profile', userId] as const,
+} as const;
