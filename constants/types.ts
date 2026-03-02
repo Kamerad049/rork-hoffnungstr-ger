@@ -168,6 +168,8 @@ export interface FeedPost {
   createdAt: string;
   location?: string;
   taggedUserIds?: string[];
+  isArchived?: boolean;
+  commentsDisabled?: boolean;
 }
 
 export interface PostComment {

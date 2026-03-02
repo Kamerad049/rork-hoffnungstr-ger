@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import OptimizedImage, { OptimizedAvatar } from '@/components/OptimizedImage';
-import { Shield, Star, Heart, Users, MessageCircle, Share2, MoreHorizontal, MapPin, X, ChevronRight } from 'lucide-react-native';
+import { Shield, Star, Heart, Users, MessageCircle, Share2, MoreHorizontal, MapPin, X, ChevronRight, Pencil, MessageCircleOff, Archive, Bookmark, Trash2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import RankIcon from '@/components/RankIcon';
@@ -42,6 +42,10 @@ interface FeedCardProps {
   onCommentPress: (postId: string) => void;
   onUserPress: (userId: string) => void;
   onImagePress?: (imageUrl: string) => void;
+  onLocationPress?: (location: string) => void;
+  onEditPress?: (post: FeedPost) => void;
+  onArchivePress?: (postId: string) => void;
+  onToggleCommentsPress?: (postId: string) => void;
   reaction: PostReactionType | null;
   onReaction: (postId: string, type: PostReactionType) => void;
   isActive?: boolean;
@@ -54,17 +58,23 @@ function FeedCardInner({
   onCommentPress,
   onUserPress,
   onImagePress,
+  onLocationPress,
+  onEditPress,
+  onArchivePress,
+  onToggleCommentsPress,
   reaction,
   onReaction,
   isActive = true,
 }: FeedCardProps) {
-  const { toggleLike, isLiked } = usePosts();
+  const { toggleLike, isLiked, isCommentsDisabled } = usePosts();
   const { isUserFlagActive, profile: socialProfile } = useSocial();
   const { user } = useAuth();
 
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   const [showReport, setShowReport] = useState<boolean>(false);
   const [showTaggedPeople, setShowTaggedPeople] = useState<boolean>(false);
+  const [showOwnMenu, setShowOwnMenu] = useState<boolean>(false);
+  const ownMenuAnim = useRef(new Animated.Value(0)).current;
 
   const doubleTapAnim = useRef(new Animated.Value(0)).current;
   const reactionScales = useRef(
@@ -181,13 +191,43 @@ function FeedCardInner({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const show = !showTaggedPeople;
     setShowTaggedPeople(show);
+    if (showOwnMenu) {
+      setShowOwnMenu(false);
+      ownMenuAnim.setValue(0);
+    }
     Animated.spring(taggedPeopleAnim, {
       toValue: show ? 1 : 0,
       useNativeDriver: true,
       speed: 20,
       bounciness: 8,
     }).start();
-  }, [showTaggedPeople, taggedPeopleAnim]);
+  }, [showTaggedPeople, taggedPeopleAnim, showOwnMenu, ownMenuAnim]);
+
+  const isOwnPost = post.userId === 'me';
+  const commentsOff = isCommentsDisabled(post.id);
+
+  const toggleOwnMenu = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const show = !showOwnMenu;
+    setShowOwnMenu(show);
+    if (showTaggedPeople) {
+      setShowTaggedPeople(false);
+      taggedPeopleAnim.setValue(0);
+    }
+    Animated.spring(ownMenuAnim, {
+      toValue: show ? 1 : 0,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 8,
+    }).start();
+  }, [showOwnMenu, ownMenuAnim, showTaggedPeople, taggedPeopleAnim]);
+
+  const handleLocationPress = useCallback(() => {
+    if (post.location && onLocationPress) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onLocationPress(post.location);
+    }
+  }, [post.location, onLocationPress]);
 
   const renderShimmer = () => {
     if (imageLoaded || !hasImage) return null;
@@ -279,7 +319,7 @@ function FeedCardInner({
             ))}
           </View>
           <View style={cardStyles.textOnlyQuoteMark}>
-            <Text style={cardStyles.quoteMark}>"</Text>
+            <Text style={cardStyles.quoteMark}>{'"'}</Text>
           </View>
         </LinearGradient>
       )}
@@ -347,17 +387,70 @@ function FeedCardInner({
               </Pressable>
             )}
 
-            {post.userId !== 'me' && (
-              <Pressable
-                style={cardStyles.moreBtn}
-                hitSlop={12}
-                onPress={() => setShowReport(true)}
-                testID={`card-more-${post.id}`}
-              >
-                <MoreHorizontal size={16} color="rgba(255,255,255,0.6)" />
-              </Pressable>
-            )}
+            <Pressable
+              style={cardStyles.moreBtn}
+              hitSlop={12}
+              onPress={isOwnPost ? toggleOwnMenu : () => setShowReport(true)}
+              testID={`card-more-${post.id}`}
+            >
+              <MoreHorizontal size={16} color="rgba(255,255,255,0.6)" />
+            </Pressable>
           </View>
+
+          {showOwnMenu && isOwnPost && (
+            <Animated.View
+              style={[
+                cardStyles.ownMenuDropdown,
+                {
+                  opacity: ownMenuAnim,
+                  transform: [{
+                    translateY: ownMenuAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-8, 0],
+                    }),
+                  }],
+                },
+              ]}
+            >
+              <Pressable
+                style={cardStyles.ownMenuItem}
+                onPress={() => {
+                  setShowOwnMenu(false);
+                  ownMenuAnim.setValue(0);
+                  onEditPress?.(post);
+                }}
+              >
+                <Pencil size={15} color="#E8DCC8" />
+                <Text style={cardStyles.ownMenuItemText}>Bearbeiten</Text>
+              </Pressable>
+              <View style={cardStyles.ownMenuDivider} />
+              <Pressable
+                style={cardStyles.ownMenuItem}
+                onPress={() => {
+                  setShowOwnMenu(false);
+                  ownMenuAnim.setValue(0);
+                  onToggleCommentsPress?.(post.id);
+                }}
+              >
+                <MessageCircleOff size={15} color={commentsOff ? '#BFA35D' : '#E8DCC8'} />
+                <Text style={[cardStyles.ownMenuItemText, commentsOff && { color: '#BFA35D' }]}>
+                  {commentsOff ? 'Kommentare aktivieren' : 'Kommentare deaktivieren'}
+                </Text>
+              </Pressable>
+              <View style={cardStyles.ownMenuDivider} />
+              <Pressable
+                style={cardStyles.ownMenuItem}
+                onPress={() => {
+                  setShowOwnMenu(false);
+                  ownMenuAnim.setValue(0);
+                  onArchivePress?.(post.id);
+                }}
+              >
+                <Archive size={15} color="#E8DCC8" />
+                <Text style={cardStyles.ownMenuItemText}>Archivieren</Text>
+              </Pressable>
+            </Animated.View>
+          )}
 
           {showTaggedPeople && taggedUsers.length > 0 && (
             <Animated.View
@@ -448,10 +541,14 @@ function FeedCardInner({
 
         <View style={cardStyles.bottomSection}>
           {post.location && (
-            <View style={cardStyles.locationPill}>
+            <Pressable
+              style={cardStyles.locationPill}
+              onPress={handleLocationPress}
+              hitSlop={6}
+            >
               <MapPin size={10} color="#BFA35D" />
               <Text style={cardStyles.locationPillText} numberOfLines={1}>{post.location}</Text>
-            </View>
+            </Pressable>
           )}
           {!hasImage && cleanContent.length > 0 && (
             <Text style={cardStyles.textOnlyContent} numberOfLines={8}>
@@ -640,6 +737,41 @@ const cardStyles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  ownMenuDropdown: {
+    marginHorizontal: 14,
+    marginTop: 8,
+    backgroundColor: 'rgba(15,14,11,0.9)',
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.15)',
+    overflow: 'hidden',
+    ...(Platform.OS !== 'web'
+      ? {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.5,
+          shadowRadius: 16,
+        }
+      : {}),
+    elevation: 10,
+  },
+  ownMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  ownMenuItemText: {
+    color: '#E8DCC8',
+    fontSize: 14,
+    fontWeight: '500' as const,
+  },
+  ownMenuDivider: {
+    height: 0.5,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    marginHorizontal: 14,
   },
   reactionBar: {
     position: 'absolute' as const,

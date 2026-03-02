@@ -24,6 +24,8 @@ function mapDbPost(p: any, userId: string): FeedPost {
     createdAt: p.created_at,
     location,
     taggedUserIds,
+    isArchived: p.is_archived ?? false,
+    commentsDisabled: p.comments_disabled ?? false,
   };
 }
 
@@ -34,6 +36,10 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
   const queryClient = useQueryClient();
 
   const [commentsCache, setCommentsCache] = useState<Record<string, PostComment[]>>({});
+  const [archivedPostIds, setArchivedPostIds] = useState<Set<string>>(new Set());
+  const [savedPostIds, setSavedPostIds] = useState<Set<string>>(new Set());
+  const [savedVisibility, setSavedVisibility] = useState<'public' | 'friends' | 'private'>('private');
+  const [disabledCommentsIds, setDisabledCommentsIds] = useState<Set<string>>(new Set());
 
   const postsQuery = useQuery({
     queryKey: queryKeys.posts(userId),
@@ -60,9 +66,26 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
 
   const allPosts = useMemo((): FeedPost[] => {
     return allPostsState
-      .filter((p) => !blockedUsers.includes(p.userId))
+      .filter((p) => !blockedUsers.includes(p.userId) && !archivedPostIds.has(p.id))
+      .map((p) => ({
+        ...p,
+        isArchived: archivedPostIds.has(p.id),
+        commentsDisabled: disabledCommentsIds.has(p.id),
+      }))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [allPostsState, blockedUsers]);
+  }, [allPostsState, blockedUsers, archivedPostIds, disabledCommentsIds]);
+
+  const archivedPosts = useMemo((): FeedPost[] => {
+    return allPostsState
+      .filter((p) => p.userId === 'me' && archivedPostIds.has(p.id))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [allPostsState, archivedPostIds]);
+
+  const savedPosts = useMemo((): FeedPost[] => {
+    return allPostsState
+      .filter((p) => savedPostIds.has(p.id))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [allPostsState, savedPostIds]);
 
   const toggleLikeMutation = useMutation({
     mutationFn: async (postId: string) => {
@@ -213,6 +236,93 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
     [userId],
   );
 
+  const archivePost = useCallback((postId: string) => {
+    console.log('[POSTS] Archiving post:', postId);
+    setArchivedPostIds((prev) => new Set([...prev, postId]));
+  }, []);
+
+  const unarchivePost = useCallback((postId: string) => {
+    console.log('[POSTS] Unarchiving post:', postId);
+    setArchivedPostIds((prev) => {
+      const next = new Set(prev);
+      next.delete(postId);
+      return next;
+    });
+  }, []);
+
+  const deletePost = useCallback(async (postId: string) => {
+    console.log('[POSTS] Deleting post:', postId);
+    if (userId) {
+      await supabase.from('posts').delete().eq('id', postId).eq('user_id', userId);
+    }
+    queryClient.setQueryData<{ posts: FeedPost[]; likedPosts: string[] }>(
+      queryKeys.posts(userId),
+      (old) => ({
+        posts: (old?.posts ?? []).filter((p) => p.id !== postId),
+        likedPosts: old?.likedPosts ?? [],
+      }),
+    );
+    setArchivedPostIds((prev) => {
+      const next = new Set(prev);
+      next.delete(postId);
+      return next;
+    });
+  }, [userId, queryClient]);
+
+  const editPost = useCallback(async (postId: string, newContent: string, newLocation?: string) => {
+    console.log('[POSTS] Editing post:', postId);
+    if (userId) {
+      const updateData: Record<string, unknown> = { content: newContent };
+      if (newLocation !== undefined) updateData.location = newLocation || null;
+      await supabase.from('posts').update(updateData).eq('id', postId).eq('user_id', userId);
+    }
+    queryClient.setQueryData<{ posts: FeedPost[]; likedPosts: string[] }>(
+      queryKeys.posts(userId),
+      (old) => ({
+        posts: (old?.posts ?? []).map((p) =>
+          p.id === postId ? { ...p, content: newContent, location: newLocation ?? p.location } : p
+        ),
+        likedPosts: old?.likedPosts ?? [],
+      }),
+    );
+  }, [userId, queryClient]);
+
+  const toggleCommentsDisabled = useCallback((postId: string) => {
+    console.log('[POSTS] Toggling comments for post:', postId);
+    setDisabledCommentsIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) {
+        next.delete(postId);
+      } else {
+        next.add(postId);
+      }
+      return next;
+    });
+  }, []);
+
+  const savePost = useCallback((postId: string) => {
+    console.log('[POSTS] Saving post:', postId);
+    setSavedPostIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) {
+        next.delete(postId);
+      } else {
+        next.add(postId);
+      }
+      return next;
+    });
+  }, []);
+
+  const isPostSaved = useCallback((postId: string) => savedPostIds.has(postId), [savedPostIds]);
+
+  const isCommentsDisabled = useCallback((postId: string) => disabledCommentsIds.has(postId), [disabledCommentsIds]);
+
+  const getPostsByLocation = useCallback((location: string): FeedPost[] => {
+    return allPostsState
+      .filter((p) => p.location === location && !archivedPostIds.has(p.id) && !blockedUsers.includes(p.userId))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [allPostsState, archivedPostIds, blockedUsers]);
+
   const getPostsForUser = useCallback(
     (uid: string): FeedPost[] => {
       if (uid === 'me') return allPosts.filter((p) => p.userId === 'me');
@@ -250,6 +360,10 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
   return {
     allPosts,
     allPostsState,
+    archivedPosts,
+    savedPosts,
+    savedVisibility,
+    setSavedVisibility,
     createPost,
     toggleLike,
     isLiked,
@@ -257,6 +371,15 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
     addComment,
     loadCommentsForPost,
     getPostsForUser,
+    getPostsByLocation,
     loadMorePosts,
+    archivePost,
+    unarchivePost,
+    deletePost,
+    editPost,
+    toggleCommentsDisabled,
+    isCommentsDisabled,
+    savePost,
+    isPostSaved,
   };
 });

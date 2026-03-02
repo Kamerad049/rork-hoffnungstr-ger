@@ -31,7 +31,7 @@ const CARD_HEIGHT = Math.min(CARD_WIDTH * 1.45, SCREEN_HEIGHT - 240);
 export default function FeedScreen() {
   trackRender('FeedScreen');
   measureSinceBoot('FeedScreen_render');
-  const { allPosts } = usePosts();
+  const { allPosts, archivePost, toggleCommentsDisabled } = usePosts();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -70,6 +70,37 @@ export default function FeedScreen() {
       router.push({ pathname: '/(tabs)/feed/image-viewer', params: { imageUrl } } as any);
     },
     [router]
+  );
+
+  const handleLocationPress = useCallback(
+    (location: string) => {
+      router.push({ pathname: '/location-posts', params: { location } } as any);
+    },
+    [router]
+  );
+
+  const handleEditPress = useCallback(
+    (post: FeedPost) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      console.log('[FEED] Edit post:', post.id);
+    },
+    []
+  );
+
+  const handleArchivePress = useCallback(
+    (postId: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      archivePost(postId);
+    },
+    [archivePost]
+  );
+
+  const handleToggleCommentsPress = useCallback(
+    (postId: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      toggleCommentsDisabled(postId);
+    },
+    [toggleCommentsDisabled]
   );
 
   const handleCreatePost = useCallback(() => {
@@ -157,6 +188,10 @@ export default function FeedScreen() {
                 onCommentPress={handleCommentPress}
                 onUserPress={handleUserPress}
                 onImagePress={handleImagePress}
+                onLocationPress={handleLocationPress}
+                onEditPress={handleEditPress}
+                onArchivePress={handleArchivePress}
+                onToggleCommentsPress={handleToggleCommentsPress}
                 reaction={postReactions[item.id] ?? null}
                 onReaction={handleReaction}
                 isActive={index === activeIndex}
@@ -166,7 +201,7 @@ export default function FeedScreen() {
         </View>
       );
     },
-    [scrollX, handleCommentPress, handleUserPress, handleImagePress, postReactions, handleReaction, activeIndex]
+    [scrollX, handleCommentPress, handleUserPress, handleImagePress, handleLocationPress, handleEditPress, handleArchivePress, handleToggleCommentsPress, postReactions, handleReaction, activeIndex]
   );
 
   const renderPagination = () => {

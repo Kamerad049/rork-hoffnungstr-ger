@@ -45,6 +45,11 @@ import {
   Trash2,
   ImageIcon,
   Film,
+  Bookmark,
+  Lock,
+  Globe,
+  Pencil,
+  MessageCircleOff,
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -79,7 +84,7 @@ const GRID_GAP = 3;
 const GRID_COLS = 3;
 const TILE_SIZE = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
 
-type ProfileTab = 'posts' | 'tagged' | 'archive';
+type ProfileTab = 'posts' | 'tagged' | 'archive' | 'saved';
 
 const VALUE_ICONS: Record<string, React.ComponentType<{ size: number; color: string }>> = {
   'Familie': Heart,
@@ -217,7 +222,7 @@ export default function ProfileScreen() {
   const { profile, hoistFlag, isFlagActive, flagCount } = useSocial();
   const { friends, friendRequestUsers } = useFriends();
   const { conversations } = useChat();
-  const { allPosts } = usePosts();
+  const { allPosts, archivedPosts, savedPosts, savedVisibility, setSavedVisibility, archivePost, unarchivePost, deletePost, editPost, toggleCommentsDisabled } = usePosts();
   const { activeOwnStories, isStoryViewed, stories } = useStories();
   const { savedReels, userReels, getOwnReels, getArchivedReels, getTaggedReels, archiveReel, unarchiveReel, deleteReel } = useReels();
   const { ordenDefinitions, earnedIds: ordenEarnedIds } = useOrden();
@@ -225,6 +230,7 @@ export default function ProfileScreen() {
   const { currentTrack, settings: spotifySettings } = useSpotify();
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
+
   const [selectedReel, setSelectedReel] = useState<Reel | null>(null);
   const [showRankProgress, setShowRankProgress] = useState<boolean>(false);
   const rankExpandAnim = useRef(new Animated.Value(0)).current;
@@ -349,7 +355,7 @@ export default function ProfileScreen() {
     if (tab === activeTab) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setActiveTab(tab);
-    const val = tab === 'posts' ? 0 : tab === 'tagged' ? 1 : 2;
+    const val = tab === 'posts' ? 0 : tab === 'tagged' ? 1 : tab === 'archive' ? 2 : 3;
     Animated.spring(tabIndicatorAnim, {
       toValue: val,
       useNativeDriver: true,
@@ -361,6 +367,75 @@ export default function ProfileScreen() {
   const handleReelPress = useCallback((reel: Reel) => {
     console.log('[PROFILE] Reel tapped:', reel.id);
   }, []);
+
+  const handlePostLongPress = useCallback((post: FeedPost) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (activeTab === 'archive') {
+      Alert.alert(
+        'Archivierter Beitrag',
+        'Was möchtest du tun?',
+        [
+          {
+            text: 'Wiederherstellen',
+            onPress: () => {
+              unarchivePost(post.id);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            },
+          },
+          {
+            text: 'Endgültig löschen',
+            style: 'destructive',
+            onPress: () => {
+              Alert.alert('Löschen?', 'Beitrag kann nicht wiederhergestellt werden.', [
+                { text: 'Abbrechen', style: 'cancel' },
+                {
+                  text: 'Löschen',
+                  style: 'destructive',
+                  onPress: () => {
+                    deletePost(post.id);
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                  },
+                },
+              ]);
+            },
+          },
+          { text: 'Abbrechen', style: 'cancel' },
+        ],
+      );
+    } else if (activeTab === 'posts') {
+      Alert.alert(
+        'Beitrag',
+        'Was möchtest du tun?',
+        [
+          {
+            text: 'Archivieren',
+            onPress: () => {
+              archivePost(post.id);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            },
+          },
+          {
+            text: 'Endgültig löschen',
+            style: 'destructive',
+            onPress: () => {
+              Alert.alert('Löschen?', 'Beitrag kann nicht wiederhergestellt werden.', [
+                { text: 'Abbrechen', style: 'cancel' },
+                {
+                  text: 'Löschen',
+                  style: 'destructive',
+                  onPress: () => {
+                    deletePost(post.id);
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                  },
+                },
+              ]);
+            },
+          },
+          { text: 'Abbrechen', style: 'cancel' },
+        ],
+      );
+    }
+  }, [activeTab, archivePost, unarchivePost, deletePost]);
 
   const handleReelLongPress = useCallback((reel: Reel) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -511,6 +586,11 @@ export default function ProfileScreen() {
         title = 'Archiv ist leer';
         subtitle = 'Archivierte Beiträge sind nur für dich sichtbar. Halte einen Beitrag gedrückt zum Archivieren.';
         break;
+      case 'saved':
+        icon = <Bookmark size={40} color="rgba(191,163,93,0.25)" />;
+        title = 'Keine gespeicherten Beiträge';
+        subtitle = 'Beiträge, die du speicherst, erscheinen hier.';
+        break;
     }
 
     return (
@@ -530,9 +610,11 @@ export default function ProfileScreen() {
     );
   };
 
+  const TAB_COUNT = 4;
+  const TAB_WIDTH = (SCREEN_WIDTH - 32) / TAB_COUNT;
   const tabIndicatorTranslateX = tabIndicatorAnim.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: [0, (SCREEN_WIDTH - 32) / 3, ((SCREEN_WIDTH - 32) / 3) * 2],
+    inputRange: [0, 1, 2, 3],
+    outputRange: [0, TAB_WIDTH, TAB_WIDTH * 2, TAB_WIDTH * 3],
   });
 
   return (
@@ -830,17 +912,50 @@ export default function ProfileScreen() {
           onPress={() => handleTabChange('archive')}
           testID="profile-tab-archive"
         >
-          <Archive size={20} color={activeTab === 'archive' ? '#BFA35D' : 'rgba(232,220,200,0.35)'} />
+          <Archive size={18} color={activeTab === 'archive' ? '#BFA35D' : 'rgba(232,220,200,0.35)'} />
           <Text style={[styles.tabBtnText, activeTab === 'archive' && styles.tabBtnTextActive]}>Archiv</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.tabBtn}
+          onPress={() => handleTabChange('saved')}
+          testID="profile-tab-saved"
+        >
+          <Bookmark size={18} color={activeTab === 'saved' ? '#BFA35D' : 'rgba(232,220,200,0.35)'} />
+          <Text style={[styles.tabBtnText, activeTab === 'saved' && styles.tabBtnTextActive]}>Gespeichert</Text>
         </Pressable>
 
         <Animated.View
           style={[
             styles.tabIndicator,
-            { transform: [{ translateX: tabIndicatorTranslateX }] },
+            { width: TAB_WIDTH, transform: [{ translateX: tabIndicatorTranslateX }] },
           ]}
         />
       </View>
+
+      {activeTab === 'saved' && (
+        <View style={styles.savedVisibilityBar}>
+          <Text style={styles.savedVisibilityLabel}>Sichtbarkeit:</Text>
+          {(['public', 'friends', 'private'] as const).map((vis) => {
+            const isActive = savedVisibility === vis;
+            const IconComp = vis === 'public' ? Globe : vis === 'friends' ? Users : Lock;
+            const label = vis === 'public' ? 'Alle' : vis === 'friends' ? 'Freunde' : 'Nur ich';
+            return (
+              <Pressable
+                key={vis}
+                style={[styles.savedVisibilityBtn, isActive && styles.savedVisibilityBtnActive]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSavedVisibility(vis);
+                }}
+              >
+                <IconComp size={12} color={isActive ? '#0f0e0b' : 'rgba(232,220,200,0.5)'} />
+                <Text style={[styles.savedVisibilityBtnText, isActive && styles.savedVisibilityBtnTextActive]}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
 
       {activeTab === 'posts' ? (
         ownFeedPosts.length === 0 ? (
@@ -852,6 +967,36 @@ export default function ProfileScreen() {
                 key={post.id}
                 post={post}
                 onPress={() => console.log('[PROFILE] Post tapped:', post.id)}
+                onLongPress={() => handlePostLongPress(post)}
+              />
+            ))}
+          </View>
+        )
+      ) : activeTab === 'archive' ? (
+        archivedPosts.length === 0 ? (
+          renderEmptyTab()
+        ) : (
+          <View style={styles.gridContainer}>
+            {archivedPosts.map((post) => (
+              <PostGridItem
+                key={post.id}
+                post={post}
+                onPress={() => console.log('[PROFILE] Archived post tapped:', post.id)}
+                onLongPress={() => handlePostLongPress(post)}
+              />
+            ))}
+          </View>
+        )
+      ) : activeTab === 'saved' ? (
+        savedPosts.length === 0 ? (
+          renderEmptyTab()
+        ) : (
+          <View style={styles.gridContainer}>
+            {savedPosts.map((post) => (
+              <PostGridItem
+                key={post.id}
+                post={post}
+                onPress={() => console.log('[PROFILE] Saved post tapped:', post.id)}
               />
             ))}
           </View>
@@ -866,7 +1011,7 @@ export default function ProfileScreen() {
               reel={reel}
               onPress={() => handleReelPress(reel)}
               onLongPress={() => handleReelLongPress(reel)}
-              showArchiveBadge={activeTab === 'archive'}
+              showArchiveBadge={false}
             />
           ))}
         </View>
@@ -1270,7 +1415,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     left: 0,
-    width: (SCREEN_WIDTH - 32) / 3,
     height: 2.5,
     backgroundColor: '#BFA35D',
     borderRadius: 2,
@@ -1456,5 +1600,42 @@ const styles = StyleSheet.create({
     color: 'rgba(191,163,93,0.5)',
     fontSize: 12,
     fontWeight: '700' as const,
+  },
+  savedVisibilityBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  savedVisibilityLabel: {
+    color: 'rgba(232,220,200,0.4)',
+    fontSize: 12,
+    fontWeight: '600' as const,
+    marginRight: 4,
+  },
+  savedVisibilityBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
+  savedVisibilityBtnActive: {
+    backgroundColor: '#BFA35D',
+    borderColor: '#BFA35D',
+  },
+  savedVisibilityBtnText: {
+    color: 'rgba(232,220,200,0.5)',
+    fontSize: 11,
+    fontWeight: '600' as const,
+  },
+  savedVisibilityBtnTextActive: {
+    color: '#0f0e0b',
   },
 });
