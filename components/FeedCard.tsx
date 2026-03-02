@@ -576,6 +576,20 @@ function FeedCardInner({
               <Text style={cardStyles.locationPillText} numberOfLines={1}>{post.location}</Text>
             </Pressable>
           )}
+          {post.tags && post.tags.length > 0 && (
+            <View style={cardStyles.tagsRow}>
+              {post.tags.slice(0, 4).map((tag) => (
+                <View key={tag} style={cardStyles.tagPill}>
+                  <Text style={cardStyles.tagPillText}>#{tag}</Text>
+                </View>
+              ))}
+              {post.tags.length > 4 && (
+                <View style={cardStyles.tagPill}>
+                  <Text style={cardStyles.tagPillText}>+{post.tags.length - 4}</Text>
+                </View>
+              )}
+            </View>
+          )}
           {!hasImage && cleanContent.length > 0 && (
             <Text style={cardStyles.textOnlyContent} numberOfLines={8}>
               {highlightHashtags(cleanContent)}
@@ -868,6 +882,25 @@ const cardStyles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+    marginBottom: 6,
+  },
+  tagPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: 'rgba(191,163,93,0.12)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.18)',
+  },
+  tagPillText: {
+    color: 'rgba(191,163,93,0.8)',
+    fontSize: 10,
+    fontWeight: '600' as const,
   },
   contentText: {
     color: '#E8DCC8',

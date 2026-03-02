@@ -168,6 +168,7 @@ export interface FeedPost {
   createdAt: string;
   location?: string;
   taggedUserIds?: string[];
+  tags?: string[];
   isArchived?: boolean;
   commentsDisabled?: boolean;
 }

@@ -10,8 +10,9 @@ import type { FeedPost, PostComment } from '@/constants/types';
 function mapDbPost(p: any, userId: string): FeedPost {
   const location = p.location ?? undefined;
   const taggedUserIds = p.tagged_user_ids ?? undefined;
+  const tags = p.tags ?? undefined;
   if (location || taggedUserIds) {
-    console.log('[POSTS] mapDbPost id:', p.id, 'location:', location, 'taggedUserIds:', taggedUserIds);
+    console.log('[POSTS] mapDbPost id:', p.id, 'location:', location, 'taggedUserIds:', taggedUserIds, 'tags:', tags);
   }
   return {
     id: p.id,
@@ -24,6 +25,7 @@ function mapDbPost(p: any, userId: string): FeedPost {
     createdAt: p.created_at,
     location,
     taggedUserIds,
+    tags,
     isArchived: p.is_archived ?? false,
     commentsDisabled: p.comments_disabled ?? false,
   };
@@ -269,18 +271,32 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
     });
   }, [userId, queryClient]);
 
-  const editPost = useCallback(async (postId: string, newContent: string, newLocation?: string) => {
-    console.log('[POSTS] Editing post:', postId);
+  const editPost = useCallback(async (
+    postId: string,
+    newContent: string,
+    newLocation?: string,
+    newTaggedUserIds?: string[],
+    newTags?: string[],
+  ) => {
+    console.log('[POSTS] Editing post:', postId, 'location:', newLocation, 'taggedUserIds:', newTaggedUserIds, 'tags:', newTags);
     if (userId) {
       const updateData: Record<string, unknown> = { content: newContent };
       if (newLocation !== undefined) updateData.location = newLocation || null;
+      if (newTaggedUserIds !== undefined) updateData.tagged_user_ids = newTaggedUserIds.length > 0 ? newTaggedUserIds : null;
+      if (newTags !== undefined) updateData.tags = newTags.length > 0 ? newTags : null;
       await supabase.from('posts').update(updateData).eq('id', postId).eq('user_id', userId);
     }
     queryClient.setQueryData<{ posts: FeedPost[]; likedPosts: string[] }>(
       queryKeys.posts(userId),
       (old) => ({
         posts: (old?.posts ?? []).map((p) =>
-          p.id === postId ? { ...p, content: newContent, location: newLocation ?? p.location } : p
+          p.id === postId ? {
+            ...p,
+            content: newContent,
+            location: newLocation !== undefined ? (newLocation || undefined) : p.location,
+            taggedUserIds: newTaggedUserIds !== undefined ? (newTaggedUserIds.length > 0 ? newTaggedUserIds : undefined) : p.taggedUserIds,
+            tags: newTags !== undefined ? (newTags.length > 0 ? newTags : undefined) : p.tags,
+          } : p
         ),
         likedPosts: old?.likedPosts ?? [],
       }),
