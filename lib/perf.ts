@@ -91,7 +91,7 @@ export function printReport() {
   }
 
   console.log('\n[PERF] ── Provider Count ──');
-  console.log('[PERF]   Total nested providers: 17');
+  console.log('[PERF]   Total nested providers: 8 (flat via composeProviders)');
 
   console.log('[PERF] ═══════════════════════════════════════\n');
 }
