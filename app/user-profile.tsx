@@ -13,7 +13,7 @@ import { useStories } from '@/providers/StoriesProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { useLiveLocation } from '@/providers/LiveLocationProvider';
 import { getUserById } from '@/lib/utils';
-import type { SocialUser, Reel } from '@/constants/types';
+import type { SocialUser, Reel, FeedPost } from '@/constants/types';
 import type { OrdenDefinition } from '@/constants/orden';
 
 import RankIcon from '@/components/RankIcon';
@@ -52,6 +52,55 @@ const VALUE_ICONS: Record<string, React.ComponentType<{ size: number; color: str
 };
 
 
+
+function PostGridItem({ post, onPress }: { post: FeedPost; onPress: () => void }) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scaleAnim, { toValue: 0.95, useNativeDriver: true, speed: 50 }).start();
+  }, [scaleAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50 }).start();
+  }, [scaleAnim]);
+
+  const hasImage = post.mediaUrls.length > 0;
+
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <Pressable
+        style={styles.gridTile}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        {hasImage ? (
+          <Image
+            source={{ uri: post.mediaUrls[0] }}
+            style={styles.gridTileImage}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : (
+          <View style={styles.gridTileTextBg}>
+            <Text style={styles.gridTileTextPreview} numberOfLines={4}>
+              {post.content}
+            </Text>
+          </View>
+        )}
+        <View style={styles.gridTileOverlay}>
+          <View style={styles.gridTileBadge}>
+            {hasImage ? (
+              <ImageIcon size={10} color="#fff" />
+            ) : (
+              <FileText size={10} color="#fff" />
+            )}
+          </View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 function ReelGridItem({ reel, onPress }: { reel: Reel; onPress: () => void }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -226,6 +275,14 @@ export default function UserProfileScreen() {
   const userReels = useMemo((): Reel[] => {
     return [];
   }, [userId]);
+
+  const userFeedPosts = useMemo((): FeedPost[] => {
+    if (!userId) return [];
+    const uid = isOwnProfile ? 'me' : userId;
+    return allPosts.filter((p) => p.userId === uid).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [userId, isOwnProfile, allPosts]);
 
   const taggedReels = useMemo((): Reel[] => {
     return [];
@@ -428,6 +485,11 @@ export default function UserProfileScreen() {
   const handleReelPress = useCallback((reel: Reel) => {
     console.log('[USER-PROFILE] Reel tapped:', reel.id);
     router.push({ pathname: '/user-reel-feed', params: { userId, initialReelId: reel.id } } as any);
+  }, [userId, router]);
+
+  const handlePostPress = useCallback((post: FeedPost) => {
+    console.log('[USER-PROFILE] Post tapped:', post.id);
+    router.push({ pathname: '/user-reel-feed', params: { userId, initialPostId: post.id } } as any);
   }, [userId, router]);
 
   if (!profile) {
@@ -657,7 +719,7 @@ export default function UserProfileScreen() {
 
         <View style={styles.statsBar}>
           {[
-            { label: 'Beiträge', value: userReels.length || profile.postCount, icon: FileText, route: '/user-posts' },
+            { label: 'Beiträge', value: userFeedPosts.length || profile.postCount, icon: FileText, route: '/user-posts' },
             { label: 'Freunde', value: profile.friendCount, icon: Users, route: '/user-friends' },
             { label: 'Stempel', value: profile.stampCount, icon: Award, route: '/user-stamps' },
           ].map((stat, idx) => (
@@ -895,7 +957,21 @@ export default function UserProfileScreen() {
               />
             </View>
 
-            {currentTabData.length === 0 ? (
+            {activeTab === 'posts' ? (
+              userFeedPosts.length === 0 ? (
+                renderEmptyTab()
+              ) : (
+                <View style={styles.gridContainer}>
+                  {userFeedPosts.map((post) => (
+                    <PostGridItem
+                      key={post.id}
+                      post={post}
+                      onPress={() => handlePostPress(post)}
+                    />
+                  ))}
+                </View>
+              )
+            ) : currentTabData.length === 0 ? (
               renderEmptyTab()
             ) : (
               <View style={styles.gridContainer}>
@@ -1570,6 +1646,19 @@ const styles = StyleSheet.create({
   gridTileImage: {
     width: '100%',
     height: '100%',
+  },
+  gridTileTextBg: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1a1710',
+    padding: 8,
+    justifyContent: 'center',
+  },
+  gridTileTextPreview: {
+    color: 'rgba(232,220,200,0.7)',
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '500' as const,
   },
   gridTileOverlay: {
     position: 'absolute',

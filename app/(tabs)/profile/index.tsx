@@ -966,7 +966,7 @@ export default function ProfileScreen() {
               <PostGridItem
                 key={post.id}
                 post={post}
-                onPress={() => console.log('[PROFILE] Post tapped:', post.id)}
+                onPress={() => router.push({ pathname: '/user-reel-feed', params: { userId: 'me', initialPostId: post.id } } as any)}
                 onLongPress={() => handlePostLongPress(post)}
               />
             ))}
@@ -981,7 +981,7 @@ export default function ProfileScreen() {
               <PostGridItem
                 key={post.id}
                 post={post}
-                onPress={() => console.log('[PROFILE] Archived post tapped:', post.id)}
+                onPress={() => router.push({ pathname: '/user-reel-feed', params: { userId: 'me', initialPostId: post.id } } as any)}
                 onLongPress={() => handlePostLongPress(post)}
               />
             ))}
@@ -996,7 +996,7 @@ export default function ProfileScreen() {
               <PostGridItem
                 key={post.id}
                 post={post}
-                onPress={() => console.log('[PROFILE] Saved post tapped:', post.id)}
+                onPress={() => router.push({ pathname: '/user-reel-feed', params: { userId: 'me', initialPostId: post.id } } as any)}
               />
             ))}
           </View>

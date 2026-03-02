@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useCallback, useEffect, useState } from 'react';
+import React, { useMemo, useRef, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -11,87 +11,160 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
-import { Heart, MessageCircle, Share2, MapPin, ChevronLeft, Play } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Heart, MessageCircle, Share2, MapPin, ChevronLeft, Play, Users, MoreHorizontal, Pencil, Archive, MessageCircleOff, X, ChevronRight, Bookmark } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getUserById } from '@/lib/utils';
-import { REACTION_CONFIG, type Reel, type ReactionType } from '@/constants/types';
-import RankIcon from '@/components/RankIcon';
-import WavingFlag from '@/components/WavingFlag';
-import { useReels } from '@/providers/ReelsProvider';
+import { usePosts } from '@/providers/PostsProvider';
+import { useSocial } from '@/providers/SocialProvider';
 import { useAuth } from '@/providers/AuthProvider';
+import { getUserById, formatTimeAgo } from '@/lib/utils';
+import type { FeedPost } from '@/constants/types';
+import RankIcon from '@/components/RankIcon';
+import OptimizedImage, { OptimizedAvatar } from '@/components/OptimizedImage';
 import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-function formatCount(n: number): string {
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-  return String(n);
-}
-
-function formatTimeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Gerade eben';
-  if (mins < 60) return `vor ${mins} Min.`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `vor ${hours} Std.`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `vor ${days} T.`;
-  const weeks = Math.floor(days / 7);
-  if (weeks < 4) return `vor ${weeks} Wo.`;
-  return `vor ${Math.floor(days / 30)} Mon.`;
-}
-
-interface ReelFeedItemProps {
-  reel: Reel;
+interface PostFeedItemProps {
+  post: FeedPost;
   onUserPress: (userId: string) => void;
+  onCommentPress: (postId: string) => void;
+  onLocationPress: (location: string) => void;
+  isOwnPost: boolean;
 }
 
-const ReelFeedItem = React.memo(function ReelFeedItem({ reel, onUserPress }: ReelFeedItemProps) {
-  const author = getUserById(reel.userId);
+const PostFeedItem = React.memo(function PostFeedItem({
+  post,
+  onUserPress,
+  onCommentPress,
+  onLocationPress,
+  isOwnPost,
+}: PostFeedItemProps) {
+  const { toggleLike, isLiked, isPostSaved, savePost, isCommentsDisabled, archivePost, toggleCommentsDisabled, editPost } = usePosts();
+  const { profile: socialProfile } = useSocial();
+  const { user } = useAuth();
   const [expanded, setExpanded] = useState<boolean>(false);
-  const [liked, setLiked] = useState<boolean>(false);
+  const [showTaggedPeople, setShowTaggedPeople] = useState<boolean>(false);
+  const [showMenu, setShowMenu] = useState<boolean>(false);
   const heartScale = useRef(new Animated.Value(1)).current;
+  const taggedPeopleAnim = useRef(new Animated.Value(0)).current;
+  const menuAnim = useRef(new Animated.Value(0)).current;
 
-  const displayName = author?.displayName ?? 'Unbekannt';
-  const username = author?.username ?? 'unknown';
-  const avatarUrl = author?.avatarUrl ?? null;
-  const rankIcon = author?.rankIcon ?? 'Compass';
-  const rank = author?.rank ?? 'Entdecker';
-  const initial = displayName.charAt(0).toUpperCase();
+  const author = post.userId === 'me'
+    ? {
+        displayName: socialProfile?.displayName || user?.name || 'Ich',
+        username: user?.name?.toLowerCase().replace(/\s/g, '_') ?? 'ich',
+        rankIcon: 'Compass',
+        rank: 'Entdecker',
+        avatarUrl: socialProfile?.avatarUrl ?? null,
+      }
+    : (() => {
+        const u = getUserById(post.userId);
+        return u
+          ? { displayName: u.displayName, username: u.username, rankIcon: u.rankIcon, rank: u.rank, avatarUrl: u.avatarUrl }
+          : { displayName: 'Unbekannt', username: 'unknown', rankIcon: 'Search', rank: 'Sucher', avatarUrl: null as string | null };
+      })();
 
-  const imageUri = reel.mediaType === 'photo' && reel.imageUrl ? reel.imageUrl : reel.thumbnailUrl;
+  const liked = isLiked(post.id);
+  const saved = isPostSaved(post.id);
+  const commentsOff = isCommentsDisabled(post.id);
+  const likeCount = post.likeCount + (liked ? 1 : 0);
+  const initial = author.displayName.charAt(0).toUpperCase();
+  const hasImage = post.mediaUrls.length > 0;
 
-  const captionLines = reel.caption.split('\n');
-  const firstLine = captionLines[0] ?? '';
-  const hasMore = reel.caption.length > 100 || captionLines.length > 2;
-  const displayCaption = expanded ? reel.caption : firstLine.slice(0, 100);
+  const taggedUsers = useMemo(() => {
+    if (!post.taggedUserIds || post.taggedUserIds.length === 0) return [];
+    return post.taggedUserIds
+      .map((id) => getUserById(id))
+      .filter((u): u is NonNullable<typeof u> => u !== null && u !== undefined);
+  }, [post.taggedUserIds]);
+
+  const captionText = useMemo(() => {
+    let text = post.content;
+    if (taggedUsers.length > 0) {
+      text = text.replace(/@\w+/g, '').replace(/\n{3,}/g, '\n\n').trim();
+    }
+    return text;
+  }, [post.content, taggedUsers]);
+
+  const hasMore = captionText.length > 120;
+  const displayCaption = expanded ? captionText : captionText.slice(0, 120);
 
   const handleLike = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setLiked(prev => !prev);
+    toggleLike(post.id);
     Animated.sequence([
       Animated.spring(heartScale, { toValue: 1.4, useNativeDriver: true, speed: 50 }),
       Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, speed: 50 }),
     ]).start();
-  }, [heartScale]);
+  }, [heartScale, post.id, toggleLike]);
 
-  const topReactions = useMemo(() => {
-    return Object.entries(reel.reactionCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
-      .map(([type]) => REACTION_CONFIG[type as ReactionType]);
-  }, [reel.reactionCounts]);
+  const handleSave = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    savePost(post.id);
+  }, [post.id, savePost]);
+
+  const toggleTaggedPeople = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const show = !showTaggedPeople;
+    setShowTaggedPeople(show);
+    if (showMenu) {
+      setShowMenu(false);
+      menuAnim.setValue(0);
+    }
+    Animated.spring(taggedPeopleAnim, {
+      toValue: show ? 1 : 0,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 8,
+    }).start();
+  }, [showTaggedPeople, taggedPeopleAnim, showMenu, menuAnim]);
+
+  const toggleMenu = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const show = !showMenu;
+    setShowMenu(show);
+    if (showTaggedPeople) {
+      setShowTaggedPeople(false);
+      taggedPeopleAnim.setValue(0);
+    }
+    Animated.spring(menuAnim, {
+      toValue: show ? 1 : 0,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 8,
+    }).start();
+  }, [showMenu, menuAnim, showTaggedPeople, taggedPeopleAnim]);
+
+  const handleTaggedUserTap = useCallback((userId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowTaggedPeople(false);
+    taggedPeopleAnim.setValue(0);
+    onUserPress(userId);
+  }, [onUserPress, taggedPeopleAnim]);
+
+  const lastTap = useRef<number>(0);
+  const doubleTapAnim = useRef(new Animated.Value(0)).current;
+
+  const handleImagePress = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTap.current < 300) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      if (!liked) toggleLike(post.id);
+      Animated.sequence([
+        Animated.spring(doubleTapAnim, { toValue: 1, useNativeDriver: true, speed: 15, bounciness: 12 }),
+        Animated.timing(doubleTapAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+      ]).start();
+    }
+    lastTap.current = now;
+  }, [liked, post.id, toggleLike, doubleTapAnim]);
 
   return (
     <View style={itemStyles.container}>
       <View style={itemStyles.header}>
-        <Pressable style={itemStyles.authorRow} onPress={() => onUserPress(reel.userId)}>
+        <Pressable style={itemStyles.authorRow} onPress={() => onUserPress(post.userId)}>
           <View style={itemStyles.avatarWrap}>
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={itemStyles.avatar} contentFit="cover" />
+            {author.avatarUrl ? (
+              <OptimizedAvatar uri={author.avatarUrl} size={38} borderRadius={10} />
             ) : (
               <View style={itemStyles.avatarFallback}>
                 <Text style={itemStyles.avatarInitial}>{initial}</Text>
@@ -100,31 +173,159 @@ const ReelFeedItem = React.memo(function ReelFeedItem({ reel, onUserPress }: Ree
           </View>
           <View style={itemStyles.authorInfo}>
             <View style={itemStyles.nameRow}>
-              <Text style={itemStyles.displayName} numberOfLines={1}>{displayName}</Text>
+              <Text style={itemStyles.displayName} numberOfLines={1}>{author.displayName}</Text>
               <View style={itemStyles.rankBadge}>
-                <RankIcon icon={rankIcon} size={11} color="#BFA35D" />
+                <RankIcon icon={author.rankIcon} size={11} color="#BFA35D" />
               </View>
             </View>
-            <Text style={itemStyles.timeText}>{formatTimeAgo(reel.createdAt)}</Text>
+            <Text style={itemStyles.timeText}>{formatTimeAgo(post.createdAt)}</Text>
           </View>
         </Pressable>
+
+        <View style={itemStyles.headerRight}>
+          {taggedUsers.length > 0 && (
+            <Pressable
+              style={itemStyles.taggedIndicator}
+              onPress={toggleTaggedPeople}
+              hitSlop={8}
+            >
+              <Users size={12} color="#BFA35D" />
+              <Text style={itemStyles.taggedIndicatorText}>+{taggedUsers.length}</Text>
+            </Pressable>
+          )}
+          {isOwnPost && (
+            <Pressable style={itemStyles.moreBtn} hitSlop={12} onPress={toggleMenu}>
+              <MoreHorizontal size={18} color="rgba(232,220,200,0.5)" />
+            </Pressable>
+          )}
+        </View>
       </View>
 
-      <View style={itemStyles.imageContainer}>
-        <Image
-          source={{ uri: imageUri }}
-          style={itemStyles.image}
-          contentFit="cover"
-          transition={300}
-        />
-        {reel.mediaType === 'video' && (
-          <View style={itemStyles.videoOverlay}>
-            <View style={itemStyles.playButton}>
-              <Play size={24} color="#fff" fill="#fff" />
-            </View>
+      {showMenu && isOwnPost && (
+        <Animated.View
+          style={[
+            itemStyles.menuDropdown,
+            {
+              opacity: menuAnim,
+              transform: [{
+                translateY: menuAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-8, 0],
+                }),
+              }],
+            },
+          ]}
+        >
+          <Pressable
+            style={itemStyles.menuItem}
+            onPress={() => {
+              setShowMenu(false);
+              menuAnim.setValue(0);
+              toggleCommentsDisabled(post.id);
+            }}
+          >
+            <MessageCircleOff size={15} color={commentsOff ? '#BFA35D' : '#E8DCC8'} />
+            <Text style={[itemStyles.menuItemText, commentsOff && { color: '#BFA35D' }]}>
+              {commentsOff ? 'Kommentare aktivieren' : 'Kommentare deaktivieren'}
+            </Text>
+          </Pressable>
+          <View style={itemStyles.menuDivider} />
+          <Pressable
+            style={itemStyles.menuItem}
+            onPress={() => {
+              setShowMenu(false);
+              menuAnim.setValue(0);
+              archivePost(post.id);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }}
+          >
+            <Archive size={15} color="#E8DCC8" />
+            <Text style={itemStyles.menuItemText}>Archivieren</Text>
+          </Pressable>
+        </Animated.View>
+      )}
+
+      {showTaggedPeople && taggedUsers.length > 0 && (
+        <Animated.View
+          style={[
+            itemStyles.taggedDropdown,
+            {
+              opacity: taggedPeopleAnim,
+              transform: [{
+                translateY: taggedPeopleAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-8, 0],
+                }),
+              }],
+            },
+          ]}
+        >
+          <View style={itemStyles.taggedDropdownHeader}>
+            <Text style={itemStyles.taggedDropdownTitle}>Markiert</Text>
+            <Pressable onPress={toggleTaggedPeople} hitSlop={8}>
+              <X size={14} color="rgba(232,220,200,0.5)" />
+            </Pressable>
           </View>
-        )}
-      </View>
+          {taggedUsers.map((tu) => {
+            const tagInitial = tu.displayName.charAt(0).toUpperCase();
+            return (
+              <Pressable
+                key={tu.id}
+                style={itemStyles.taggedUserRow}
+                onPress={() => handleTaggedUserTap(tu.id)}
+              >
+                {tu.avatarUrl ? (
+                  <OptimizedAvatar uri={tu.avatarUrl} size={28} borderRadius={7} />
+                ) : (
+                  <View style={itemStyles.taggedUserAvatar}>
+                    <Text style={itemStyles.taggedUserAvatarText}>{tagInitial}</Text>
+                  </View>
+                )}
+                <View style={itemStyles.taggedUserInfo}>
+                  <Text style={itemStyles.taggedUserName} numberOfLines={1}>{tu.displayName}</Text>
+                  <Text style={itemStyles.taggedUserHandle}>@{tu.username}</Text>
+                </View>
+                <ChevronRight size={14} color="rgba(191,163,93,0.4)" />
+              </Pressable>
+            );
+          })}
+        </Animated.View>
+      )}
+
+      {hasImage ? (
+        <Pressable onPress={handleImagePress} style={itemStyles.imageContainer}>
+          <OptimizedImage
+            source={{ uri: post.mediaUrls[0] }}
+            style={itemStyles.image}
+            contentFit="cover"
+            variant="dark"
+          />
+          {post.mediaType === 'video' && (
+            <View style={itemStyles.videoOverlay}>
+              <View style={itemStyles.playButton}>
+                <Play size={24} color="#fff" fill="#fff" />
+              </View>
+            </View>
+          )}
+          <Animated.View
+            style={[
+              itemStyles.doubleTapHeart,
+              {
+                opacity: doubleTapAnim,
+                transform: [{
+                  scale: doubleTapAnim.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0.3, 1.2, 1],
+                  }),
+                }],
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <Heart size={64} color="#BFA35D" fill="#BFA35D" />
+          </Animated.View>
+        </Pressable>
+      ) : null}
 
       <View style={itemStyles.actionsRow}>
         <View style={itemStyles.actionsLeft}>
@@ -136,99 +337,118 @@ const ReelFeedItem = React.memo(function ReelFeedItem({ reel, onUserPress }: Ree
                 fill={liked ? '#E25555' : 'transparent'}
               />
             </Animated.View>
+            {likeCount > 0 && (
+              <Text style={[itemStyles.actionCount, liked && { color: '#E25555' }]}>{likeCount}</Text>
+            )}
           </Pressable>
-          <Pressable style={itemStyles.actionBtn} hitSlop={8}>
+          <Pressable style={itemStyles.actionBtn} hitSlop={8} onPress={() => onCommentPress(post.id)}>
             <MessageCircle size={22} color="#E8DCC8" />
+            {post.commentCount > 0 && (
+              <Text style={itemStyles.actionCount}>{post.commentCount}</Text>
+            )}
           </Pressable>
           <Pressable style={itemStyles.actionBtn} hitSlop={8}>
             <Share2 size={21} color="#E8DCC8" />
           </Pressable>
         </View>
+        <Pressable onPress={handleSave} style={itemStyles.actionBtn} hitSlop={8}>
+          <Bookmark
+            size={22}
+            color={saved ? '#BFA35D' : '#E8DCC8'}
+            fill={saved ? '#BFA35D' : 'transparent'}
+          />
+        </Pressable>
       </View>
 
-      <View style={itemStyles.reactionSummary}>
-        <View style={itemStyles.reactionEmojis}>
-          {topReactions.map((r, i) => (
-            <Text key={i} style={itemStyles.reactionEmoji}>{r.emoji}</Text>
-          ))}
+      {captionText.length > 0 && (
+        <View style={itemStyles.captionArea}>
+          <Text style={itemStyles.captionAuthor}>{author.username}</Text>
+          <Text style={itemStyles.captionText}>
+            {displayCaption}
+            {hasMore && !expanded && (
+              <Text style={itemStyles.moreText} onPress={() => setExpanded(true)}> ...mehr</Text>
+            )}
+          </Text>
         </View>
-        <Text style={itemStyles.reactionCount}>
-          {formatCount(reel.totalReactions + (liked ? 1 : 0))} Reaktionen
-        </Text>
-      </View>
+      )}
 
-      <View style={itemStyles.captionArea}>
-        <Text style={itemStyles.captionAuthor}>{username}</Text>
-        <Text style={itemStyles.captionText}>
-          {displayCaption}
-          {hasMore && !expanded && (
-            <Text style={itemStyles.moreText} onPress={() => setExpanded(true)}> ...mehr</Text>
-          )}
-        </Text>
-      </View>
-
-      {reel.commentCount > 0 && (
-        <Pressable style={itemStyles.commentsLink}>
+      {post.commentCount > 0 && !commentsOff && (
+        <Pressable style={itemStyles.commentsLink} onPress={() => onCommentPress(post.id)}>
           <Text style={itemStyles.commentsText}>
-            Alle {reel.commentCount} Kommentare ansehen
+            Alle {post.commentCount} Kommentare ansehen
           </Text>
         </Pressable>
       )}
 
-      {reel.location && (
-        <View style={itemStyles.locationRow}>
+      {post.location && (
+        <Pressable style={itemStyles.locationRow} onPress={() => onLocationPress(post.location!)}>
           <MapPin size={11} color="rgba(191,163,93,0.5)" />
-          <Text style={itemStyles.locationText}>{reel.location}</Text>
-        </View>
+          <Text style={itemStyles.locationText}>{post.location}</Text>
+        </Pressable>
       )}
     </View>
   );
 });
 
 export default function UserReelFeedScreen() {
-  const { userId, initialReelId } = useLocalSearchParams<{ userId: string; initialReelId: string }>();
+  const { userId, initialPostId } = useLocalSearchParams<{ userId: string; initialPostId?: string; initialReelId?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const flatListRef = useRef<FlatList<Reel>>(null);
-  const [hasScrolled, setHasScrolled] = useState<boolean>(false);
+  const flatListRef = useRef<FlatList<FeedPost>>(null);
+  const { getPostsForUser, allPosts } = usePosts();
+  const { user } = useAuth();
 
-  const userReels = useMemo((): Reel[] => {
-    return [];
-  }, [userId]);
+  const isOwnProfile = userId === 'me' || (user && userId === user.id);
+
+  const userPosts = useMemo((): FeedPost[] => {
+    if (!userId) return [];
+    const uid = (user && userId === user.id) ? 'me' : userId;
+    return getPostsForUser(uid);
+  }, [userId, getPostsForUser, allPosts, user]);
+
+  const effectiveInitialId = initialPostId;
 
   const initialIndex = useMemo(() => {
-    if (!initialReelId) return 0;
-    const idx = userReels.findIndex(r => r.id === initialReelId);
+    if (!effectiveInitialId) return 0;
+    const idx = userPosts.findIndex(p => p.id === effectiveInitialId);
     return idx >= 0 ? idx : 0;
-  }, [initialReelId, userReels]);
+  }, [effectiveInitialId, userPosts]);
 
-  const author = useMemo(() => getUserById(userId ?? ''), [userId]);
+  const author = useMemo(() => {
+    if (!userId || userId === 'me') return null;
+    return getUserById(userId);
+  }, [userId]);
 
   const handleUserPress = useCallback((uid: string) => {
-    if (uid !== 'me') {
-      router.push({ pathname: '/user-profile', params: { userId: uid } } as any);
-    }
+    if (uid === 'me') return;
+    router.push({ pathname: '/user-profile', params: { userId: uid } } as any);
   }, [router]);
 
-  const renderItem = useCallback(({ item }: { item: Reel }) => (
-    <ReelFeedItem reel={item} onUserPress={handleUserPress} />
-  ), [handleUserPress]);
+  const handleCommentPress = useCallback((postId: string) => {
+    router.push({ pathname: '/(tabs)/feed/comments', params: { postId } } as any);
+  }, [router]);
 
-  const keyExtractor = useCallback((item: Reel) => item.id, []);
+  const handleLocationPress = useCallback((location: string) => {
+    router.push({ pathname: '/location-posts', params: { location } } as any);
+  }, [router]);
 
-  const getItemLayout = useCallback((_: any, index: number) => ({
-    length: 600,
-    offset: 600 * index,
-    index,
-  }), []);
+  const renderItem = useCallback(({ item }: { item: FeedPost }) => (
+    <PostFeedItem
+      post={item}
+      onUserPress={handleUserPress}
+      onCommentPress={handleCommentPress}
+      onLocationPress={handleLocationPress}
+      isOwnPost={item.userId === 'me'}
+    />
+  ), [handleUserPress, handleCommentPress, handleLocationPress]);
+
+  const keyExtractor = useCallback((item: FeedPost) => item.id, []);
+
+  const headerTitle = isOwnProfile ? 'Meine Beiträge' : (author?.displayName ?? 'Beiträge');
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.headerBar}>
           <Pressable
@@ -242,27 +462,29 @@ export default function UserReelFeedScreen() {
           </Pressable>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle} numberOfLines={1}>
-              {author?.displayName ?? 'Beiträge'}
+              {headerTitle}
             </Text>
             <Text style={styles.headerSubtitle}>Beiträge</Text>
           </View>
-          <View style={styles.backCircle} />
+          <View style={{ width: 40 }} />
         </View>
 
         <FlatList
           ref={flatListRef}
-          data={userReels}
+          data={userPosts}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
-          initialScrollIndex={initialIndex > 0 ? initialIndex : undefined}
-          getItemLayout={getItemLayout}
+          initialScrollIndex={initialIndex > 0 && userPosts.length > initialIndex ? initialIndex : undefined}
+          getItemLayout={undefined}
           onScrollToIndexFailed={(info) => {
-            console.log('[REEL-FEED] scrollToIndex failed, retrying...', info);
+            console.log('[POST-FEED] scrollToIndex failed, retrying...', info);
             setTimeout(() => {
-              flatListRef.current?.scrollToIndex({ index: info.index, animated: false });
-            }, 100);
+              if (info.index < userPosts.length) {
+                flatListRef.current?.scrollToIndex({ index: info.index, animated: false });
+              }
+            }, 200);
           }}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -338,25 +560,25 @@ const itemStyles = StyleSheet.create({
     paddingBottom: 16,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   authorRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
     gap: 10,
   },
   avatarWrap: {
     width: 38,
     height: 38,
-    borderRadius: 19,
+    borderRadius: 10,
     overflow: 'hidden',
     borderWidth: 1.5,
     borderColor: 'rgba(191,163,93,0.2)',
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
   },
   avatarFallback: {
     width: '100%',
@@ -397,6 +619,139 @@ const itemStyles = StyleSheet.create({
     fontWeight: '400' as const,
     marginTop: 1,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  taggedIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.2)',
+  },
+  taggedIndicatorText: {
+    color: '#BFA35D',
+    fontSize: 11,
+    fontWeight: '700' as const,
+  },
+  moreBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuDropdown: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: '#1e1e20',
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.15)',
+    overflow: 'hidden',
+    ...(Platform.OS !== 'web'
+      ? {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.5,
+          shadowRadius: 16,
+        }
+      : {}),
+    elevation: 10,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  menuItemText: {
+    color: '#E8DCC8',
+    fontSize: 14,
+    fontWeight: '500' as const,
+  },
+  menuDivider: {
+    height: 0.5,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    marginHorizontal: 14,
+  },
+  taggedDropdown: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: '#1e1e20',
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.15)',
+    overflow: 'hidden',
+    ...(Platform.OS !== 'web'
+      ? {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.5,
+          shadowRadius: 16,
+        }
+      : {}),
+    elevation: 10,
+  },
+  taggedDropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
+  taggedDropdownTitle: {
+    color: 'rgba(232,220,200,0.5)',
+    fontSize: 11,
+    fontWeight: '600' as const,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase' as const,
+  },
+  taggedUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  taggedUserAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    backgroundColor: 'rgba(191,163,93,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.2)',
+  },
+  taggedUserAvatarText: {
+    color: '#E8DCC8',
+    fontSize: 12,
+    fontWeight: '700' as const,
+  },
+  taggedUserInfo: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  taggedUserName: {
+    color: '#E8DCC8',
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  taggedUserHandle: {
+    color: 'rgba(191,163,93,0.5)',
+    fontSize: 10,
+    marginTop: 1,
+  },
   imageContainer: {
     width: SCREEN_WIDTH,
     aspectRatio: 1,
@@ -423,6 +778,12 @@ const itemStyles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.3)',
   },
+  doubleTapHeart: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -437,23 +798,12 @@ const itemStyles = StyleSheet.create({
     gap: 16,
   },
   actionBtn: {
-    padding: 2,
-  },
-  reactionSummary: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingBottom: 6,
+    gap: 5,
+    padding: 2,
   },
-  reactionEmojis: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  reactionEmoji: {
-    fontSize: 13,
-  },
-  reactionCount: {
+  actionCount: {
     color: '#E8DCC8',
     fontSize: 13,
     fontWeight: '600' as const,
@@ -462,6 +812,7 @@ const itemStyles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 16,
+    paddingTop: 4,
     paddingBottom: 4,
   },
   captionAuthor: {
