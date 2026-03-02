@@ -212,6 +212,14 @@ function FeedCardInner({
     );
   };
 
+  const cleanContent = useMemo(() => {
+    let text = post.content;
+    if (taggedUsers.length > 0) {
+      text = text.replace(/@\w+/g, '').replace(/\n{3,}/g, '\n\n').trim();
+    }
+    return text;
+  }, [post.content, taggedUsers]);
+
   const highlightHashtags = (text: string) => {
     const parts = text.split(/(#\w+)/g);
     return parts.map((part, i) => {
@@ -439,14 +447,14 @@ function FeedCardInner({
               <Text style={cardStyles.locationPillText} numberOfLines={1}>{post.location}</Text>
             </View>
           )}
-          {!hasImage && post.content.length > 0 && (
+          {!hasImage && cleanContent.length > 0 && (
             <Text style={cardStyles.textOnlyContent} numberOfLines={8}>
-              {highlightHashtags(post.content)}
+              {highlightHashtags(cleanContent)}
             </Text>
           )}
-          {hasImage && post.content.length > 0 && (
+          {hasImage && cleanContent.length > 0 && (
             <Text style={cardStyles.contentText} numberOfLines={3}>
-              {highlightHashtags(post.content)}
+              {highlightHashtags(cleanContent)}
             </Text>
           )}
 
