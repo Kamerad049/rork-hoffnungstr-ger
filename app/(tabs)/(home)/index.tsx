@@ -28,7 +28,8 @@ export default function HomeScreen() {
   const stamps = stampPass?.stamps ?? [];
   const rank = stampPass?.rank ?? { name: 'Neuling', minStamps: 0, icon: 'Eye' };
   const progress = stampPass?.progress ?? 0;
-  const { news } = useAdmin();
+  const adminCtx = useAdmin();
+  const news = adminCtx?.news ?? [];
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
@@ -59,7 +60,8 @@ export default function HomeScreen() {
     router.push('/(tabs)/(home)/activity' as any);
   }, [bellScale, router]);
 
-  const { places, restaurants } = useAdmin();
+  const places = adminCtx?.places ?? [];
+  const restaurants = adminCtx?.restaurants ?? [];
   const featuredPlaces = useMemo(() => places.slice(0, 8), [places]);
   const featuredRestaurants = useMemo(() => restaurants.slice(0, 6), [restaurants]);
   const latestNews = useMemo(() => news.slice(0, 4), [news]);
