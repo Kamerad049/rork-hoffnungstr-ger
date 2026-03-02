@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { trpc, trpcClient } from '@/lib/trpc';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import OfflineBanner from '@/components/OfflineBanner';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { EssentialProviders } from '@/providers/EssentialProviders';
@@ -102,6 +103,7 @@ function RootLayoutNav() {
   return (
     <>
       <StatusBar style="light" />
+      <OfflineBanner />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen

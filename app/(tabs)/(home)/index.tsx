@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, FlatList, Pressable, Animated, Platform, Dimensions } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
 import { ChevronRight, Bell } from 'lucide-react-native';
@@ -16,6 +17,7 @@ import RestaurantCard from '@/components/RestaurantCard';
 import NewsCard from '@/components/NewsCard';
 import QuoteCard from '@/components/QuoteCard';
 import type { Place, Restaurant, NewsArticle } from '@/constants/types';
+import { HomeSkeleton } from '@/components/Skeleton';
 
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -60,6 +62,7 @@ export default function HomeScreen() {
     router.push('/(tabs)/(home)/activity' as any);
   }, [bellScale, router]);
 
+  const isContentLoading = contentCtx?.isLoading ?? false;
   const places = contentCtx?.places ?? [];
   const restaurants = contentCtx?.restaurants ?? [];
   const featuredPlaces = useMemo(() => places.slice(0, 8), [places]);
@@ -144,6 +147,10 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.contentArea}>
+          {isContentLoading && places.length === 0 ? (
+            <HomeSkeleton />
+          ) : (
+          <>
           <QuoteCard leitsatz={leitsatz} />
 
           <View style={styles.sectionHeader}>
@@ -162,6 +169,11 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalList}
             scrollEnabled
+            initialNumToRender={3}
+            maxToRenderPerBatch={3}
+            windowSize={5}
+            removeClippedSubviews={Platform.OS !== 'web'}
+            getItemLayout={(_, index) => ({ length: 172, offset: 172 * index, index })}
           />
 
           <View style={styles.sectionHeader}>
@@ -180,6 +192,11 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalList}
             scrollEnabled
+            initialNumToRender={3}
+            maxToRenderPerBatch={3}
+            windowSize={5}
+            removeClippedSubviews={Platform.OS !== 'web'}
+            getItemLayout={(_, index) => ({ length: 172, offset: 172 * index, index })}
           />
 
           <View style={styles.sectionHeader}>
@@ -192,6 +209,8 @@ export default function HomeScreen() {
           ))}
 
           <View style={{ height: 30 }} />
+          </>
+          )}
         </View>
       </ScrollView>
     </View>

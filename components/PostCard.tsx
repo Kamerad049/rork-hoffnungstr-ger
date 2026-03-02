@@ -1,8 +1,8 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import OptimizedImage, { OptimizedAvatar } from '@/components/OptimizedImage';
 import { Heart, MessageCircle, Share2, MoreHorizontal, Flag, Play } from 'lucide-react-native';
 import RankIcon from '@/components/RankIcon';
-import WavingFlag from '@/components/WavingFlag';
 import { useTheme } from '@/providers/ThemeProvider';
 import { usePosts } from '@/providers/PostsProvider';
 import { useAuth } from '@/providers/AuthProvider';
@@ -75,7 +75,7 @@ function PostCardInner({ post, onCommentPress, onUserPress }: PostCardProps) {
         >
           <View style={styles.avatarWrapper}>
             {author.avatarUrl ? (
-              <Image source={{ uri: author.avatarUrl }} style={[styles.avatar, { backgroundColor: colors.accent }]} />
+              <OptimizedAvatar uri={author.avatarUrl} size={40} borderRadius={10} style={{ borderWidth: 1.5, borderColor: 'rgba(191,163,93,0.3)' } as any} />
             ) : (
               <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
                 <Text style={styles.avatarText}>{initial}</Text>
@@ -125,10 +125,11 @@ function PostCardInner({ post, onCommentPress, onUserPress }: PostCardProps) {
 
       {post.mediaUrls.length > 0 && (
         <View style={styles.mediaContainer}>
-          <Image
+          <OptimizedImage
             source={{ uri: post.mediaUrls[0] }}
             style={styles.postImage}
-            resizeMode="cover"
+            contentFit="cover"
+            variant="dark"
           />
           {post.mediaType === 'video' && (
             <View style={styles.videoOverlay}>

@@ -4,18 +4,15 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  Image,
   Animated,
-  Dimensions,
   Platform,
-  Modal,
-  ScrollView,
 } from 'react-native';
+import OptimizedImage, { OptimizedAvatar } from '@/components/OptimizedImage';
 import { Shield, Star, Heart, Users, MessageCircle, Share2, MoreHorizontal, MapPin, X, ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import RankIcon from '@/components/RankIcon';
-import WavingFlag from '@/components/WavingFlag';
+
 import { usePosts } from '@/providers/PostsProvider';
 import { useSocial } from '@/providers/SocialProvider';
 import { useAuth } from '@/providers/AuthProvider';
@@ -234,10 +231,11 @@ function FeedCardInner({
       {hasImage ? (
         <>
           {renderShimmer()}
-          <Image
+          <OptimizedImage
             source={{ uri: post.mediaUrls[0] }}
             style={StyleSheet.absoluteFill}
-            resizeMode="cover"
+            contentFit="cover"
+            variant="dark"
             onLoad={() => setImageLoaded(true)}
           />
           <LinearGradient
@@ -305,7 +303,7 @@ function FeedCardInner({
             <Pressable style={cardStyles.authorRow} onPress={handleUserTap}>
               <View style={cardStyles.avatarWrap}>
                 {author.avatarUrl ? (
-                  <Image source={{ uri: author.avatarUrl }} style={cardStyles.avatarInner} />
+                  <OptimizedAvatar uri={author.avatarUrl} size={40} borderRadius={10} />
                 ) : (
                   <View style={cardStyles.avatarInner}>
                     <Text style={cardStyles.avatarText}>{initial}</Text>
@@ -377,7 +375,7 @@ function FeedCardInner({
                     onPress={() => handleTaggedUserTap(tu.id)}
                   >
                     {tu.avatarUrl ? (
-                      <Image source={{ uri: tu.avatarUrl }} style={cardStyles.taggedUserAvatar} />
+                      <OptimizedAvatar uri={tu.avatarUrl} size={28} borderRadius={7} />
                     ) : (
                       <View style={cardStyles.taggedUserAvatar}>
                         <Text style={cardStyles.taggedUserAvatarText}>{tagInitial}</Text>

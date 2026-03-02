@@ -1,5 +1,6 @@
 import React, { useCallback, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Animated, TouchableWithoutFeedback, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Animated, TouchableWithoutFeedback } from 'react-native';
+import { OptimizedAvatar } from '@/components/OptimizedImage';
 import { Plus, FileText, Camera } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -89,13 +90,11 @@ function StoryBarInner({ onStoryPress, onAddStory, onCreatePost, variant = 'defa
             ]}
           >
             {avatarUrl ? (
-              <Image
-                source={{ uri: avatarUrl }}
-                style={{
-                  width: avatarSize,
-                  height: avatarSize * 1.15,
-                  borderRadius,
-                }}
+              <OptimizedAvatar
+                uri={avatarUrl}
+                size={avatarSize}
+                borderRadius={borderRadius}
+                style={{ height: avatarSize * 1.15 } as any}
               />
             ) : (
               <View

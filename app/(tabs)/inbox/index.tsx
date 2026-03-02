@@ -339,6 +339,10 @@ export default function InboxScreen() {
         ListEmptyComponent={ListEmpty}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        initialNumToRender={8}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS !== 'web'}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
-import { Image } from 'expo-image';
+import OptimizedImage from '@/components/OptimizedImage';
 import { Calendar, ImageOff } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
 import type { NewsArticle } from '@/constants/types';
@@ -34,7 +34,7 @@ export default React.memo(function NewsCard({ article, onPress, compact = false 
       <Pressable onPress={handlePress} testID={`news-card-compact-${article.id}`}>
         <Animated.View style={[styles.compactCard, { backgroundColor: colors.surface, transform: [{ scale: scaleAnim }] }]}>
           {article.image ? (
-            <Image source={{ uri: article.image }} style={styles.compactImage} contentFit="cover" />
+            <OptimizedImage source={{ uri: article.image }} style={styles.compactImage} contentFit="cover" variant="warm" />
           ) : (
             <View style={[styles.compactImage, styles.placeholderImage, { backgroundColor: colors.surfaceSecondary }]}>
               <ImageOff size={28} color={colors.tertiaryText} />
@@ -56,7 +56,7 @@ export default React.memo(function NewsCard({ article, onPress, compact = false 
     <Pressable onPress={handlePress} testID={`news-card-${article.id}`}>
       <Animated.View style={[styles.card, { backgroundColor: colors.surface, transform: [{ scale: scaleAnim }] }]}>
         {article.image ? (
-          <Image source={{ uri: article.image }} style={styles.image} contentFit="cover" />
+          <OptimizedImage source={{ uri: article.image }} style={styles.image} contentFit="cover" variant="warm" />
         ) : (
           <View style={[styles.image, styles.placeholderImage, { backgroundColor: colors.surfaceSecondary }]}>
             <ImageOff size={24} color={colors.tertiaryText} />

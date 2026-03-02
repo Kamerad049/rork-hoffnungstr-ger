@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, Pressable, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Search, Map as MapIcon, X } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -107,6 +107,10 @@ export default function PlacesScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS !== 'web'}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={[styles.emptyText, { color: colors.tertiaryText }]}>

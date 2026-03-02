@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, Platform } from 'react-native';
+import { OptimizedAvatar } from '@/components/OptimizedImage';
 import { useRouter } from 'expo-router';
 import { Trophy, Flame, Award } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,7 +45,7 @@ function PodiumCard({ user, position, colors, onPress }: {
         ]}
       >
         {user.avatarUrl ? (
-          <Image source={{ uri: user.avatarUrl }} style={{ width: avatarSize, height: avatarSize, borderRadius: Math.round(avatarSize * 0.22) }} />
+          <OptimizedAvatar uri={user.avatarUrl} size={avatarSize} borderRadius={Math.round(avatarSize * 0.22)} />
         ) : (
           <Text style={[styles.podiumAvatarText, { fontSize: isFirst ? 28 : 22 }]}>{initial}</Text>
         )}
@@ -98,7 +99,7 @@ export default function RankingScreen() {
             {item.position}
           </Text>
           {item.avatarUrl ? (
-            <Image source={{ uri: item.avatarUrl }} style={styles.listAvatar} />
+            <OptimizedAvatar uri={item.avatarUrl} size={42} borderRadius={10} />
           ) : (
             <View style={styles.listAvatar}>
               <Text style={styles.listAvatarText}>{initial}</Text>
@@ -201,6 +202,10 @@ export default function RankingScreen() {
         ListHeaderComponent={ListHeader}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        initialNumToRender={8}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS !== 'web'}
       />
     </View>
   );

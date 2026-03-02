@@ -61,6 +61,11 @@ export const [FavoritesProvider, useFavorites] = createContextHook(() => {
           queryClient.invalidateQueries({ queryKey: queryKeys.favorites(user.id) });
         }
       } else {
+        const tempId = `temp_${Date.now()}`;
+        queryClient.setQueryData<FavoriteItem[]>(
+          queryKeys.favorites(user.id),
+          (old) => [...(old ?? []), { id: tempId, targetId, targetType }],
+        );
         const { data, error } = await supabase
           .from('favorites')
           .insert({ user_id: user.id, target_id: targetId, target_type: targetType })
@@ -68,10 +73,14 @@ export const [FavoritesProvider, useFavorites] = createContextHook(() => {
           .single();
         if (error) {
           console.log('[FAVORITES] Add error:', error.message);
+          queryClient.setQueryData<FavoriteItem[]>(
+            queryKeys.favorites(user.id),
+            (old) => (old ?? []).filter((f) => f.id !== tempId),
+          );
         } else if (data) {
           queryClient.setQueryData<FavoriteItem[]>(
             queryKeys.favorites(user.id),
-            (old) => [...(old ?? []), { id: data.id, targetId, targetType }],
+            (old) => (old ?? []).map((f) => f.id === tempId ? { ...f, id: data.id } : f),
           );
         }
       }

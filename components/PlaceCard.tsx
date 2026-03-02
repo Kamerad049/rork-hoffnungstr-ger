@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
-import { Image } from 'expo-image';
+import OptimizedImage from '@/components/OptimizedImage';
 import { MapPin, Heart } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -40,7 +40,7 @@ export default React.memo(function PlaceCard({ place, compact = false }: PlaceCa
     return (
       <Pressable onPress={handlePress} testID={`place-card-compact-${place.id}`}>
         <Animated.View style={[styles.compactCard, { backgroundColor: colors.surface, transform: [{ scale: scaleAnim }] }]}>
-          <Image source={{ uri: place.images[0] }} style={styles.compactImage} contentFit="cover" />
+          <OptimizedImage source={{ uri: place.images[0] }} style={styles.compactImage} contentFit="cover" variant="warm" />
           <View style={styles.compactInfo}>
             <Text style={[styles.compactTitle, { color: colors.primaryText }]} numberOfLines={1}>
               {place.title}
@@ -61,7 +61,7 @@ export default React.memo(function PlaceCard({ place, compact = false }: PlaceCa
     <Pressable onPress={handlePress} testID={`place-card-${place.id}`}>
       <Animated.View style={[styles.card, { backgroundColor: colors.surface, transform: [{ scale: scaleAnim }] }]}>
         <View style={styles.imageWrapper}>
-          <Image source={{ uri: place.images[0] }} style={styles.image} contentFit="cover" />
+          <OptimizedImage source={{ uri: place.images[0] }} style={styles.image} contentFit="cover" variant="warm" />
           <View style={styles.categoryBadge}>
             <Text style={styles.categoryText}>{place.category}</Text>
           </View>
