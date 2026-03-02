@@ -8,6 +8,7 @@ import { StoriesProvider } from '@/providers/StoriesProvider';
 import { ReelsProvider } from '@/providers/ReelsProvider';
 import { LiveLocationProvider } from '@/providers/LiveLocationProvider';
 import { SpotifyProvider } from '@/providers/SpotifyProvider';
+import { ModerationProvider } from '@/providers/ModerationProvider';
 import { composeProviders } from '@/providers/composeProviders';
 import { markTime } from '@/lib/perf';
 
@@ -24,6 +25,7 @@ function DeferredStack({ children }: { children: ReactNode }) {
       ReelsProvider,
       LiveLocationProvider,
       SpotifyProvider,
+      ModerationProvider,
     ],
     children,
   );
