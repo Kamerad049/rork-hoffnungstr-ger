@@ -17,6 +17,7 @@ import { usePosts } from '@/providers/PostsProvider';
 import FeedCardComponent from '@/components/FeedCard';
 import type { PostReactionType } from '@/components/FeedCard';
 import StoryBar from '@/components/StoryBar';
+import EditPostModal from '@/components/EditPostModal';
 import type { FeedPost, StoryGroup } from '@/constants/types';
 import { trackRender, measureSinceBoot } from '@/lib/perf';
 
@@ -38,6 +39,7 @@ export default function FeedScreen() {
   const [postReactions, setPostReactions] = useState<Record<string, PostReactionType>>({});
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const [ready, setReady] = useState<boolean>(false);
+  const [editingPost, setEditingPost] = useState<FeedPost | null>(null);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setReady(true));
@@ -83,6 +85,7 @@ export default function FeedScreen() {
     (post: FeedPost) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       console.log('[FEED] Edit post:', post.id);
+      setEditingPost(post);
     },
     []
   );
@@ -338,6 +341,11 @@ export default function FeedScreen() {
         )}
       </View>
 
+      <EditPostModal
+        visible={editingPost !== null}
+        post={editingPost}
+        onClose={() => setEditingPost(null)}
+      />
     </View>
   );
 }

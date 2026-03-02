@@ -20,6 +20,7 @@ import { getUserById, formatTimeAgo } from '@/lib/utils';
 import type { FeedPost } from '@/constants/types';
 import RankIcon from '@/components/RankIcon';
 import OptimizedImage, { OptimizedAvatar } from '@/components/OptimizedImage';
+import EditPostModal from '@/components/EditPostModal';
 import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -29,6 +30,7 @@ interface PostFeedItemProps {
   onUserPress: (userId: string) => void;
   onCommentPress: (postId: string) => void;
   onLocationPress: (location: string) => void;
+  onEditPress: (post: FeedPost) => void;
   isOwnPost: boolean;
 }
 
@@ -37,9 +39,10 @@ const PostFeedItem = React.memo(function PostFeedItem({
   onUserPress,
   onCommentPress,
   onLocationPress,
+  onEditPress,
   isOwnPost,
 }: PostFeedItemProps) {
-  const { toggleLike, isLiked, isPostSaved, savePost, isCommentsDisabled, archivePost, toggleCommentsDisabled, editPost, deletePost } = usePosts();
+  const { toggleLike, isLiked, isPostSaved, savePost, isCommentsDisabled, archivePost, toggleCommentsDisabled, deletePost } = usePosts();
   const router = useRouter();
   const { profile: socialProfile } = useSocial();
   const { user } = useAuth();
@@ -222,6 +225,7 @@ const PostFeedItem = React.memo(function PostFeedItem({
             onPress={() => {
               setShowMenu(false);
               menuAnim.setValue(0);
+              onEditPress(post);
             }}
           >
             <Pencil size={15} color="#E8DCC8" />
@@ -424,6 +428,7 @@ export default function UserReelFeedScreen() {
   const { user } = useAuth();
 
   const isOwnProfile = userId === 'me' || (user && userId === user.id);
+  const [editingPost, setEditingPost] = useState<FeedPost | null>(null);
 
   const userPosts = useMemo((): FeedPost[] => {
     if (!userId) return [];
@@ -457,15 +462,22 @@ export default function UserReelFeedScreen() {
     router.push({ pathname: '/location-posts', params: { location } } as any);
   }, [router]);
 
+  const handleEditPress = useCallback((post: FeedPost) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    console.log('[REEL-FEED] Edit post:', post.id);
+    setEditingPost(post);
+  }, []);
+
   const renderItem = useCallback(({ item }: { item: FeedPost }) => (
     <PostFeedItem
       post={item}
       onUserPress={handleUserPress}
       onCommentPress={handleCommentPress}
       onLocationPress={handleLocationPress}
+      onEditPress={handleEditPress}
       isOwnPost={item.userId === 'me'}
     />
-  ), [handleUserPress, handleCommentPress, handleLocationPress]);
+  ), [handleUserPress, handleCommentPress, handleLocationPress, handleEditPress]);
 
   const keyExtractor = useCallback((item: FeedPost) => item.id, []);
 
@@ -519,6 +531,11 @@ export default function UserReelFeedScreen() {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       </View>
+      <EditPostModal
+        visible={editingPost !== null}
+        post={editingPost}
+        onClose={() => setEditingPost(null)}
+      />
     </>
   );
 }
