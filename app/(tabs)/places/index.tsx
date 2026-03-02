@@ -111,6 +111,7 @@ export default function PlacesScreen() {
         maxToRenderPerBatch={4}
         windowSize={7}
         removeClippedSubviews={Platform.OS !== 'web'}
+        getItemLayout={(_, index) => ({ length: 254, offset: 254 * index, index })}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={[styles.emptyText, { color: colors.tertiaryText }]}>
