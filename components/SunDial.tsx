@@ -251,6 +251,7 @@ export default function SunDial({ residence, children }: SunDialProps) {
   return (
     <View
       style={styles.container}
+      pointerEvents="box-none"
     >
       {dots.map((dot, i) => {
         const distToSun = Math.min(
@@ -296,7 +297,7 @@ export default function SunDial({ residence, children }: SunDialProps) {
         <View style={styles.sunsetInner} />
       </View>
 
-      <View style={styles.childContainer}>
+      <View style={styles.childContainer} pointerEvents="box-none">
         {children}
       </View>
 
@@ -400,6 +401,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(200,100,50,0.5)',
   },
   childContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 3,
