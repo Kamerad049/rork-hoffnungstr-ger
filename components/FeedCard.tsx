@@ -95,6 +95,12 @@ function FeedCardInner({
   const gradientIndex = Math.abs(post.id.charCodeAt(1) ?? 0) % TEXT_GRADIENTS.length;
 
   useEffect(() => {
+    if (post.location || (post.taggedUserIds && post.taggedUserIds.length > 0)) {
+      console.log('[FEEDCARD] Post', post.id, '- location:', post.location, '- taggedUserIds:', post.taggedUserIds);
+    }
+  }, [post.id, post.location, post.taggedUserIds]);
+
+  useEffect(() => {
     if (!isActive && showTaggedPeople) {
       setShowTaggedPeople(false);
       taggedPeopleAnim.setValue(0);

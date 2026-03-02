@@ -8,6 +8,11 @@ import { queryKeys } from '@/constants/queryKeys';
 import type { FeedPost, PostComment } from '@/constants/types';
 
 function mapDbPost(p: any, userId: string): FeedPost {
+  const location = p.location ?? undefined;
+  const taggedUserIds = p.tagged_user_ids ?? undefined;
+  if (location || taggedUserIds) {
+    console.log('[POSTS] mapDbPost id:', p.id, 'location:', location, 'taggedUserIds:', taggedUserIds);
+  }
   return {
     id: p.id,
     userId: p.user_id === userId ? 'me' : p.user_id,
@@ -17,8 +22,8 @@ function mapDbPost(p: any, userId: string): FeedPost {
     likeCount: p.like_count ?? 0,
     commentCount: p.comment_count ?? 0,
     createdAt: p.created_at,
-    location: p.location ?? undefined,
-    taggedUserIds: p.tagged_user_ids ?? undefined,
+    location,
+    taggedUserIds,
   };
 }
 
@@ -40,7 +45,9 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
       ]);
       const posts = (postsRes.data ?? []).map((p: any) => mapDbPost(p, userId));
       const liked = (likesRes.data ?? []).map((l: any) => l.post_id as string);
-      console.log('[POSTS] Loaded', posts.length, 'posts');
+      const withLoc = posts.filter((p: FeedPost) => !!p.location).length;
+      const withTags = posts.filter((p: FeedPost) => p.taggedUserIds && p.taggedUserIds.length > 0).length;
+      console.log('[POSTS] Loaded', posts.length, 'posts,', withLoc, 'with location,', withTags, 'with tagged users');
       return { posts, likedPosts: liked };
     },
     enabled: !!user,
@@ -117,9 +124,10 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
         .select('*')
         .single();
       if (error || !data) {
-        console.log('[POSTS] Create post error:', error?.message);
+        console.log('[POSTS] Create post error:', error?.message, 'code:', error?.code, 'details:', error?.details);
         return null;
       }
+      console.log('[POSTS] Created post raw data:', JSON.stringify({ id: data.id, location: data.location, tagged_user_ids: data.tagged_user_ids }));
       return mapDbPost(data, userId);
     },
     onSuccess: (newPost) => {
