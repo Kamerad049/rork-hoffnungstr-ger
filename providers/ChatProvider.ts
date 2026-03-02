@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useFriends } from '@/providers/FriendsProvider';
 import type { ChatMessage, Conversation } from '@/constants/types';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export const [ChatProvider, useChat] = createContextHook(() => {
   const { user } = useAuth();
@@ -11,6 +12,26 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   const { friends, blockedUsers, acceptedMessageUsers, setAcceptedMessageUsers } = useFriends();
 
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({});
+  const channelRef = useRef<RealtimeChannel | null>(null);
+
+  const mapRow = useCallback((m: any): { partnerId: string; msg: ChatMessage } => {
+    const partnerId = m.from_user_id === userId ? m.to_user_id : m.from_user_id;
+    return {
+      partnerId,
+      msg: {
+        id: m.id,
+        fromUserId: m.from_user_id === userId ? 'me' : m.from_user_id,
+        toUserId: m.to_user_id === userId ? 'me' : m.to_user_id,
+        content: m.content,
+        createdAt: m.created_at,
+        read: m.read ?? false,
+        readAt: m.read_at ?? undefined,
+        edited: m.edited ?? false,
+        recalled: m.recalled ?? false,
+        isSystem: m.is_system ?? false,
+      },
+    };
+  }, [userId]);
 
   useEffect(() => {
     if (!user) return;
@@ -26,20 +47,9 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
         const msgMap: Record<string, ChatMessage[]> = {};
         for (const m of (data ?? [])) {
-          const partnerId = m.from_user_id === userId ? m.to_user_id : m.from_user_id;
+          const { partnerId, msg } = mapRow(m);
           if (!msgMap[partnerId]) msgMap[partnerId] = [];
-          msgMap[partnerId].push({
-            id: m.id,
-            fromUserId: m.from_user_id === userId ? 'me' : m.from_user_id,
-            toUserId: m.to_user_id === userId ? 'me' : m.to_user_id,
-            content: m.content,
-            createdAt: m.created_at,
-            read: m.read ?? false,
-            readAt: m.read_at ?? undefined,
-            edited: m.edited ?? false,
-            recalled: m.recalled ?? false,
-            isSystem: m.is_system ?? false,
-          });
+          msgMap[partnerId].push(msg);
         }
         setMessages(msgMap);
         console.log('[CHAT] Loaded messages for', Object.keys(msgMap).length, 'conversations');
@@ -48,7 +58,128 @@ export const [ChatProvider, useChat] = createContextHook(() => {
       }
     };
     load();
-  }, [user]);
+  }, [user, userId, mapRow]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    console.log('[CHAT-RT] Setting up Realtime subscription for user:', userId);
+
+    const channel = supabase
+      .channel(`chat_${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `to_user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log('[CHAT-RT] New message received:', payload.new?.id);
+          const row = payload.new as any;
+          if (!row) return;
+          const { partnerId, msg } = mapRow(row);
+          setMessages((prev) => {
+            const convo = prev[partnerId] ?? [];
+            if (convo.some((m) => m.id === msg.id)) return prev;
+            return { ...prev, [partnerId]: [...convo, msg] };
+          });
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `to_user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log('[CHAT-RT] Message updated (incoming):', payload.new?.id);
+          const row = payload.new as any;
+          if (!row) return;
+          const { partnerId, msg } = mapRow(row);
+          setMessages((prev) => {
+            const convo = prev[partnerId] ?? [];
+            if (!convo.some((m) => m.id === msg.id)) return prev;
+            return {
+              ...prev,
+              [partnerId]: convo.map((m) => (m.id === msg.id ? msg : m)),
+            };
+          });
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `from_user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log('[CHAT-RT] Message updated (outgoing):', payload.new?.id);
+          const row = payload.new as any;
+          if (!row) return;
+          const partnerId = row.to_user_id;
+          setMessages((prev) => {
+            const convo = prev[partnerId] ?? [];
+            const existing = convo.find((m) => m.id === row.id);
+            if (!existing) return prev;
+            return {
+              ...prev,
+              [partnerId]: convo.map((m) =>
+                m.id === row.id
+                  ? {
+                      ...m,
+                      read: row.read ?? m.read,
+                      readAt: row.read_at ?? m.readAt,
+                    }
+                  : m,
+              ),
+            };
+          });
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `to_user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log('[CHAT-RT] Message deleted:', payload.old?.id);
+          const old = payload.old as any;
+          if (!old?.id) return;
+          setMessages((prev) => {
+            const updated = { ...prev };
+            for (const pid of Object.keys(updated)) {
+              const filtered = updated[pid].filter((m) => m.id !== old.id);
+              if (filtered.length !== updated[pid].length) {
+                updated[pid] = filtered;
+              }
+            }
+            return updated;
+          });
+        },
+      )
+      .subscribe((status) => {
+        console.log('[CHAT-RT] Subscription status:', status);
+      });
+
+    channelRef.current = channel;
+
+    return () => {
+      console.log('[CHAT-RT] Cleaning up Realtime subscription');
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [userId, mapRow]);
 
   const sendMessage = useCallback(
     async (toUserId: string, content: string) => {
