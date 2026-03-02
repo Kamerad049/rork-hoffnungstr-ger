@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
-import { Heart, MessageCircle, Share2, MapPin, ChevronLeft, Play, Users, MoreHorizontal, Pencil, Archive, MessageCircleOff, X, ChevronRight, Bookmark } from 'lucide-react-native';
+import { Heart, MessageCircle, Share2, MapPin, ChevronLeft, Play, Users, MoreHorizontal, Pencil, Archive, MessageCircleOff, X, ChevronRight, Bookmark, Trash2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePosts } from '@/providers/PostsProvider';
 import { useSocial } from '@/providers/SocialProvider';
@@ -39,7 +39,8 @@ const PostFeedItem = React.memo(function PostFeedItem({
   onLocationPress,
   isOwnPost,
 }: PostFeedItemProps) {
-  const { toggleLike, isLiked, isPostSaved, savePost, isCommentsDisabled, archivePost, toggleCommentsDisabled, editPost } = usePosts();
+  const { toggleLike, isLiked, isPostSaved, savePost, isCommentsDisabled, archivePost, toggleCommentsDisabled, editPost, deletePost } = usePosts();
+  const router = useRouter();
   const { profile: socialProfile } = useSocial();
   const { user } = useAuth();
   const [expanded, setExpanded] = useState<boolean>(false);
@@ -221,6 +222,17 @@ const PostFeedItem = React.memo(function PostFeedItem({
             onPress={() => {
               setShowMenu(false);
               menuAnim.setValue(0);
+            }}
+          >
+            <Pencil size={15} color="#E8DCC8" />
+            <Text style={itemStyles.menuItemText}>Bearbeiten</Text>
+          </Pressable>
+          <View style={itemStyles.menuDivider} />
+          <Pressable
+            style={itemStyles.menuItem}
+            onPress={() => {
+              setShowMenu(false);
+              menuAnim.setValue(0);
               toggleCommentsDisabled(post.id);
             }}
           >
@@ -241,6 +253,19 @@ const PostFeedItem = React.memo(function PostFeedItem({
           >
             <Archive size={15} color="#E8DCC8" />
             <Text style={itemStyles.menuItemText}>Archivieren</Text>
+          </Pressable>
+          <View style={itemStyles.menuDivider} />
+          <Pressable
+            style={itemStyles.menuItem}
+            onPress={() => {
+              setShowMenu(false);
+              menuAnim.setValue(0);
+              deletePost(post.id);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            }}
+          >
+            <Trash2 size={15} color="#C0392B" />
+            <Text style={[itemStyles.menuItemText, { color: '#C0392B' }]}>Löschen</Text>
           </Pressable>
         </Animated.View>
       )}
