@@ -13,6 +13,10 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({});
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const [hasMoreMap, setHasMoreMap] = useState<Record<string, boolean>>({});
+  const [loadingMoreMap, setLoadingMoreMap] = useState<Record<string, boolean>>({});
+
+  const PAGE_SIZE = 30;
 
   const mapRow = useCallback((m: any): { partnerId: string; msg: ChatMessage } => {
     const partnerId = m.from_user_id === userId ? m.to_user_id : m.from_user_id;
@@ -441,16 +445,18 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   const loadConversation = useCallback(
     async (partnerId: string) => {
       if (!userId) return;
-      console.log('[CHAT] Loading full conversation with:', partnerId);
+      console.log('[CHAT] Loading initial page for conversation with:', partnerId);
       const { data } = await supabase
         .from('chat_messages')
         .select('*')
         .or(`and(from_user_id.eq.${userId},to_user_id.eq.${partnerId}),and(from_user_id.eq.${partnerId},to_user_id.eq.${userId})`)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(PAGE_SIZE);
       if (data) {
+        const reversed = [...data].reverse();
         setMessages((prev) => ({
           ...prev,
-          [partnerId]: data.map((m: any) => ({
+          [partnerId]: reversed.map((m: any) => ({
             id: m.id,
             fromUserId: m.from_user_id === userId ? 'me' : m.from_user_id,
             toUserId: m.to_user_id === userId ? 'me' : m.to_user_id,
@@ -463,10 +469,77 @@ export const [ChatProvider, useChat] = createContextHook(() => {
             isSystem: m.is_system ?? false,
           })),
         }));
-        console.log('[CHAT] Loaded', data.length, 'messages for conversation');
+        setHasMoreMap((prev) => ({ ...prev, [partnerId]: data.length >= PAGE_SIZE }));
+        console.log('[CHAT] Loaded', data.length, 'messages, hasMore:', data.length >= PAGE_SIZE);
       }
     },
     [userId],
+  );
+
+  const loadOlderMessages = useCallback(
+    async (partnerId: string) => {
+      if (!userId) return;
+      if (loadingMoreMap[partnerId]) return;
+      if (hasMoreMap[partnerId] === false) return;
+
+      const convo = messages[partnerId] ?? [];
+      if (convo.length === 0) return;
+
+      const oldestMsg = convo[0];
+      const oldestDate = oldestMsg.createdAt;
+
+      console.log('[CHAT] Loading older messages before:', oldestDate);
+      setLoadingMoreMap((prev) => ({ ...prev, [partnerId]: true }));
+
+      try {
+        const { data } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .or(`and(from_user_id.eq.${userId},to_user_id.eq.${partnerId}),and(from_user_id.eq.${partnerId},to_user_id.eq.${userId})`)
+          .lt('created_at', oldestDate)
+          .order('created_at', { ascending: false })
+          .limit(PAGE_SIZE);
+
+        if (data) {
+          const olderMsgs: ChatMessage[] = data.reverse().map((m: any) => ({
+            id: m.id,
+            fromUserId: m.from_user_id === userId ? 'me' : m.from_user_id,
+            toUserId: m.to_user_id === userId ? 'me' : m.to_user_id,
+            content: m.content,
+            createdAt: m.created_at,
+            read: m.read ?? false,
+            readAt: m.read_at ?? undefined,
+            edited: m.edited ?? false,
+            recalled: m.recalled ?? false,
+            isSystem: m.is_system ?? false,
+          }));
+
+          setMessages((prev) => {
+            const existing = prev[partnerId] ?? [];
+            const existingIds = new Set(existing.map((m) => m.id));
+            const newMsgs = olderMsgs.filter((m) => !existingIds.has(m.id));
+            return { ...prev, [partnerId]: [...newMsgs, ...existing] };
+          });
+          setHasMoreMap((prev) => ({ ...prev, [partnerId]: data.length >= PAGE_SIZE }));
+          console.log('[CHAT] Loaded', data.length, 'older messages, hasMore:', data.length >= PAGE_SIZE);
+        }
+      } catch (e) {
+        console.log('[CHAT] Load older messages error:', e);
+      } finally {
+        setLoadingMoreMap((prev) => ({ ...prev, [partnerId]: false }));
+      }
+    },
+    [userId, messages, hasMoreMap, loadingMoreMap],
+  );
+
+  const hasMoreMessages = useCallback(
+    (partnerId: string): boolean => hasMoreMap[partnerId] ?? true,
+    [hasMoreMap],
+  );
+
+  const isLoadingMore = useCallback(
+    (partnerId: string): boolean => loadingMoreMap[partnerId] ?? false,
+    [loadingMoreMap],
   );
 
   return {
@@ -486,5 +559,8 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     getMessages,
     deleteConversation,
     loadConversation,
+    loadOlderMessages,
+    hasMoreMessages,
+    isLoadingMore,
   };
 });

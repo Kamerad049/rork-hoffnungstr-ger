@@ -34,6 +34,7 @@ import {
   Type,
   AudioLines,
   ImagePlus,
+  Loader2,
 } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useChat } from '@/providers/ChatProvider';
@@ -113,12 +114,42 @@ export default function DirectChatScreen() {
   const canSend = partnerId ? chat.canSendMessage(partnerId) : false;
   const isPartnerBlocked = partnerId ? friendsCtx.isBlocked(partnerId) : false;
   const isFriend = partnerId ? friendsCtx.isFriend(partnerId) : false;
+  const hasMore = partnerId ? chat.hasMoreMessages(partnerId) : false;
+  const loadingMore = partnerId ? chat.isLoadingMore(partnerId) : false;
+  const scrollOffsetRef = useRef<number>(0);
+  const contentHeightRef = useRef<number>(0);
+  const prevMessageCountRef = useRef<number>(0);
+  const spinAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (loadingMore) {
+      const spin = Animated.loop(
+        Animated.timing(spinAnim, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+      spin.start();
+      return () => spin.stop();
+    } else {
+      spinAnim.setValue(0);
+    }
+  }, [loadingMore, spinAnim]);
 
   console.log('[CHAT] Rendering with', messages.length, 'messages, activeMenuId:', activeMenuId);
 
   useEffect(() => {
     if (partnerId) {
-      console.log('[CHAT] Marking messages read for partner:', partnerId);
+      console.log('[CHAT] Loading conversation and marking read for partner:', partnerId);
+      chat.loadConversation(partnerId);
+      chat.markMessagesRead(partnerId);
+    }
+  }, [partnerId]);
+
+  useEffect(() => {
+    if (partnerId && messages.length > 0) {
       chat.markMessagesRead(partnerId);
     }
   }, [partnerId, messages.length]);
@@ -161,10 +192,35 @@ export default function DirectChatScreen() {
   }, [partnerId]);
 
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages.length > 0 && prevMessageCountRef.current === 0) {
       setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
     }
+    prevMessageCountRef.current = messages.length;
   }, [messages.length]);
+
+  const handleLoadOlder = useCallback(() => {
+    if (!partnerId || loadingMore || !hasMore) return;
+    console.log('[CHAT] Triggering load older messages');
+    chat.loadOlderMessages(partnerId);
+  }, [partnerId, loadingMore, hasMore, chat]);
+
+  const handleScroll = useCallback((e: any) => {
+    const offsetY = e.nativeEvent.contentOffset.y;
+    scrollOffsetRef.current = offsetY;
+    if (offsetY < 80 && !loadingMore && hasMore && partnerId) {
+      console.log('[CHAT] Near top, triggering load older');
+      chat.loadOlderMessages(partnerId);
+    }
+  }, [loadingMore, hasMore, partnerId, chat]);
+
+  const handleContentSizeChange = useCallback((_w: number, h: number) => {
+    const prevHeight = contentHeightRef.current;
+    contentHeightRef.current = h;
+    if (prevHeight > 0 && h > prevHeight && scrollOffsetRef.current < 50) {
+      const diff = h - prevHeight;
+      listRef.current?.scrollToOffset({ offset: diff, animated: false });
+    }
+  }, []);
 
   useEffect(() => {
     if (!partnerId || !justSentRef.current) return;
@@ -1153,6 +1209,34 @@ export default function DirectChatScreen() {
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            onContentSizeChange={handleContentSizeChange}
+            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+            ListHeaderComponent={
+              hasMore ? (
+                <Pressable
+                  onPress={handleLoadOlder}
+                  disabled={loadingMore}
+                  style={styles.loadMoreWrap}
+                >
+                  {loadingMore ? (
+                    <Animated.View style={{
+                      transform: [{
+                        rotate: spinAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0deg', '360deg'],
+                        }),
+                      }],
+                    }}>
+                      <Loader2 size={18} color="rgba(191,163,93,0.5)" />
+                    </Animated.View>
+                  ) : (
+                    <Text style={styles.loadMoreText}>Ältere Nachrichten laden</Text>
+                  )}
+                </Pressable>
+              ) : null
+            }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <View style={styles.emptyIconWrap}>
@@ -1335,6 +1419,18 @@ const styles = StyleSheet.create({
   },
   readIndicator: {
     marginLeft: 1,
+  },
+  loadMoreWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingBottom: 8,
+  },
+  loadMoreText: {
+    fontSize: 12,
+    color: 'rgba(191,163,93,0.45)',
+    letterSpacing: 0.3,
+    fontWeight: '500' as const,
   },
   emptyContainer: {
     alignItems: 'center',
