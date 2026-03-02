@@ -20,7 +20,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="chats" options={{ title: 'Nachrichten' }} />
       <Stack.Screen name="chat" options={{ title: 'Chat' }} />
       <Stack.Screen name="privacy" options={{ title: '', headerShown: true, headerTransparent: true, headerStyle: { backgroundColor: 'transparent' }, headerTintColor: '#E8DCC8' }} />
-      <Stack.Screen name="saved" options={{ title: 'Gespeichert', headerStyle: { backgroundColor: '#141416' }, headerTintColor: '#E8DCC8' }} />
+      <Stack.Screen name="saved" options={{ title: '', headerShown: true, headerTransparent: true, headerStyle: { backgroundColor: 'transparent' }, headerTintColor: '#E8DCC8' }} />
       <Stack.Screen name="ordenshalle" options={{ title: '', headerShown: true, headerTransparent: true, headerStyle: { backgroundColor: 'transparent' }, headerTintColor: '#E8DCC8' }} />
     </Stack>
   );

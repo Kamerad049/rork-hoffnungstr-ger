@@ -7,9 +7,11 @@ import {
   Pressable,
   Dimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
-import { Bookmark, ImageIcon, Film, MapPin } from 'lucide-react-native';
+import { Bookmark, ImageIcon, Film, MapPin, ChevronLeft } from 'lucide-react-native';
 import { useReels } from '@/providers/ReelsProvider';
 import { getUserById, formatReelCount } from '@/lib/utils';
 import type { Reel } from '@/constants/types';
@@ -76,6 +78,7 @@ const MemoizedSavedReelCard = React.memo(SavedReelCard);
 
 export default function SavedScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { savedReels, toggleSaveReel, userReels } = useReels();
 
   const allReels = useMemo((): Reel[] => {
@@ -105,9 +108,45 @@ export default function SavedScreen() {
     />
   ), [handlePress, handleUnsave]);
 
+  const heroSection = (
+    <LinearGradient
+      colors={['#1e1d1a', '#1a1918', '#141416']}
+      style={[styles.heroSection, { paddingTop: insets.top + 12 }]}
+    >
+      <Pressable
+        style={styles.backButton}
+        onPress={() => router.back()}
+        hitSlop={12}
+      >
+        <ChevronLeft size={20} color="#BFA35D" />
+      </Pressable>
+      <View style={styles.heroPattern}>
+        {[...Array(6)].map((_, i) => (
+          <View
+            key={i}
+            style={[
+              styles.heroLine,
+              {
+                top: 20 + i * 28,
+                opacity: 0.03 + i * 0.005,
+                transform: [{ rotate: '-12deg' }],
+              },
+            ]}
+          />
+        ))}
+      </View>
+      <Text style={styles.heroTitle}>Gespeicherte Beiträge</Text>
+      {savedReelItems.length > 0 && (
+        <Text style={styles.heroCount}>{savedReelItems.length} Beiträge</Text>
+      )}
+    </LinearGradient>
+  );
+
   if (savedReelItems.length === 0) {
     return (
       <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        {heroSection}
         <View style={styles.emptyState}>
           <View style={styles.emptyIconWrap}>
             <Bookmark size={40} color="rgba(191,163,93,0.4)" />
@@ -123,9 +162,7 @@ export default function SavedScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.countBar}>
-        <Text style={styles.countText}>{savedReelItems.length} gespeicherte Beiträge</Text>
-      </View>
+      <Stack.Screen options={{ headerShown: false }} />
       <FlatList
         data={savedReelItems}
         renderItem={renderItem}
@@ -134,6 +171,7 @@ export default function SavedScreen() {
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={heroSection}
       />
     </View>
   );
@@ -144,23 +182,54 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#141416',
   },
-  countBar: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
+  heroSection: {
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  countText: {
+  heroPattern: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroLine: {
+    position: 'absolute',
+    left: -40,
+    right: -40,
+    height: 1,
+    backgroundColor: '#BFA35D',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#1e1e20',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    alignSelf: 'flex-start' as const,
+    marginBottom: 20,
+    zIndex: 10,
+  },
+  heroTitle: {
+    color: '#E8DCC8',
+    fontSize: 24,
+    fontWeight: '800' as const,
+    letterSpacing: -0.5,
+  },
+  heroCount: {
     color: 'rgba(191,163,93,0.5)',
     fontSize: 13,
     fontWeight: '600' as const,
+    marginTop: 6,
   },
   listContent: {
-    paddingHorizontal: 16,
     paddingBottom: 30,
   },
   row: {
     gap: CARD_GAP,
     marginBottom: CARD_GAP,
+    paddingHorizontal: 16,
   },
   card: {
     width: CARD_WIDTH,
@@ -200,7 +269,6 @@ const styles = StyleSheet.create({
   cardBottom: {
     padding: 8,
     paddingTop: 16,
-    backgroundColor: 'rgba(0,0,0,0)',
   },
   cardCaption: {
     color: '#fff',
