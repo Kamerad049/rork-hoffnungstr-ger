@@ -267,6 +267,7 @@ export default function SubmissionsScreen() {
     const StatusIcon = statusCfg.icon;
 
     return (
+      <View style={styles.cardWrapper}>
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={[styles.categoryBadge, { backgroundColor: item.category === 'place' ? 'rgba(93,160,232,0.12)' : 'rgba(191,163,93,0.12)' }]}>
@@ -383,6 +384,7 @@ export default function SubmissionsScreen() {
             )}
           </View>
         )}
+      </View>
       </View>
     );
   }, [getStatusConfig, formatDate, handleApprove, handleReject, handleDelete, approveMutation.isPending, rejectMutation.isPending]);
@@ -657,6 +659,9 @@ const styles = StyleSheet.create({
     height: 28,
     backgroundColor: 'rgba(191,163,93,0.1)',
   },
+  cardWrapper: {
+    paddingHorizontal: 16,
+  },
   filterRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -708,7 +713,6 @@ const styles = StyleSheet.create({
     color: '#888',
   },
   list: {
-    paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 40,
   },
@@ -840,6 +844,7 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingTop: 60,
+    paddingHorizontal: 16,
   },
   emptyIcon: {
     fontSize: 40,
