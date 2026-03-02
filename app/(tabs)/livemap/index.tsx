@@ -630,7 +630,7 @@ export default function LiveMapScreen() {
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
               <View style={styles.titleRow}>
-                {router.canGoBack() && (
+                {from ? (
                   <Pressable
                     style={styles.backBtn}
                     onPress={() => {
@@ -645,7 +645,7 @@ export default function LiveMapScreen() {
                   >
                     <ChevronLeft size={20} color="#BFA35D" />
                   </Pressable>
-                )}
+                ) : null}
                 <Text style={styles.screenTitle}>Live Karte</Text>
               </View>
               <Text style={styles.screenSubtitle}>
