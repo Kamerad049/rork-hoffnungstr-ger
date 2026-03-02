@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { Image, type ImageProps, type ImageStyle } from 'expo-image';
 
 const BLURHASH_DARK = 'L15OE8-;00of~qRjD%t700WB%MWB';
@@ -17,14 +18,16 @@ function OptimizedImageInner({
 }: OptimizedImageProps) {
   const blurhash = variant === 'none' ? undefined : variant === 'warm' ? BLURHASH_WARM : BLURHASH_DARK;
 
+  const isWeb = Platform.OS === 'web';
+
   return (
     <Image
       {...rest}
       style={style}
       placeholder={blurhash ? { blurhash } : undefined}
       transition={transitionDuration}
-      cachePolicy="memory-disk"
-      recyclingKey={typeof rest.source === 'object' && rest.source !== null && 'uri' in rest.source ? (rest.source as { uri: string }).uri : undefined}
+      cachePolicy={isWeb ? 'none' : 'memory-disk'}
+      recyclingKey={isWeb ? undefined : (typeof rest.source === 'object' && rest.source !== null && 'uri' in rest.source ? (rest.source as { uri: string }).uri : undefined)}
     />
   );
 }
