@@ -29,6 +29,20 @@ import { markTime, measureSinceBoot, trackRender, printReport } from '@/lib/perf
 
 markTime('module_load');
 
+if (Platform.OS === 'web') {
+  const originalWarn = console.warn;
+  const originalError = console.error;
+  const responderFilter = /Unknown event handler property/;
+  console.warn = (...args: unknown[]) => {
+    if (typeof args[0] === 'string' && responderFilter.test(args[0])) return;
+    originalWarn.apply(console, args);
+  };
+  console.error = (...args: unknown[]) => {
+    if (typeof args[0] === 'string' && responderFilter.test(args[0])) return;
+    originalError.apply(console, args);
+  };
+}
+
 try {
   SplashScreen.preventAutoHideAsync();
 } catch (e) {
