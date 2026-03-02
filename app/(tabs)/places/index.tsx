@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, Pressable, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Search, Map as MapIcon, X } from 'lucide-react-native';
+import { Search, Map as MapIcon, X, Plus } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useContent } from '@/hooks/useContent';
 import { PLACE_CATEGORIES } from '@/constants/types';
@@ -120,6 +120,15 @@ export default function PlacesScreen() {
           </View>
         }
       />
+
+      <Pressable
+        style={[styles.fab, { backgroundColor: colors.accent }]}
+        onPress={() => router.push('/submit-suggestion?type=place' as any)}
+        testID="places-suggest-btn"
+      >
+        <Plus size={22} color="#fff" />
+        <Text style={styles.fabText}>Ort empfehlen</Text>
+      </Pressable>
     </View>
   );
 }
@@ -185,5 +194,26 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 15,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 20,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    borderRadius: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  fabText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#fff',
   },
 });

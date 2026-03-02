@@ -14,11 +14,15 @@ import {
   Shield,
   Flag,
   ShieldCheck,
+  Inbox,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useAdmin } from '@/providers/AdminProvider';
 import { useModeration } from '@/providers/ModerationProvider';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
+import { queryKeys } from '@/constants/queryKeys';
 import { ArrowLeft } from 'lucide-react-native';
 
 interface AdminMenuItem {
@@ -35,9 +39,20 @@ export default function AdminDashboard() {
   const { news, places, restaurants, posts, pushHistory, allUsers } = useAdmin();
   const { pendingReports, moderators } = useModeration();
 
+  const submissionsQuery = useQuery({
+    queryKey: queryKeys.submissions(),
+    queryFn: async () => {
+      const { data } = await supabase.from('submissions').select('id, status');
+      return data ?? [];
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+  const pendingSubmissions = (submissionsQuery.data ?? []).filter((s: any) => s.status === 'pending').length;
+
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const headerFadeAnim = useRef(new Animated.Value(0)).current;
   const statScaleAnims = useRef([
+    new Animated.Value(0),
     new Animated.Value(0),
     new Animated.Value(0),
     new Animated.Value(0),
@@ -121,7 +136,7 @@ export default function AdminDashboard() {
     { label: 'Inhalte', value: news.length + places.length + restaurants.length },
     { label: 'Nutzer', value: allUsers.length },
     { label: 'Meldungen', value: pendingReports.length, isAlert: pendingReports.length > 0 },
-    { label: 'Mods', value: moderators.length },
+    { label: 'Einsend.', value: pendingSubmissions, isAlert: pendingSubmissions > 0 },
   ];
 
   return (
@@ -242,6 +257,33 @@ export default function AdminDashboard() {
           <Text style={styles.modCardText}>Moderatoren verwalten</Text>
           <Text style={styles.modCardCount}>{moderators.length}</Text>
           <ChevronRight size={16} color="rgba(191,163,93,0.4)" />
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push('/admin/submissions' as any)}
+          testID="admin-submissions-btn"
+        >
+          <View
+            style={[
+              styles.reportCard,
+              pendingSubmissions > 0
+                ? { backgroundColor: '#2a5a2a', borderColor: 'rgba(76,175,80,0.3)' }
+                : { backgroundColor: '#1e1e20' },
+            ]}
+          >
+            <View style={styles.cardInner}>
+              <View style={[styles.cardIconWrap, { backgroundColor: pendingSubmissions > 0 ? 'rgba(76,175,80,0.2)' : 'rgba(191,163,93,0.1)' }]}>
+                <Inbox size={22} color={pendingSubmissions > 0 ? '#4CAF50' : '#BFA35D'} />
+              </View>
+              <View style={styles.cardTextWrap}>
+                <Text style={[styles.cardTitle, { color: '#E8DCC8' }]}>Einsendungen</Text>
+                <Text style={[styles.cardSub, { color: pendingSubmissions > 0 ? 'rgba(76,175,80,0.7)' : 'rgba(191,163,93,0.5)' }]}>
+                  {pendingSubmissions > 0 ? `${pendingSubmissions} offene Empfehlungen` : 'Keine offenen Empfehlungen'}
+                </Text>
+              </View>
+              <ChevronRight size={18} color={pendingSubmissions > 0 ? 'rgba(76,175,80,0.6)' : 'rgba(191,163,93,0.4)'} />
+            </View>
+          </View>
         </Pressable>
 
         <Pressable

@@ -168,6 +168,13 @@ function RootLayoutNav() {
           options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade' }}
         />
         <Stack.Screen name="admin" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="submit-suggestion"
+          options={{
+            headerShown: false,
+            presentation: 'modal',
+          }}
+        />
         <Stack.Screen name="+not-found" />
       </Stack>
     </>

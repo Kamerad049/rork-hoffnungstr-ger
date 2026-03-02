@@ -64,6 +64,7 @@ export default function AdminLayout() {
       <Stack.Screen name="push-detail" options={{ title: 'Empfangsbestätigung', ...subPageOptions }} />
       <Stack.Screen name="reports" options={{ title: '', headerShown: false }} />
       <Stack.Screen name="moderators" options={{ title: 'Moderatoren', ...subPageOptions }} />
+      <Stack.Screen name="submissions" options={{ title: 'Einsendungen', ...subPageOptions }} />
     </Stack>
     </ModerationProvider>
     </AdminProvider>

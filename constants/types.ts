@@ -319,6 +319,34 @@ export function getActivityLabel(type: ActivityType): string {
   }
 }
 
+export type SubmissionCategory = 'place' | 'restaurant';
+
+export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
+
+export interface Submission {
+  id: string;
+  category: SubmissionCategory;
+  submittedBy: string;
+  submitterName: string;
+  status: SubmissionStatus;
+  createdAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  rejectionReason: string | null;
+  name: string;
+  description: string;
+  city: string;
+  bundesland: string;
+  images: string[];
+  placeCategory?: PlaceCategory;
+  cuisineTypes?: string[];
+  priceRange?: 1 | 2 | 3;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  whyRecommend: string;
+}
+
 export function getActivityIconColor(type: ActivityType): string {
   switch (type) {
     case 'like_post':
