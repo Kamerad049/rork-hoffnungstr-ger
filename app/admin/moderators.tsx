@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Modal,
   ScrollView,
   Switch,
+  Animated,
 } from 'react-native';
 import {
   Shield,
@@ -19,7 +20,11 @@ import {
   ChevronRight,
   X,
   Crown,
+  ArrowLeft,
 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/providers/ThemeProvider';
 import {
   useModeration,
@@ -36,7 +41,18 @@ import * as Haptics from 'expo-haptics';
 
 export default function AdminModeratorsScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user: authUser } = useAuth();
+  const headerFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(headerFadeAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
+  }, []);
   const {
     moderators,
     availableUsers,
@@ -213,44 +229,94 @@ export default function AdminModeratorsScreen() {
     </View>
   ), [colors, handleAddModerator]);
 
-  return (
-    <View style={[styles.container, { backgroundColor: '#141416' }]}>
-      <View style={[styles.headerCard, { backgroundColor: '#1e1e20', borderColor: 'rgba(191,163,93,0.06)', borderWidth: 1 }]}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={[styles.headerTitle, { color: colors.primaryText }]}>Moderatoren</Text>
-            <Text style={[styles.headerSub, { color: colors.tertiaryText }]}>{moderators.length} ernannt</Text>
+  const renderListHeader = useCallback(() => (
+    <View>
+      <Animated.View style={{ opacity: headerFadeAnim }}>
+        <LinearGradient
+          colors={['#1e1d1a', '#1a1918', '#141416']}
+          style={[styles.heroSection, { paddingTop: insets.top + 56 }]}
+        >
+          <View style={styles.heroPattern}>
+            {[...Array(6)].map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.heroLine,
+                  {
+                    top: 20 + i * 28,
+                    opacity: 0.03 + i * 0.005,
+                    transform: [{ rotate: '-12deg' }],
+                  },
+                ]}
+              />
+            ))}
           </View>
-          <Pressable
-            style={[styles.addBtn, { backgroundColor: colors.accent }]}
-            onPress={() => setShowAddModal(true)}
-            testID="add-moderator-btn"
-          >
-            <UserPlus size={18} color="#1c1c1e" />
-            <Text style={styles.addBtnText}>Hinzufügen</Text>
-          </Pressable>
-        </View>
+          <View style={styles.heroIconWrap}>
+            <View style={styles.heroIconInner}>
+              <ShieldCheck size={28} color="#BFA35D" />
+            </View>
+          </View>
+          <Text style={styles.heroTitle}>Moderatoren</Text>
+          <Text style={styles.heroSub}>Team verwalten & Rechte zuweisen</Text>
 
-        <View style={[styles.legendRow, { borderTopColor: colors.border }]}>
-          <View style={styles.legendItem}>
-            <Shield size={14} color="#5B9BD5" />
-            <Text style={[styles.legendText, { color: colors.tertiaryText }]}>Moderator – eingeschränkte Rechte</Text>
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatValue}>{moderators.filter(m => m.role === 'moderator').length}</Text>
+              <Text style={styles.heroStatLabel}>Moderatoren</Text>
+            </View>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatValue}>{moderators.filter(m => m.role === 'super_moderator').length}</Text>
+              <Text style={styles.heroStatLabel}>Super Mods</Text>
+            </View>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatValue}>{moderators.filter(m => m.role === 'admin').length}</Text>
+              <Text style={styles.heroStatLabel}>Admins</Text>
+            </View>
           </View>
-          <View style={styles.legendItem}>
-            <ShieldCheck size={14} color="#E8A44E" />
-            <Text style={[styles.legendText, { color: colors.tertiaryText }]}>Super Moderator – erweiterte Rechte</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <Crown size={14} color="#C62828" />
-            <Text style={[styles.legendText, { color: colors.tertiaryText }]}>Admin – volle Rechte (außer Hauptadmin)</Text>
-          </View>
+        </LinearGradient>
+      </Animated.View>
+
+      <View style={styles.legendCard}>
+        <View style={styles.legendItem}>
+          <Shield size={14} color="#5B9BD5" />
+          <Text style={styles.legendText}>Moderator – eingeschränkte Rechte</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <ShieldCheck size={14} color="#E8A44E" />
+          <Text style={styles.legendText}>Super Moderator – erweiterte Rechte</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <Crown size={14} color="#C62828" />
+          <Text style={styles.legendText}>Admin – volle Rechte (außer Hauptadmin)</Text>
         </View>
       </View>
+    </View>
+  ), [headerFadeAnim, insets.top, moderators]);
+
+  return (
+    <View style={[styles.container, { backgroundColor: '#141416' }]}>
+      <Pressable
+        onPress={() => router.back()}
+        style={[styles.backButton, { top: insets.top + 8 }]}
+      >
+        <ArrowLeft size={20} color="#BFA35D" />
+      </Pressable>
+
+      <Pressable
+        style={[styles.addFloatingBtn, { top: insets.top + 8 }]}
+        onPress={() => setShowAddModal(true)}
+        testID="add-moderator-btn"
+      >
+        <UserPlus size={18} color="#1c1c1e" />
+      </Pressable>
 
       <FlatList
         data={moderators}
         keyExtractor={(item) => item.userId}
         renderItem={renderModerator}
+        ListHeaderComponent={renderListHeader}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
@@ -414,41 +480,118 @@ export default function AdminModeratorsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  headerCard: {
-    margin: 16,
-    borderRadius: 16,
-    padding: 18,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#1e1e20',
     alignItems: 'center',
-    marginBottom: 14,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
   },
-  headerTitle: {
+  addFloatingBtn: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#BFA35D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroSection: {
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  heroPattern: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroLine: {
+    position: 'absolute',
+    left: -40,
+    right: -40,
+    height: 1,
+    backgroundColor: '#BFA35D',
+  },
+  heroIconWrap: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  heroIconInner: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '800' as const,
+    color: '#E8DCC8',
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  heroSub: {
+    fontSize: 13,
+    color: 'rgba(191,163,93,0.5)',
+    fontWeight: '500' as const,
+    marginBottom: 16,
+  },
+  heroStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1e1e20',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.06)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    width: '100%',
+  },
+  heroStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  heroStatValue: {
+    color: '#E8DCC8',
     fontSize: 20,
     fontWeight: '800' as const,
   },
-  headerSub: {
-    fontSize: 13,
-    marginTop: 2,
+  heroStatLabel: {
+    color: 'rgba(191,163,93,0.4)',
+    fontSize: 11,
+    fontWeight: '600' as const,
   },
-  addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
+  heroStatDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: 'rgba(191,163,93,0.1)',
   },
-  addBtnText: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: '#1c1c1e',
-  },
-  legendRow: {
-    borderTopWidth: 1,
-    paddingTop: 12,
+  legendCard: {
+    margin: 16,
+    marginBottom: 8,
+    backgroundColor: '#1e1e20',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.06)',
+    padding: 14,
     gap: 6,
   },
   legendItem: {
@@ -458,9 +601,9 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
+    color: 'rgba(191,163,93,0.5)',
   },
   list: {
-    paddingHorizontal: 16,
     paddingBottom: 30,
   },
   modCard: {
@@ -470,6 +613,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
     marginBottom: 8,
+    marginHorizontal: 16,
   },
   modAvatar: {
     width: 46,

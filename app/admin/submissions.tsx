@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
   Modal,
+  Animated,
 } from 'react-native';
 import {
   MapPin,
@@ -19,7 +20,12 @@ import {
   User,
   Filter,
   Trash2,
+  ArrowLeft,
+  Inbox,
 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
@@ -66,6 +72,17 @@ export default function SubmissionsScreen() {
   const { user } = useAuth();
   const { addPlace, addRestaurant } = useAdmin();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const headerFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(headerFadeAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
+  }, []);
   const [filterTab, setFilterTab] = useState<FilterTab>('pending');
   const [categoryFilter, setCategoryFilter] = useState<SubmissionCategory | 'all'>('all');
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
@@ -370,22 +387,54 @@ export default function SubmissionsScreen() {
     );
   }, [getStatusConfig, formatDate, handleApprove, handleReject, handleDelete, approveMutation.isPending, rejectMutation.isPending]);
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.headerStats}>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{submissions.length}</Text>
-          <Text style={styles.statLabel}>Gesamt</Text>
-        </View>
-        <View style={[styles.statBox, pendingCount > 0 && styles.statBoxAlert]}>
-          <Text style={[styles.statValue, pendingCount > 0 && { color: '#E8A44E' }]}>{pendingCount}</Text>
-          <Text style={styles.statLabel}>Offen</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{submissions.filter((s) => s.status === 'approved').length}</Text>
-          <Text style={styles.statLabel}>Genehmigt</Text>
-        </View>
-      </View>
+  const renderListHeader = useCallback(() => (
+    <View>
+      <Animated.View style={{ opacity: headerFadeAnim }}>
+        <LinearGradient
+          colors={['#1e1d1a', '#1a1918', '#141416']}
+          style={[styles.heroSection, { paddingTop: insets.top + 56 }]}
+        >
+          <View style={styles.heroPattern}>
+            {[...Array(6)].map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.heroLine,
+                  {
+                    top: 20 + i * 28,
+                    opacity: 0.03 + i * 0.005,
+                    transform: [{ rotate: '-12deg' }],
+                  },
+                ]}
+              />
+            ))}
+          </View>
+          <View style={styles.heroIconWrap}>
+            <View style={styles.heroIconInner}>
+              <Inbox size={28} color="#BFA35D" />
+            </View>
+          </View>
+          <Text style={styles.heroTitle}>Einsendungen</Text>
+          <Text style={styles.heroSub}>Empfehlungen prüfen & freischalten</Text>
+
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStatItem}>
+              <Text style={[styles.heroStatValue, pendingCount > 0 ? { color: '#E8A44E' } : undefined]}>{pendingCount}</Text>
+              <Text style={styles.heroStatLabel}>Offen</Text>
+            </View>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatValue}>{submissions.filter((s) => s.status === 'approved').length}</Text>
+              <Text style={styles.heroStatLabel}>Genehmigt</Text>
+            </View>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatValue}>{submissions.length}</Text>
+              <Text style={styles.heroStatLabel}>Gesamt</Text>
+            </View>
+          </View>
+        </LinearGradient>
+      </Animated.View>
 
       <View style={styles.filterRow}>
         {FILTER_TABS.map((tab) => (
@@ -423,6 +472,17 @@ export default function SubmissionsScreen() {
           </Pressable>
         ))}
       </View>
+    </View>
+  ), [headerFadeAnim, insets.top, pendingCount, submissions, filterTab, categoryFilter]);
+
+  return (
+    <View style={styles.container}>
+      <Pressable
+        onPress={() => router.back()}
+        style={[styles.backButton, { top: insets.top + 8 }]}
+      >
+        <ArrowLeft size={20} color="#BFA35D" />
+      </Pressable>
 
       {submissionsQuery.isLoading ? (
         <View style={styles.loadingWrap}>
@@ -433,6 +493,7 @@ export default function SubmissionsScreen() {
           data={filtered}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
+          ListHeaderComponent={renderListHeader}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
@@ -503,35 +564,98 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#141416',
   },
-  headerStats: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    gap: 8,
-  },
-  statBox: {
-    flex: 1,
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: '#1e1e20',
-    borderRadius: 14,
-    paddingVertical: 14,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.06)',
+    borderColor: 'rgba(191,163,93,0.1)',
   },
-  statBoxAlert: {
-    borderColor: 'rgba(232,164,78,0.3)',
+  heroSection: {
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
   },
-  statValue: {
-    fontSize: 22,
+  heroPattern: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroLine: {
+    position: 'absolute',
+    left: -40,
+    right: -40,
+    height: 1,
+    backgroundColor: '#BFA35D',
+  },
+  heroIconWrap: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  heroIconInner: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTitle: {
+    fontSize: 24,
     fontWeight: '800' as const,
     color: '#E8DCC8',
+    letterSpacing: -0.5,
+    marginBottom: 4,
   },
-  statLabel: {
+  heroSub: {
+    fontSize: 13,
+    color: 'rgba(191,163,93,0.5)',
+    fontWeight: '500' as const,
+    marginBottom: 16,
+  },
+  heroStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1e1e20',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.06)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    width: '100%',
+  },
+  heroStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  heroStatValue: {
+    color: '#E8DCC8',
+    fontSize: 20,
+    fontWeight: '800' as const,
+  },
+  heroStatLabel: {
+    color: 'rgba(191,163,93,0.4)',
     fontSize: 11,
     fontWeight: '600' as const,
-    color: 'rgba(191,163,93,0.5)',
-    marginTop: 2,
+  },
+  heroStatDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: 'rgba(191,163,93,0.1)',
   },
   filterRow: {
     flexDirection: 'row',
