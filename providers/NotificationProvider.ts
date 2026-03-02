@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { queryKeys } from '@/constants/queryKeys';
@@ -16,7 +15,7 @@ export interface InboxNotification {
   readAt: string | null;
 }
 
-export const [NotificationProvider, useNotifications] = createContextHook(() => {
+export function useNotifications() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -139,4 +138,4 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
     deleteNotification,
     clearAll,
   };
-});
+}

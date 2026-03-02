@@ -1,6 +1,5 @@
 import { useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { queryKeys } from '@/constants/queryKeys';
 import type { NewsArticle, Place, Restaurant } from '@/constants/types';
@@ -49,7 +48,7 @@ function mapDbNews(n: any): NewsArticle {
   };
 }
 
-export const [ContentProvider, useContent] = createContextHook(() => {
+export function useContent() {
   const newsQuery = useQuery({
     queryKey: queryKeys.news(),
     queryFn: async () => {
@@ -143,4 +142,4 @@ export const [ContentProvider, useContent] = createContextHook(() => {
   }, [queryClient]);
 
   return { news, places, restaurants, isLoading, updateNews, updatePlace, updateRestaurant };
-});
+}

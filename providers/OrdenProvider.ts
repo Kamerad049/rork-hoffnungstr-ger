@@ -1,12 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import createContextHook from '@nkzw/create-context-hook';
 import { useAuth } from '@/providers/AuthProvider';
-import { getOrders, getUserOrders, getUserValues, grantUserOrder } from '@/lib/orders';
+import { getOrders, getUserOrders, getUserValues } from '@/lib/orders';
 import { ORDEN_DEFINITIONS, CHARACTER_DIMENSIONS, type OrdenDefinition, type OrdenTier } from '@/constants/orden';
 import type { DbOrden, DbUserOrden } from '@/lib/orders';
 import { queryKeys } from '@/constants/queryKeys';
-import { trackRender } from '@/lib/perf';
 
 function mapDbOrdenToDefinition(db: DbOrden): OrdenDefinition {
   return {
@@ -21,8 +19,7 @@ function mapDbOrdenToDefinition(db: DbOrden): OrdenDefinition {
   };
 }
 
-export const [OrdenProvider, useOrden] = createContextHook(() => {
-  trackRender('OrdenProvider');
+export function useOrden() {
   const { user, isLoggedIn } = useAuth();
 
   const ordersQuery = useQuery({
@@ -104,7 +101,7 @@ export const [OrdenProvider, useOrden] = createContextHook(() => {
     refetchUserOrders: userOrdersQuery.refetch,
     refetchUserValues: userValuesQuery.refetch,
   };
-});
+}
 
 export function useUserOrdenQuery(userId: string | undefined) {
   const ordersQuery = useQuery({

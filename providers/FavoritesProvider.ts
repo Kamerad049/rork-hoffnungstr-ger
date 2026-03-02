@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { queryKeys } from '@/constants/queryKeys';
@@ -11,7 +10,7 @@ interface FavoriteItem {
   targetType: string;
 }
 
-export const [FavoritesProvider, useFavorites] = createContextHook(() => {
+export function useFavorites() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -94,4 +93,4 @@ export const [FavoritesProvider, useFavorites] = createContextHook(() => {
   );
 
   return { favorites: items.map((f) => f.targetId), toggleFavorite, isFavorite };
-});
+}

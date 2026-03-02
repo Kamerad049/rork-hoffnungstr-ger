@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { queryKeys } from '@/constants/queryKeys';
@@ -50,7 +49,7 @@ const RANKS: Rank[] = [
   { name: 'Unsterblicher', minStamps: 350, icon: 'Infinity' },
 ];
 
-export const [StampPassProvider, useStampPass] = createContextHook(() => {
+export function useStampPass() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -149,4 +148,4 @@ export const [StampPassProvider, useStampPass] = createContextHook(() => {
     totalPlaces,
     RANKS,
   };
-});
+}

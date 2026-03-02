@@ -1,12 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { queryKeys } from '@/constants/queryKeys';
 import type { Review } from '@/constants/types';
 
-export const [ReviewProvider, useReviews] = createContextHook(() => {
+export function useReviews() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -193,7 +192,7 @@ export const [ReviewProvider, useReviews] = createContextHook(() => {
     toggleThumbsDown,
     hasUserReviewed,
   };
-});
+}
 
 export function useTargetReviews(targetId: string, targetType: 'place' | 'restaurant') {
   const { reviews } = useReviews();

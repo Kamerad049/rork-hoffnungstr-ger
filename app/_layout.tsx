@@ -8,7 +8,6 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import OfflineBanner from '@/components/OfflineBanner';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
-import { EssentialProviders } from '@/providers/EssentialProviders';
 import { DeferredProviders } from '@/providers/DeferredProviders';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
@@ -183,11 +182,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <EssentialProviders>
-      <DeferredProviders>
-        {children}
-      </DeferredProviders>
-    </EssentialProviders>
+    <DeferredProviders>
+      {children}
+    </DeferredProviders>
   );
 }
 
@@ -195,11 +192,11 @@ export default function RootLayout() {
   trackRender('RootLayout');
   useEffect(() => {
     markTime('RootLayout_mounted');
-    console.log('[BOOT] Tiered provider architecture enabled');
+    console.log('[BOOT] Optimized provider architecture: 6 providers converted to plain hooks');
     console.log('[BOOT] Tier 0: Auth + Theme (immediate)');
-    console.log('[BOOT] Tier 1: Content + StampPass + Favorites + Reviews (on auth)');
-    console.log('[BOOT] Tier 2: Friends + Social + Posts + Chat + Stories + Reels + ... (deferred)');
-    console.log('[BOOT] Tier 3: Kaderschmiede (tab-level), Admin + Moderation (route-level)');
+    console.log('[BOOT] Tier 1: 8 deferred providers (flat compose, after interactions)');
+    console.log('[BOOT] Plain hooks (no context): Content, StampPass, Favorites, Reviews, Notifications, Orden');
+    console.log('[BOOT] Route-level: Kaderschmiede (tab), Admin + Moderation (route)');
     SplashScreen.hideAsync();
     setTimeout(() => printReport(), 5000);
   }, []);
