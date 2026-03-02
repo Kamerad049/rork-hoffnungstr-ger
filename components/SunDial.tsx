@@ -245,12 +245,13 @@ export default function SunDial({ residence, children }: SunDialProps) {
   const sunsetLabelX = CONTAINER_SIZE / 2 + (DOT_RADIUS + 22) * Math.sin(sunsetLabelAngleRad);
   const sunsetLabelY = CONTAINER_SIZE / 2 - (DOT_RADIUS + 22) * Math.cos(sunsetLabelAngleRad);
 
-  const sunHitX = sunX + SUN_ICON_SIZE / 2 - SUN_HIT_SIZE / 2;
-  const sunHitY = sunY + SUN_ICON_SIZE / 2 - SUN_HIT_SIZE / 2;
+  const hitSize = SUN_HIT_SIZE + 16;
+  const sunHitX = sunX + SUN_ICON_SIZE / 2 - hitSize / 2;
+  const sunHitY = sunY + SUN_ICON_SIZE / 2 - hitSize / 2;
 
   return (
     <View
-      style={styles.container}
+      style={[styles.container, { overflow: 'visible' }]}
       pointerEvents="box-none"
     >
       {dots.map((dot, i) => {
@@ -426,12 +427,12 @@ const styles = StyleSheet.create({
   },
   sunHitArea: {
     position: 'absolute',
-    width: SUN_HIT_SIZE,
-    height: SUN_HIT_SIZE,
-    borderRadius: SUN_HIT_SIZE / 2,
+    width: SUN_HIT_SIZE + 16,
+    height: SUN_HIT_SIZE + 16,
+    borderRadius: (SUN_HIT_SIZE + 16) / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 20,
+    zIndex: 99,
   },
   sunIconInner: {
     width: SUN_ICON_SIZE,

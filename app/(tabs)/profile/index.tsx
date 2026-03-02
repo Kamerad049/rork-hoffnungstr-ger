@@ -858,6 +858,8 @@ const styles = StyleSheet.create({
   },
   avatarArea: {
     marginBottom: 16,
+    overflow: 'visible',
+    zIndex: 10,
   },
   avatarWrapper: {
     position: 'relative',
