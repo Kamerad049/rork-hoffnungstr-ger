@@ -32,6 +32,7 @@ interface PostFeedItemProps {
   onLocationPress: (location: string) => void;
   onEditPress: (post: FeedPost) => void;
   isOwnPost: boolean;
+  menuResetKey: number;
 }
 
 const PostFeedItem = React.memo(function PostFeedItem({
@@ -41,6 +42,7 @@ const PostFeedItem = React.memo(function PostFeedItem({
   onLocationPress,
   onEditPress,
   isOwnPost,
+  menuResetKey,
 }: PostFeedItemProps) {
   const { toggleLike, isLiked, isPostSaved, savePost, isCommentsDisabled, archivePost, toggleCommentsDisabled, deletePost } = usePosts();
   const router = useRouter();
@@ -52,6 +54,21 @@ const PostFeedItem = React.memo(function PostFeedItem({
   const heartScale = useRef(new Animated.Value(1)).current;
   const taggedPeopleAnim = useRef(new Animated.Value(0)).current;
   const menuAnim = useRef(new Animated.Value(0)).current;
+  const prevResetKey = useRef<number>(menuResetKey);
+
+  React.useEffect(() => {
+    if (prevResetKey.current !== menuResetKey) {
+      prevResetKey.current = menuResetKey;
+      if (showMenu) {
+        setShowMenu(false);
+        menuAnim.setValue(0);
+      }
+      if (showTaggedPeople) {
+        setShowTaggedPeople(false);
+        taggedPeopleAnim.setValue(0);
+      }
+    }
+  }, [menuResetKey]);
 
   const author = post.userId === 'me'
     ? {
@@ -162,8 +179,19 @@ const PostFeedItem = React.memo(function PostFeedItem({
     lastTap.current = now;
   }, [liked, post.id, toggleLike, doubleTapAnim]);
 
+  const handleOutsidePress = useCallback(() => {
+    if (showMenu) {
+      setShowMenu(false);
+      menuAnim.setValue(0);
+    }
+    if (showTaggedPeople) {
+      setShowTaggedPeople(false);
+      taggedPeopleAnim.setValue(0);
+    }
+  }, [showMenu, showTaggedPeople, menuAnim, taggedPeopleAnim]);
+
   return (
-    <View style={itemStyles.container}>
+    <Pressable style={itemStyles.container} onPress={handleOutsidePress}>
       <View style={itemStyles.header}>
         <Pressable style={itemStyles.authorRow} onPress={() => onUserPress(post.userId)}>
           <View style={itemStyles.avatarWrap}>
@@ -415,7 +443,7 @@ const PostFeedItem = React.memo(function PostFeedItem({
           <Text style={itemStyles.locationText}>{post.location}</Text>
         </Pressable>
       )}
-    </View>
+    </Pressable>
   );
 });
 
@@ -462,10 +490,16 @@ export default function UserReelFeedScreen() {
     router.push({ pathname: '/location-posts', params: { location } } as any);
   }, [router]);
 
+  const [menuResetKey, setMenuResetKey] = useState<number>(0);
+
   const handleEditPress = useCallback((post: FeedPost) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     console.log('[REEL-FEED] Edit post:', post.id);
     setEditingPost(post);
+  }, []);
+
+  const handleScrollBegin = useCallback(() => {
+    setMenuResetKey((k) => k + 1);
   }, []);
 
   const renderItem = useCallback(({ item }: { item: FeedPost }) => (
@@ -476,8 +510,9 @@ export default function UserReelFeedScreen() {
       onLocationPress={handleLocationPress}
       onEditPress={handleEditPress}
       isOwnPost={item.userId === 'me'}
+      menuResetKey={menuResetKey}
     />
-  ), [handleUserPress, handleCommentPress, handleLocationPress, handleEditPress]);
+  ), [handleUserPress, handleCommentPress, handleLocationPress, handleEditPress, menuResetKey]);
 
   const keyExtractor = useCallback((item: FeedPost) => item.id, []);
 
@@ -512,6 +547,7 @@ export default function UserReelFeedScreen() {
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           showsVerticalScrollIndicator={false}
+          onScrollBeginDrag={handleScrollBegin}
           contentContainerStyle={styles.listContent}
           initialScrollIndex={initialIndex > 0 && userPosts.length > initialIndex ? initialIndex : undefined}
           getItemLayout={undefined}

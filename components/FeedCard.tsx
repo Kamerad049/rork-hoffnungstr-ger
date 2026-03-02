@@ -113,9 +113,15 @@ function FeedCardInner({
   }, [post.id, post.location, post.taggedUserIds]);
 
   useEffect(() => {
-    if (!isActive && showTaggedPeople) {
-      setShowTaggedPeople(false);
-      taggedPeopleAnim.setValue(0);
+    if (!isActive) {
+      if (showTaggedPeople) {
+        setShowTaggedPeople(false);
+        taggedPeopleAnim.setValue(0);
+      }
+      if (showOwnMenu) {
+        setShowOwnMenu(false);
+        ownMenuAnim.setValue(0);
+      }
     }
   }, [isActive]);
 
