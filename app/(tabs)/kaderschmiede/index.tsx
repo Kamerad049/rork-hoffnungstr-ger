@@ -191,12 +191,14 @@ export default function KaderschmiedeScreen() {
     trupps,
     totalWorkouts,
     weeklyStreak,
+    loadInitialData,
   } = useKaderschmiede();
 
   const insets = useSafeAreaInsets();
   const heroAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    loadInitialData();
     Animated.timing(heroAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
   }, []);
 

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
@@ -153,15 +153,16 @@ export const [KaderschmiedeProvider, useKaderschmiede] = createContextHook(() =>
   const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
   const [selectedSport, setSelectedSport] = useState<SportCategory | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<SkillLevel | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [userNameCache, setUserNameCache] = useState<Record<string, string>>({});
   const [userAvatarCache, setUserAvatarCache] = useState<Record<string, string | null>>({});
   const [activeCheckIn, setActiveCheckIn] = useState<CheckInSession | null>(null);
-  const [dataLoaded, setDataLoaded] = useState<boolean>(false);
 
-  const loadInitialData = useCallback(async () => {
-    if (dataLoaded || !user) return;
-    setIsLoading(true);
+  useEffect(() => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     const load = async () => {
       try {
         console.log('[KADERSCHMIEDE] Loading data for user:', userId);
@@ -311,10 +312,9 @@ export const [KaderschmiedeProvider, useKaderschmiede] = createContextHook(() =>
         console.log('[KADERSCHMIEDE] Load error:', e);
       }
       setIsLoading(false);
-      setDataLoaded(true);
     };
     load();
-  }, [user, dataLoaded]);
+  }, [user]);
 
   const upcomingActivities = useMemo(() => {
     const nowMs = Date.now();
@@ -1239,7 +1239,5 @@ export const [KaderschmiedeProvider, useKaderschmiede] = createContextHook(() =>
     generateCurrentToken,
     isLoading,
     refreshData,
-    loadInitialData,
-    dataLoaded,
   };
 });

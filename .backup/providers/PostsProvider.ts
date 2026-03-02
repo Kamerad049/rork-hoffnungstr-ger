@@ -1,53 +1,48 @@
-import { useState, useCallback, useMemo } from 'react';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useFriends } from '@/providers/FriendsProvider';
-import { queryKeys } from '@/constants/queryKeys';
 import type { FeedPost, PostComment } from '@/constants/types';
-
-function mapDbPost(p: any, userId: string): FeedPost {
-  return {
-    id: p.id,
-    userId: p.user_id === userId ? 'me' : p.user_id,
-    content: p.content ?? '',
-    mediaUrls: p.media_urls ?? [],
-    mediaType: p.media_type ?? 'none',
-    likeCount: p.like_count ?? 0,
-    commentCount: p.comment_count ?? 0,
-    createdAt: p.created_at,
-  };
-}
 
 export const [PostsProvider, usePosts] = createContextHook(() => {
   const { user } = useAuth();
   const userId = user?.id ?? '';
   const { blockedUsers } = useFriends();
-  const queryClient = useQueryClient();
 
+  const [allPostsState, setAllPostsState] = useState<FeedPost[]>([]);
+  const [likedPosts, setLikedPosts] = useState<string[]>([]);
   const [commentsCache, setCommentsCache] = useState<Record<string, PostComment[]>>({});
 
-  const postsQuery = useQuery({
-    queryKey: queryKeys.posts(userId),
-    queryFn: async () => {
-      console.log('[POSTS] Loading posts for user:', userId);
-      const [postsRes, likesRes] = await Promise.all([
-        supabase.from('posts').select('*').order('created_at', { ascending: false }).limit(50),
-        supabase.from('post_likes').select('post_id').eq('user_id', userId),
-      ]);
-      const posts = (postsRes.data ?? []).map((p: any) => mapDbPost(p, userId));
-      const liked = (likesRes.data ?? []).map((l: any) => l.post_id as string);
-      console.log('[POSTS] Loaded', posts.length, 'posts');
-      return { posts, likedPosts: liked };
-    },
-    enabled: !!user,
-    staleTime: 2 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      try {
+        console.log('[POSTS] Loading posts for user:', userId);
+        const [postsRes, likesRes] = await Promise.all([
+          supabase.from('posts').select('*').order('created_at', { ascending: false }).limit(50),
+          supabase.from('post_likes').select('post_id').eq('user_id', userId),
+        ]);
 
-  const allPostsState = useMemo(() => postsQuery.data?.posts ?? [], [postsQuery.data]);
-  const likedPosts = useMemo(() => postsQuery.data?.likedPosts ?? [], [postsQuery.data]);
+        const dbPosts = (postsRes.data ?? []).map((p: any) => ({
+          id: p.id,
+          userId: p.user_id === userId ? 'me' : p.user_id,
+          content: p.content ?? '',
+          mediaUrls: p.media_urls ?? [],
+          mediaType: p.media_type ?? 'none',
+          likeCount: p.like_count ?? 0,
+          commentCount: p.comment_count ?? 0,
+          createdAt: p.created_at,
+        }));
+        setAllPostsState(dbPosts);
+        setLikedPosts((likesRes.data ?? []).map((l: any) => l.post_id));
+        console.log('[POSTS] Loaded', dbPosts.length, 'posts');
+      } catch (e) {
+        console.log('[POSTS] Load error:', e);
+      }
+    };
+    load();
+  }, [user]);
 
   const allPosts = useMemo((): FeedPost[] => {
     return allPostsState
@@ -55,51 +50,24 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [allPostsState, blockedUsers]);
 
-  const toggleLikeMutation = useMutation({
-    mutationFn: async (postId: string) => {
+  const toggleLike = useCallback(
+    async (postId: string) => {
       if (!userId) return;
       const liked = likedPosts.includes(postId);
+      setLikedPosts((prev) => (liked ? prev.filter((id) => id !== postId) : [...prev, postId]));
       if (liked) {
         await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', userId);
       } else {
         await supabase.from('post_likes').insert({ post_id: postId, user_id: userId });
       }
-      return { postId, wasLiked: liked };
     },
-    onMutate: async (postId: string) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.posts(userId) });
-      const prev = queryClient.getQueryData<{ posts: FeedPost[]; likedPosts: string[] }>(queryKeys.posts(userId));
-      if (prev) {
-        const liked = prev.likedPosts.includes(postId);
-        queryClient.setQueryData(queryKeys.posts(userId), {
-          ...prev,
-          likedPosts: liked
-            ? prev.likedPosts.filter((id) => id !== postId)
-            : [...prev.likedPosts, postId],
-        });
-      }
-      return { prev };
-    },
-    onError: (_err, _postId, context) => {
-      if (context?.prev) {
-        queryClient.setQueryData(queryKeys.posts(userId), context.prev);
-      }
-    },
-  });
-
-  const { mutate: doToggleLike } = toggleLikeMutation;
-
-  const toggleLike = useCallback(
-    async (postId: string) => {
-      doToggleLike(postId);
-    },
-    [doToggleLike],
+    [userId, likedPosts],
   );
 
   const isLiked = useCallback((postId: string) => likedPosts.includes(postId), [likedPosts]);
 
-  const createPostMutation = useMutation({
-    mutationFn: async ({ content, mediaUrl, mediaType }: { content: string; mediaUrl?: string; mediaType?: 'image' | 'video' }) => {
+  const createPost = useCallback(
+    async (content: string, mediaUrl?: string, mediaType?: 'image' | 'video') => {
       if (!userId) return null;
       const { data, error } = await supabase
         .from('posts')
@@ -115,28 +83,20 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
         console.log('[POSTS] Create post error:', error?.message);
         return null;
       }
-      return mapDbPost(data, userId);
+      const post: FeedPost = {
+        id: data.id,
+        userId: 'me',
+        content: data.content,
+        mediaUrls: data.media_urls ?? [],
+        mediaType: data.media_type ?? 'none',
+        likeCount: 0,
+        commentCount: 0,
+        createdAt: data.created_at,
+      };
+      setAllPostsState((prev) => [post, ...prev]);
+      return post;
     },
-    onSuccess: (newPost) => {
-      if (!newPost) return;
-      queryClient.setQueryData<{ posts: FeedPost[]; likedPosts: string[] }>(
-        queryKeys.posts(userId),
-        (old) => ({
-          posts: [newPost, ...(old?.posts ?? [])],
-          likedPosts: old?.likedPosts ?? [],
-        }),
-      );
-    },
-  });
-
-  const { mutateAsync: doCreatePost } = createPostMutation;
-
-  const createPost = useCallback(
-    async (content: string, mediaUrl?: string, mediaType?: 'image' | 'video') => {
-      const result = await doCreatePost({ content, mediaUrl, mediaType });
-      return result;
-    },
-    [doCreatePost],
+    [userId],
   );
 
   const addComment = useCallback(
@@ -218,21 +178,24 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
       .order('created_at', { ascending: false })
       .range(currentCount, currentCount + 49);
     if (data && data.length > 0) {
-      const newPosts = data.map((p: any) => mapDbPost(p, userId));
-      queryClient.setQueryData<{ posts: FeedPost[]; likedPosts: string[] }>(
-        queryKeys.posts(userId),
-        (old) => {
-          const existingIds = new Set((old?.posts ?? []).map((p) => p.id));
-          const unique = newPosts.filter((p) => !existingIds.has(p.id));
-          return {
-            posts: [...(old?.posts ?? []), ...unique],
-            likedPosts: old?.likedPosts ?? [],
-          };
-        },
-      );
+      const newPosts = data.map((p: any) => ({
+        id: p.id,
+        userId: p.user_id === userId ? 'me' : p.user_id,
+        content: p.content ?? '',
+        mediaUrls: p.media_urls ?? [],
+        mediaType: p.media_type ?? 'none',
+        likeCount: p.like_count ?? 0,
+        commentCount: p.comment_count ?? 0,
+        createdAt: p.created_at,
+      }));
+      setAllPostsState((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        const unique = newPosts.filter((p: FeedPost) => !existingIds.has(p.id));
+        return [...prev, ...unique];
+      });
       console.log('[POSTS] Loaded', newPosts.length, 'more posts');
     }
-  }, [userId, allPostsState.length, queryClient]);
+  }, [userId, allPostsState.length]);
 
   return {
     allPosts,

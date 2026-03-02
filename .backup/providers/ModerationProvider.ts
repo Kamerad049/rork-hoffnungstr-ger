@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
@@ -158,34 +158,33 @@ function mapDbModerator(m: any): Moderator {
 }
 
 export const [ModerationProvider, useModeration] = createContextHook(() => {
-  useAuth();
+  const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [moderators, setModerators] = useState<Moderator[]>([]);
   const [restrictions, setRestrictions] = useState<UserRestriction[]>([]);
   const [spamLog, setSpamLog] = useState<SpamEntry[]>([]);
   const [allUsers, setAllUsers] = useState<SocialUser[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [fullDataLoaded, setFullDataLoaded] = useState<boolean>(false);
-  const [coreLoaded, setCoreLoaded] = useState<boolean>(false);
 
-  const loadCoreData = useCallback(async () => {
-    if (coreLoaded) return;
-    setIsLoading(true);
-    try {
-      console.log('[MODERATION] Loading core moderation data...');
-      const [modsRes, restrictionsRes] = await Promise.all([
-        supabase.from('moderators').select('*'),
-        supabase.from('user_restrictions').select('*'),
-      ]);
-      setModerators((modsRes.data ?? []).map(mapDbModerator));
-      setRestrictions((restrictionsRes.data ?? []).map(mapDbRestriction));
-      setCoreLoaded(true);
-      console.log('[MODERATION] Core data loaded:', modsRes.data?.length, 'moderators,', restrictionsRes.data?.length, 'restrictions');
-    } catch (e) {
-      console.log('[MODERATION] Core load error:', e);
-    }
-    setIsLoading(false);
-  }, [coreLoaded]);
+  useEffect(() => {
+    const loadCore = async () => {
+      try {
+        console.log('[MODERATION] Loading core moderation data...');
+        const [modsRes, restrictionsRes] = await Promise.all([
+          supabase.from('moderators').select('*'),
+          supabase.from('user_restrictions').select('*'),
+        ]);
+        setModerators((modsRes.data ?? []).map(mapDbModerator));
+        setRestrictions((restrictionsRes.data ?? []).map(mapDbRestriction));
+        console.log('[MODERATION] Core data loaded:', modsRes.data?.length, 'moderators,', restrictionsRes.data?.length, 'restrictions');
+      } catch (e) {
+        console.log('[MODERATION] Core load error:', e);
+      }
+      setIsLoading(false);
+    };
+    loadCore();
+  }, []);
 
   const loadFullModerationData = useCallback(async () => {
     if (fullDataLoaded) return;
@@ -558,6 +557,5 @@ export const [ModerationProvider, useModeration] = createContextHook(() => {
     isRestricted,
     getActiveRestrictions,
     getAllRestrictions,
-    loadCoreData,
   };
 });

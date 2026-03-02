@@ -7,7 +7,22 @@ import { trpc, trpcClient } from '@/lib/trpc';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
-import { AuthenticatedProviders } from '@/providers/AuthenticatedProviders';
+import { FriendsProvider } from '@/providers/FriendsProvider';
+import { SocialProvider } from '@/providers/SocialProvider';
+import { PostsProvider } from '@/providers/PostsProvider';
+import { ChatProvider } from '@/providers/ChatProvider';
+import { StoriesProvider } from '@/providers/StoriesProvider';
+import { ReelsProvider } from '@/providers/ReelsProvider';
+import { FavoritesProvider } from '@/providers/FavoritesProvider';
+import { StampPassProvider } from '@/providers/StampPassProvider';
+import { ReviewProvider } from '@/providers/ReviewProvider';
+import { NotificationProvider } from '@/providers/NotificationProvider';
+import { ModerationProvider } from '@/providers/ModerationProvider';
+import { AdminProvider } from '@/providers/AdminProvider';
+import { KaderschmiedeProvider } from '@/providers/KaderschmiedeProvider';
+import { LiveLocationProvider } from '@/providers/LiveLocationProvider';
+import { SpotifyProvider } from '@/providers/SpotifyProvider';
+import { OrdenProvider } from '@/providers/OrdenProvider';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
 import { markTime, measureSinceBoot, trackRender, printReport } from '@/lib/perf';
@@ -176,7 +191,7 @@ export default function RootLayout() {
   trackRender('RootLayout');
   useEffect(() => {
     markTime('RootLayout_mounted');
-    console.log('[BOOT] Optimized provider loading enabled');
+    console.log('[BOOT] Step D: ALL providers enabled');
     SplashScreen.hideAsync();
     setTimeout(() => printReport(), 5000);
   }, []);
@@ -187,9 +202,39 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <AuthProvider>
-              <AuthenticatedProviders>
-                <RootLayoutNav />
-              </AuthenticatedProviders>
+              <FriendsProvider>
+                <SocialProvider>
+                  <PostsProvider>
+                    <ChatProvider>
+                      <StoriesProvider>
+                        <ReelsProvider>
+                          <FavoritesProvider>
+                            <StampPassProvider>
+                              <ReviewProvider>
+                                <NotificationProvider>
+                                  <ModerationProvider>
+                                    <AdminProvider>
+                                      <KaderschmiedeProvider>
+                                        <LiveLocationProvider>
+                                          <SpotifyProvider>
+                                            <OrdenProvider>
+                                              <RootLayoutNav />
+                                            </OrdenProvider>
+                                          </SpotifyProvider>
+                                        </LiveLocationProvider>
+                                      </KaderschmiedeProvider>
+                                    </AdminProvider>
+                                  </ModerationProvider>
+                                </NotificationProvider>
+                              </ReviewProvider>
+                            </StampPassProvider>
+                          </FavoritesProvider>
+                        </ReelsProvider>
+                      </StoriesProvider>
+                    </ChatProvider>
+                  </PostsProvider>
+                </SocialProvider>
+              </FriendsProvider>
             </AuthProvider>
           </ThemeProvider>
         </QueryClientProvider>

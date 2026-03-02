@@ -1,11 +1,9 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import * as Notifications from 'expo-notifications';
 import { useNotifications } from '@/providers/NotificationProvider';
-import { queryKeys } from '@/constants/queryKeys';
 import type { NewsArticle, Place, Restaurant, FeedPost, SocialUser } from '@/constants/types';
 
 export interface PushReceipt {
@@ -107,49 +105,35 @@ function mapDbUser(u: any): SocialUser {
 
 export const [AdminProvider, useAdmin] = createContextHook(() => {
   const { addNotification: addToInbox } = useNotifications();
-  const queryClient = useQueryClient();
+  const [news, setNews] = useState<NewsArticle[]>([]);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [pushHistory, setPushHistory] = useState<PushNotification[]>([]);
   const [allUsers, setAllUsers] = useState<SocialUser[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [adminDataLoaded, setAdminDataLoaded] = useState<boolean>(false);
 
-  const newsQuery = useQuery({
-    queryKey: queryKeys.news(),
-    queryFn: async () => {
-      console.log('[ADMIN] Loading news...');
-      const { data } = await supabase.from('news').select('*').order('publish_date', { ascending: false });
-      return (data ?? []).map(mapDbNews);
-    },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-  });
-
-  const placesQuery = useQuery({
-    queryKey: queryKeys.places(),
-    queryFn: async () => {
-      console.log('[ADMIN] Loading places...');
-      const { data } = await supabase.from('places').select('*').order('created_at', { ascending: false });
-      return (data ?? []).map(mapDbPlace);
-    },
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-  });
-
-  const restaurantsQuery = useQuery({
-    queryKey: queryKeys.restaurants(),
-    queryFn: async () => {
-      console.log('[ADMIN] Loading restaurants...');
-      const { data } = await supabase.from('restaurants').select('*').order('created_at', { ascending: false });
-      return (data ?? []).map(mapDbRestaurant);
-    },
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-  });
-
-  const news = useMemo(() => newsQuery.data ?? [], [newsQuery.data]);
-  const places = useMemo(() => placesQuery.data ?? [], [placesQuery.data]);
-  const restaurants = useMemo(() => restaurantsQuery.data ?? [], [restaurantsQuery.data]);
-  const isLoading = newsQuery.isLoading || placesQuery.isLoading || restaurantsQuery.isLoading;
+  useEffect(() => {
+    const loadPublicData = async () => {
+      try {
+        console.log('[ADMIN] Loading public content data...');
+        const [newsRes, placesRes, restaurantsRes] = await Promise.all([
+          supabase.from('news').select('*').order('publish_date', { ascending: false }),
+          supabase.from('places').select('*').order('created_at', { ascending: false }),
+          supabase.from('restaurants').select('*').order('created_at', { ascending: false }),
+        ]);
+        setNews((newsRes.data ?? []).map(mapDbNews));
+        setPlaces((placesRes.data ?? []).map(mapDbPlace));
+        setRestaurants((restaurantsRes.data ?? []).map(mapDbRestaurant));
+        console.log('[ADMIN] Public data loaded:', newsRes.data?.length, 'news,', placesRes.data?.length, 'places,', restaurantsRes.data?.length, 'restaurants');
+      } catch (e) {
+        console.log('[ADMIN] Public data load error:', e);
+      }
+      setIsLoading(false);
+    };
+    loadPublicData();
+  }, []);
 
   const loadAdminData = useCallback(async () => {
     if (adminDataLoaded) return;
@@ -198,8 +182,8 @@ export const [AdminProvider, useAdmin] = createContextHook(() => {
       console.log('[ADMIN] Add news error:', error.message);
       return;
     }
-    queryClient.setQueryData<NewsArticle[]>(queryKeys.news(), (old) => [mapDbNews(data), ...(old ?? [])]);
-  }, [queryClient]);
+    setNews((prev) => [mapDbNews(data), ...prev]);
+  }, []);
 
   const updateNews = useCallback(async (id: string, updates: Partial<NewsArticle>) => {
     const dbUpdates: any = {};
@@ -213,18 +197,18 @@ export const [AdminProvider, useAdmin] = createContextHook(() => {
       console.log('[ADMIN] Update news error:', error.message);
       return;
     }
-    queryClient.setQueryData<NewsArticle[]>(queryKeys.news(), (old) => (old ?? []).map((n) => (n.id === id ? { ...n, ...updates } : n)));
-  }, [queryClient]);
+    setNews((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } : n)));
+  }, []);
 
   const deleteNews = useCallback(async (id: string) => {
-    queryClient.setQueryData<NewsArticle[]>(queryKeys.news(), (old) => (old ?? []).filter((n) => n.id !== id));
+    setNews((prev) => prev.filter((n) => n.id !== id));
     await supabase.from('news').delete().eq('id', id);
-  }, [queryClient]);
+  }, []);
 
   const deleteAllNews = useCallback(async () => {
-    queryClient.setQueryData<NewsArticle[]>(queryKeys.news(), []);
+    setNews([]);
     await supabase.from('news').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-  }, [queryClient]);
+  }, []);
 
   const addPlace = useCallback(async (place: Omit<Place, 'id'>) => {
     const { data, error } = await supabase
@@ -247,8 +231,8 @@ export const [AdminProvider, useAdmin] = createContextHook(() => {
       console.log('[ADMIN] Add place error:', error.message);
       return;
     }
-    queryClient.setQueryData<Place[]>(queryKeys.places(), (old) => [mapDbPlace(data), ...(old ?? [])]);
-  }, [queryClient]);
+    setPlaces((prev) => [mapDbPlace(data), ...prev]);
+  }, []);
 
   const updatePlace = useCallback(async (id: string, updates: Partial<Place>) => {
     const dbUpdates: any = {};
@@ -265,18 +249,18 @@ export const [AdminProvider, useAdmin] = createContextHook(() => {
       console.log('[ADMIN] Update place error:', error.message);
       return;
     }
-    queryClient.setQueryData<Place[]>(queryKeys.places(), (old) => (old ?? []).map((p) => (p.id === id ? { ...p, ...updates } : p)));
-  }, [queryClient]);
+    setPlaces((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+  }, []);
 
   const deletePlace = useCallback(async (id: string) => {
-    queryClient.setQueryData<Place[]>(queryKeys.places(), (old) => (old ?? []).filter((p) => p.id !== id));
+    setPlaces((prev) => prev.filter((p) => p.id !== id));
     await supabase.from('places').delete().eq('id', id);
-  }, [queryClient]);
+  }, []);
 
   const deleteAllPlaces = useCallback(async () => {
-    queryClient.setQueryData<Place[]>(queryKeys.places(), []);
+    setPlaces([]);
     await supabase.from('places').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-  }, [queryClient]);
+  }, []);
 
   const addRestaurant = useCallback(async (restaurant: Omit<Restaurant, 'id'>) => {
     const { data, error } = await supabase
@@ -300,8 +284,8 @@ export const [AdminProvider, useAdmin] = createContextHook(() => {
       console.log('[ADMIN] Add restaurant error:', error.message);
       return;
     }
-    queryClient.setQueryData<Restaurant[]>(queryKeys.restaurants(), (old) => [mapDbRestaurant(data), ...(old ?? [])]);
-  }, [queryClient]);
+    setRestaurants((prev) => [mapDbRestaurant(data), ...prev]);
+  }, []);
 
   const updateRestaurant = useCallback(async (id: string, updates: Partial<Restaurant>) => {
     const dbUpdates: any = {};
@@ -319,18 +303,18 @@ export const [AdminProvider, useAdmin] = createContextHook(() => {
       console.log('[ADMIN] Update restaurant error:', error.message);
       return;
     }
-    queryClient.setQueryData<Restaurant[]>(queryKeys.restaurants(), (old) => (old ?? []).map((r) => (r.id === id ? { ...r, ...updates } : r)));
-  }, [queryClient]);
+    setRestaurants((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
+  }, []);
 
   const deleteRestaurant = useCallback(async (id: string) => {
-    queryClient.setQueryData<Restaurant[]>(queryKeys.restaurants(), (old) => (old ?? []).filter((r) => r.id !== id));
+    setRestaurants((prev) => prev.filter((r) => r.id !== id));
     await supabase.from('restaurants').delete().eq('id', id);
-  }, [queryClient]);
+  }, []);
 
   const deleteAllRestaurants = useCallback(async () => {
-    queryClient.setQueryData<Restaurant[]>(queryKeys.restaurants(), []);
+    setRestaurants([]);
     await supabase.from('restaurants').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-  }, [queryClient]);
+  }, []);
 
   const deletePost = useCallback(async (id: string) => {
     setPosts((prev) => prev.filter((p) => p.id !== id));
