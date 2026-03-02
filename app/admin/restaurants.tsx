@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useAdmin } from '@/providers/AdminProvider';
 import type { Restaurant } from '@/constants/types';
+import { AdminImagePicker } from '@/components/AdminImagePicker';
 import * as Haptics from 'expo-haptics';
 
 export default function AdminRestaurantsScreen() {
@@ -30,7 +31,7 @@ export default function AdminRestaurantsScreen() {
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [city, setCity] = useState<string>('');
-  const [imageUrl, setImageUrl] = useState<string>('');
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [cuisineText, setCuisineText] = useState<string>('');
   const [priceRange, setPriceRange] = useState<1 | 2 | 3>(2);
 
@@ -38,7 +39,7 @@ export default function AdminRestaurantsScreen() {
     setName('');
     setDescription('');
     setCity('');
-    setImageUrl('');
+    setImageUrls([]);
     setCuisineText('');
     setPriceRange(2);
     setEditingId(null);
@@ -54,7 +55,7 @@ export default function AdminRestaurantsScreen() {
     setName(r.name);
     setDescription(r.description);
     setCity(r.city);
-    setImageUrl(r.images[0] || '');
+    setImageUrls(r.images || []);
     setCuisineText(r.cuisine.join(', '));
     setPriceRange(r.priceRange);
     setModalVisible(true);
@@ -72,7 +73,7 @@ export default function AdminRestaurantsScreen() {
         name: name.trim(),
         description: description.trim(),
         city: city.trim(),
-        images: imageUrl.trim() ? [imageUrl.trim()] : [],
+        images: imageUrls,
         cuisine,
         priceRange,
       });
@@ -82,7 +83,7 @@ export default function AdminRestaurantsScreen() {
         description: description.trim(),
         city: city.trim(),
         bundesland: 'Bayern',
-        images: imageUrl.trim() ? [imageUrl.trim()] : ['https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800'],
+        images: imageUrls.length > 0 ? imageUrls : ['https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800'],
         cuisine,
         priceRange,
         latitude: 51.1657,
@@ -93,7 +94,7 @@ export default function AdminRestaurantsScreen() {
     }
     setModalVisible(false);
     resetForm();
-  }, [editingId, name, description, city, imageUrl, cuisineText, priceRange, addRestaurant, updateRestaurant, resetForm]);
+  }, [editingId, name, description, city, imageUrls, cuisineText, priceRange, addRestaurant, updateRestaurant, resetForm]);
 
   const handleDelete = useCallback((id: string, itemName: string) => {
     Alert.alert('Löschen', `"${itemName}" wirklich löschen?`, [
@@ -287,14 +288,13 @@ export default function AdminRestaurantsScreen() {
                 placeholder="Bayerisch, Schweinshaxe, Bier..."
                 placeholderTextColor={colors.tertiaryText}
               />
-              <Text style={[styles.inputLabel, { color: colors.tertiaryText }]}>Bild-URL</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.primaryText, borderColor: colors.border }]}
-                value={imageUrl}
-                onChangeText={setImageUrl}
-                placeholder="https://..."
-                placeholderTextColor={colors.tertiaryText}
-                autoCapitalize="none"
+              <AdminImagePicker
+                images={imageUrls}
+                onImagesChange={setImageUrls}
+                maxImages={6}
+                bucket="admin-uploads"
+                folder="restaurants"
+                label="Bilder"
               />
               <View style={{ height: 20 }} />
             </ScrollView>

@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useAdmin } from '@/providers/AdminProvider';
 import type { NewsArticle } from '@/constants/types';
+import { AdminImagePicker } from '@/components/AdminImagePicker';
 import * as Haptics from 'expo-haptics';
 
 export default function AdminNewsScreen() {
@@ -32,13 +33,13 @@ export default function AdminNewsScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState<string>('');
   const [text, setText] = useState<string>('');
-  const [image, setImage] = useState<string>('');
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [author, setAuthor] = useState<string>('Redaktion');
 
   const resetForm = useCallback(() => {
     setTitle('');
     setText('');
-    setImage('');
+    setImageUrls([]);
     setAuthor('Redaktion');
     setEditingId(null);
   }, []);
@@ -52,7 +53,7 @@ export default function AdminNewsScreen() {
     setEditingId(article.id);
     setTitle(article.title);
     setText(article.text);
-    setImage(article.image);
+    setImageUrls(article.image ? [article.image] : []);
     setAuthor(article.author);
     setModalVisible(true);
   }, []);
@@ -67,21 +68,21 @@ export default function AdminNewsScreen() {
       updateNews(editingId, {
         title: title.trim(),
         text: text.trim(),
-        image: image.trim(),
+        image: imageUrls[0] || '',
         author: author.trim(),
       });
     } else {
       addNews({
         title: title.trim(),
         text: text.trim(),
-        image: image.trim() || 'https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=800',
+        image: imageUrls[0] || 'https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=800',
         publishDate: new Date().toISOString().split('T')[0],
         author: author.trim() || 'Redaktion',
       });
     }
     setModalVisible(false);
     resetForm();
-  }, [editingId, title, text, image, author, addNews, updateNews, resetForm]);
+  }, [editingId, title, text, imageUrls, author, addNews, updateNews, resetForm]);
 
   const handleDelete = useCallback((id: string, itemTitle: string) => {
     Alert.alert('Löschen', `"${itemTitle}" wirklich löschen?`, [
@@ -265,18 +266,14 @@ export default function AdminNewsScreen() {
                   numberOfLines={6}
                   textAlignVertical="top"
                 />
-                <Text style={[styles.inputLabel, { color: colors.tertiaryText }]}>Bild-URL</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.primaryText, borderColor: colors.border }]}
-                  value={image}
-                  onChangeText={setImage}
-                  placeholder="https://..."
-                  placeholderTextColor={colors.tertiaryText}
-                  autoCapitalize="none"
+                <AdminImagePicker
+                  images={imageUrls}
+                  onImagesChange={setImageUrls}
+                  maxImages={3}
+                  bucket="admin-uploads"
+                  folder="news"
+                  label="Titelbild"
                 />
-                {image.trim().length > 0 && (
-                  <Image source={{ uri: image }} style={styles.preview} />
-                )}
                 <Text style={[styles.inputLabel, { color: colors.tertiaryText }]}>Autor</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.primaryText, borderColor: colors.border }]}

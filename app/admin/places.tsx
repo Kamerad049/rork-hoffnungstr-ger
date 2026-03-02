@@ -18,7 +18,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useAdmin } from '@/providers/AdminProvider';
 import type { Place, PlaceCategory } from '@/constants/types';
-import { PLACE_CATEGORIES, BUNDESLAENDER } from '@/constants/types';
+import { PLACE_CATEGORIES } from '@/constants/types';
+import { AdminImagePicker } from '@/components/AdminImagePicker';
 import * as Haptics from 'expo-haptics';
 
 export default function AdminPlacesScreen() {
@@ -32,7 +33,7 @@ export default function AdminPlacesScreen() {
   const [description, setDescription] = useState<string>('');
   const [city, setCity] = useState<string>('');
   const [bundesland, setBundesland] = useState<string>('Bayern');
-  const [imageUrl, setImageUrl] = useState<string>('');
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [category, setCategory] = useState<PlaceCategory>('Denkmal');
 
   const resetForm = useCallback(() => {
@@ -40,7 +41,7 @@ export default function AdminPlacesScreen() {
     setDescription('');
     setCity('');
     setBundesland('Bayern');
-    setImageUrl('');
+    setImageUrls([]);
     setCategory('Denkmal');
     setEditingId(null);
   }, []);
@@ -56,7 +57,7 @@ export default function AdminPlacesScreen() {
     setDescription(place.description);
     setCity(place.city);
     setBundesland(place.bundesland);
-    setImageUrl(place.images[0] || '');
+    setImageUrls(place.images || []);
     setCategory(place.category);
     setModalVisible(true);
   }, []);
@@ -73,7 +74,7 @@ export default function AdminPlacesScreen() {
         description: description.trim(),
         city: city.trim(),
         bundesland,
-        images: imageUrl.trim() ? [imageUrl.trim()] : [],
+        images: imageUrls,
         category,
       });
     } else {
@@ -82,7 +83,7 @@ export default function AdminPlacesScreen() {
         description: description.trim(),
         city: city.trim(),
         bundesland,
-        images: imageUrl.trim() ? [imageUrl.trim()] : ['https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=800'],
+        images: imageUrls.length > 0 ? imageUrls : ['https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=800'],
         category,
         latitude: 51.1657,
         longitude: 10.4515,
@@ -92,7 +93,7 @@ export default function AdminPlacesScreen() {
     }
     setModalVisible(false);
     resetForm();
-  }, [editingId, title, description, city, bundesland, imageUrl, category, addPlace, updatePlace, resetForm]);
+  }, [editingId, title, description, city, bundesland, imageUrls, category, addPlace, updatePlace, resetForm]);
 
   const handleDelete = useCallback((id: string, itemTitle: string) => {
     Alert.alert('Löschen', `"${itemTitle}" wirklich löschen?`, [
@@ -274,18 +275,14 @@ export default function AdminPlacesScreen() {
                   </Pressable>
                 ))}
               </ScrollView>
-              <Text style={[styles.inputLabel, { color: colors.tertiaryText }]}>Bild-URL</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.primaryText, borderColor: colors.border }]}
-                value={imageUrl}
-                onChangeText={setImageUrl}
-                placeholder="https://..."
-                placeholderTextColor={colors.tertiaryText}
-                autoCapitalize="none"
+              <AdminImagePicker
+                images={imageUrls}
+                onImagesChange={setImageUrls}
+                maxImages={6}
+                bucket="admin-uploads"
+                folder="places"
+                label="Bilder"
               />
-              {imageUrl.trim().length > 0 && (
-                <Image source={{ uri: imageUrl }} style={styles.preview} />
-              )}
               <View style={{ height: 20 }} />
             </ScrollView>
             <Pressable style={[styles.saveBtn, { backgroundColor: colors.accent }]} onPress={handleSave}>
