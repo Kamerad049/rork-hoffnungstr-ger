@@ -24,7 +24,10 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
-  const { stamps, rank, progress } = useStampPass();
+  const stampPass = useStampPass();
+  const stamps = stampPass?.stamps ?? [];
+  const rank = stampPass?.rank ?? { name: 'Neuling', minStamps: 0, icon: 'Eye' };
+  const progress = stampPass?.progress ?? 0;
   const { news } = useAdmin();
   const insets = useSafeAreaInsets();
   const router = useRouter();
