@@ -98,7 +98,7 @@ export default function UserFriendsScreen() {
             <View style={styles.userMetaRow}>
               <RankIcon icon={item.rankIcon} size={12} color="rgba(191,163,93,0.6)" />
               <Text style={styles.userMeta}>
-                {item.rank} · {item.xp.toLocaleString()} XP
+                {item.rank} · {item.ep.toLocaleString()} EP
               </Text>
             </View>
           </View>

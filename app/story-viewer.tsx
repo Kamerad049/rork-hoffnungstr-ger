@@ -116,7 +116,7 @@ export default function StoryViewerScreen() {
         avatarUrl: profile.avatarUrl,
         rank: '',
         rankIcon: 'Eye',
-        xp: 0,
+        ep: 0,
         stampCount: 0,
         postCount: 0,
         friendCount: 0,

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure, protectedProcedure } from "../create-context";
 import { db } from "../storage";
 
-const STAMP_XP = 50;
+const STAMP_EP = 50;
 const GPS_TOLERANCE_METERS = 500;
 
 function haversineDistance(
@@ -70,24 +70,24 @@ export const stampsRouter = createTRPCRouter({
         latitude: input.userLatitude,
         longitude: input.userLongitude,
         verifiedAt: new Date(),
-        xpEarned: STAMP_XP,
+        epEarned: STAMP_EP,
       };
 
       db.stamps.set(id, stamp);
 
       const user = db.users.get(ctx.userId);
       if (user) {
-        user.xp += STAMP_XP;
-        user.rank = db.getRankForXp(user.xp);
+        user.ep += STAMP_EP;
+        user.rank = db.getRankForEp(user.ep);
         db.users.set(ctx.userId, user);
-        console.log("[STAMPS] Checkin:", ctx.userId, "at", input.placeName, "| XP:", user.xp, "| Rank:", user.rank);
+        console.log("[STAMPS] Checkin:", ctx.userId, "at", input.placeName, "| EP:", user.ep, "| Rank:", user.rank);
       }
 
       return {
         id,
-        xpEarned: STAMP_XP,
+        epEarned: STAMP_EP,
         newRank: user?.rank ?? "Sucher",
-        totalXp: user?.xp ?? 0,
+        totalEp: user?.ep ?? 0,
       };
     }),
 
@@ -105,7 +105,7 @@ export const stampsRouter = createTRPCRouter({
     .input(z.object({ limit: z.number().min(1).max(100).default(25) }))
     .query(({ input }) => {
       const rankedUsers = Array.from(db.users.values())
-        .sort((a, b) => b.xp - a.xp)
+        .sort((a, b) => b.ep - a.ep)
         .slice(0, input.limit)
         .map((u, index) => ({
           position: index + 1,
@@ -114,7 +114,7 @@ export const stampsRouter = createTRPCRouter({
           displayName: u.displayName,
           avatarUrl: u.avatarUrl,
           rank: u.rank,
-          xp: u.xp,
+          ep: u.ep,
           stampCount: Array.from(db.stamps.values()).filter((s) => s.userId === u.id).length,
         }));
 

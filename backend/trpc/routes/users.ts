@@ -32,7 +32,7 @@ export const usersRouter = createTRPCRouter({
         coverUrl: null,
         isSingle: false,
         rank: "Sucher",
-        xp: 0,
+        ep: 0,
         isPremium: false,
         createdAt: new Date(),
       };
@@ -101,7 +101,7 @@ export const usersRouter = createTRPCRouter({
         coverUrl: user.coverUrl,
         isSingle: user.isSingle,
         rank: user.rank,
-        xp: user.xp,
+        ep: user.ep,
         isPremium: user.isPremium,
         friendCount,
         postCount,
@@ -153,7 +153,7 @@ export const usersRouter = createTRPCRouter({
           displayName: u.displayName,
           avatarUrl: u.avatarUrl,
           rank: u.rank,
-          xp: u.xp,
+          ep: u.ep,
         }));
 
       return results;
@@ -252,7 +252,7 @@ export const usersRouter = createTRPCRouter({
           displayName: u.displayName,
           avatarUrl: u.avatarUrl,
           rank: u.rank,
-          xp: u.xp,
+          ep: u.ep,
           isSingle: u.isSingle,
         };
       })

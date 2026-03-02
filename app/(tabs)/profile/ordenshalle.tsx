@@ -263,7 +263,7 @@ export default function OrdenshalleScreen() {
 
                 <View style={styles.detailXpRow}>
                   <Zap size={16} color="#FFD700" />
-                  <Text style={styles.detailXpText}>+{selectedOrden.xpReward} XP</Text>
+                  <Text style={styles.detailXpText}>+{selectedOrden.epReward} EP</Text>
                 </View>
 
                 {earnedIds.has(selectedOrden.id) ? (

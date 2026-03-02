@@ -15,7 +15,7 @@ function mapDbUser(u: any): SocialUser {
     avatarUrl: u.avatar_url ?? null,
     rank: u.rank ?? 'Neuling',
     rankIcon: u.rank_icon ?? 'Eye',
-    xp: u.xp ?? 0,
+    ep: u.xp ?? 0,
     stampCount: u.stamp_count ?? 0,
     postCount: u.post_count ?? 0,
     friendCount: u.friend_count ?? 0,
@@ -211,7 +211,7 @@ export const [FriendsProvider, useFriends] = createContextHook(() => {
   const leaderboard = useMemo(() => {
     const topUsers = leaderboardQuery.data ?? allUsersState;
     return [...topUsers.filter((u: SocialUser) => !blockedUsers.includes(u.id))]
-      .sort((a, b) => b.xp - a.xp)
+      .sort((a, b) => b.ep - a.ep)
       .map((u, i) => ({ ...u, position: i + 1 }));
   }, [leaderboardQuery.data, allUsersState, blockedUsers]);
 

@@ -104,7 +104,7 @@ export default function FriendsScreen() {
             <View style={styles.userRankRow}>
               <RankIcon icon={item.rankIcon} size={12} color="rgba(232,220,200,0.4)" />
               <Text style={styles.userRank}>
-                {item.rank} · {item.xp.toLocaleString()} XP
+                {item.rank} · {item.ep.toLocaleString()} EP
               </Text>
             </View>
           </View>

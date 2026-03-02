@@ -15,7 +15,7 @@ function mapDbOrdenToDefinition(db: DbOrden): OrdenDefinition {
     category: db.category as OrdenDefinition['category'],
     icon: db.icon,
     requirement: db.requirement ?? '',
-    xpReward: db.xp_reward ?? 0,
+    epReward: db.xp_reward ?? 0,
   };
 }
 

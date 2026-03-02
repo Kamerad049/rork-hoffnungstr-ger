@@ -205,7 +205,7 @@ export const [ModerationProvider, useModeration] = createContextHook(() => {
           avatarUrl: u.avatar_url ?? null,
           rank: u.rank ?? 'Neuling',
           rankIcon: u.rank_icon ?? 'Eye',
-          xp: u.xp ?? 0,
+          ep: u.xp ?? 0,
           stampCount: u.stamp_count ?? 0,
           postCount: u.post_count ?? 0,
           friendCount: u.friend_count ?? 0,

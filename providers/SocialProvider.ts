@@ -100,7 +100,7 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
             avatarUrl: p.avatar_url ?? null,
             rank: p.rank ?? 'Neuling',
             rankIcon: p.rank_icon ?? 'Eye',
-            xp: p.xp ?? 0,
+            ep: p.xp ?? 0,
             stampCount: p.stamp_count ?? 0,
             postCount: p.post_count ?? 0,
             friendCount: p.friend_count ?? 0,

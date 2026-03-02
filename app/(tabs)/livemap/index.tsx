@@ -596,7 +596,7 @@ export default function LiveMapScreen() {
       avatarUrl: profile?.avatarUrl ?? null,
       rank: '',
       rankIcon: '',
-      xp: 0,
+      ep: 0,
       stampCount: 0,
       postCount: 0,
       friendCount: 0,

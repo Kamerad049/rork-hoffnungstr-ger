@@ -257,7 +257,7 @@ export default function UserProfileScreen() {
         avatarUrl: socialProfile.avatarUrl,
         rank: meEntry?.rank ?? 'Entdecker',
         rankIcon: meEntry?.rankIcon ?? 'Compass',
-        xp: meEntry?.xp ?? 0,
+        ep: meEntry?.ep ?? 0,
         stampCount: meEntry?.stampCount ?? 0,
         postCount: ownPostCount,
         friendCount: friends.length,
@@ -635,7 +635,7 @@ export default function UserProfileScreen() {
               <RankIcon icon={profile.rankIcon} size={14} color="#BFA35D" />
               <Text style={styles.rankPillText}>{profile.rank}</Text>
               <View style={styles.rankDot} />
-              <Text style={styles.rankXp}>{profile.xp.toLocaleString()} XP</Text>
+              <Text style={styles.rankXp}>{profile.ep.toLocaleString()} EP</Text>
             </View>
 
             {profile.bio.length > 0 && (

@@ -31,13 +31,13 @@ export const storiesRouter = createTRPCRouter({
 
       const user = db.users.get(ctx.userId);
       if (user) {
-        user.xp += 5;
-        user.rank = db.getRankForXp(user.xp);
+        user.ep += 5;
+        user.rank = db.getRankForEp(user.ep);
         db.users.set(ctx.userId, user);
       }
 
       console.log("[STORIES] Created:", id, "by", ctx.userId);
-      return { id, xpEarned: 5 };
+      return { id, epEarned: 5 };
     }),
 
   getFeed: publicProcedure.query(() => {

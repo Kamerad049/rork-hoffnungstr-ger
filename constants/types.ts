@@ -146,7 +146,7 @@ export interface SocialUser {
   avatarUrl: string | null;
   rank: string;
   rankIcon: string;
-  xp: number;
+  ep: number;
   stampCount: number;
   postCount: number;
   friendCount: number;

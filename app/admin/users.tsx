@@ -33,12 +33,12 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { useAdmin } from '@/providers/AdminProvider';
 import type { SocialUser } from '@/constants/types';
 
-type SortKey = 'name' | 'xp' | 'rank' | 'posts' | 'stamps';
+type SortKey = 'name' | 'ep' | 'rank' | 'posts' | 'stamps';
 type SortDir = 'asc' | 'desc';
 
 const SORT_OPTIONS: { key: SortKey; label: string; icon: React.ReactNode }[] = [
   { key: 'name', label: 'Name', icon: <Users size={14} color="#BFA35D" /> },
-  { key: 'xp', label: 'XP', icon: <Crown size={14} color="#BFA35D" /> },
+  { key: 'ep', label: 'EP', icon: <Crown size={14} color="#BFA35D" /> },
   { key: 'rank', label: 'Rang', icon: <Hash size={14} color="#BFA35D" /> },
   { key: 'posts', label: 'Beiträge', icon: <Clock size={14} color="#BFA35D" /> },
   { key: 'stamps', label: 'Stempel', icon: <Hash size={14} color="#BFA35D" /> },
@@ -87,11 +87,11 @@ export default function AdminUsersScreen() {
         case 'name':
           cmp = a.displayName.localeCompare(b.displayName);
           break;
-        case 'xp':
-          cmp = (a.xp ?? 0) - (b.xp ?? 0);
+        case 'ep':
+          cmp = (a.ep ?? 0) - (b.ep ?? 0);
           break;
         case 'rank':
-          cmp = (a.xp ?? 0) - (b.xp ?? 0);
+          cmp = (a.ep ?? 0) - (b.ep ?? 0);
           break;
         case 'posts':
           cmp = (a.postCount ?? 0) - (b.postCount ?? 0);
@@ -196,8 +196,8 @@ export default function AdminUsersScreen() {
               <Text style={styles.username}>@{item.username}</Text>
             </View>
             <View style={styles.statsCol}>
-              <Text style={styles.statVal}>{item.xp}</Text>
-              <Text style={styles.statLabel}>XP</Text>
+              <Text style={styles.statVal}>{item.ep}</Text>
+              <Text style={styles.statLabel}>EP</Text>
             </View>
             <View style={styles.statsCol}>
               <RankIcon icon={item.rankIcon} size={18} color="#BFA35D" />

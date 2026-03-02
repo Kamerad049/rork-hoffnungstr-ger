@@ -699,7 +699,7 @@ export default function ProfileScreen() {
             <RankIcon icon={rank.icon} size={14} color="#BFA35D" />
             <Text style={styles.rankPillText}>{rank.name}</Text>
             <View style={styles.rankDot} />
-            <Text style={styles.rankXp}>{stamps.length * 50} XP</Text>
+            <Text style={styles.rankXp}>{stamps.length * 50} EP</Text>
             {nextRank && (
               <View style={styles.rankPillChevron}>
                 <Animated.View style={{ transform: [{ rotate: rankExpandAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] }) }] }}>

@@ -9,7 +9,7 @@ interface User {
   coverUrl: string | null;
   isSingle: boolean;
   rank: string;
-  xp: number;
+  ep: number;
   isPremium: boolean;
   createdAt: Date;
 }
@@ -61,7 +61,7 @@ interface StampEntry {
   latitude: number;
   longitude: number;
   verifiedAt: Date;
-  xpEarned: number;
+  epEarned: number;
 }
 
 interface Message {
@@ -87,19 +87,19 @@ function generateId(): string {
 }
 
 const RANKS = [
-  { name: "Sucher", minXp: 0 },
-  { name: "Entdecker", minXp: 100 },
-  { name: "Hüter", minXp: 500 },
-  { name: "Wächter", minXp: 1500 },
-  { name: "Bewahrer", minXp: 3000 },
-  { name: "Meister", minXp: 5000 },
-  { name: "Patriot", minXp: 10000 },
+  { name: "Sucher", minEp: 0 },
+  { name: "Entdecker", minEp: 100 },
+  { name: "Hüter", minEp: 500 },
+  { name: "Wächter", minEp: 1500 },
+  { name: "Bewahrer", minEp: 3000 },
+  { name: "Meister", minEp: 5000 },
+  { name: "Patriot", minEp: 10000 },
 ];
 
-function getRankForXp(xp: number): string {
+function getRankForEp(ep: number): string {
   let rank = RANKS[0].name;
   for (const r of RANKS) {
-    if (xp >= r.minXp) rank = r.name;
+    if (ep >= r.minEp) rank = r.name;
   }
   return rank;
 }
@@ -113,7 +113,7 @@ export const db = {
   stamps,
   messages,
   generateId,
-  getRankForXp,
+  getRankForEp,
   RANKS,
 };
 

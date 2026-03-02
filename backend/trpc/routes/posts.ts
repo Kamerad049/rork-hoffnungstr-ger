@@ -27,13 +27,13 @@ export const postsRouter = createTRPCRouter({
 
       const user = db.users.get(ctx.userId);
       if (user) {
-        user.xp += 10;
-        user.rank = db.getRankForXp(user.xp);
+        user.ep += 10;
+        user.rank = db.getRankForEp(user.ep);
         db.users.set(ctx.userId, user);
       }
 
       console.log("[POSTS] Created:", id, "by", ctx.userId);
-      return { id, xpEarned: 10 };
+      return { id, epEarned: 10 };
     }),
 
   getFeed: publicProcedure
@@ -217,12 +217,12 @@ export const postsRouter = createTRPCRouter({
 
       const user = db.users.get(ctx.userId);
       if (user) {
-        user.xp += 2;
-        user.rank = db.getRankForXp(user.xp);
+        user.ep += 2;
+        user.rank = db.getRankForEp(user.ep);
         db.users.set(ctx.userId, user);
       }
 
       console.log("[POSTS] Comment added:", id, "on", input.postId);
-      return { id, xpEarned: 2 };
+      return { id, epEarned: 2 };
     }),
 });

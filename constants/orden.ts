@@ -9,7 +9,7 @@ export interface OrdenDefinition {
   category: OrdenCategory;
   icon: string;
   requirement: string;
-  xpReward: number;
+  epReward: number;
 }
 
 export interface EarnedOrden {
@@ -93,7 +93,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'aktivitaet',
     icon: 'Flame',
     requirement: '7 Tage Streak',
-    xpReward: 100,
+    epReward: 100,
   },
   {
     id: 'ord_dauerbrenner_s',
@@ -103,7 +103,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'aktivitaet',
     icon: 'Flame',
     requirement: '14 Tage Streak',
-    xpReward: 250,
+    epReward: 250,
   },
   {
     id: 'ord_dauerbrenner_g',
@@ -113,7 +113,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'aktivitaet',
     icon: 'Flame',
     requirement: '30 Tage Streak',
-    xpReward: 500,
+    epReward: 500,
   },
   {
     id: 'ord_dauerbrenner_l',
@@ -123,7 +123,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'aktivitaet',
     icon: 'Flame',
     requirement: '100 Tage Streak',
-    xpReward: 2000,
+    epReward: 2000,
   },
   {
     id: 'ord_fruehaufsteher',
@@ -133,7 +133,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'aktivitaet',
     icon: 'Sunrise',
     requirement: '10x vor 06:00 aktiv',
-    xpReward: 75,
+    epReward: 75,
   },
   {
     id: 'ord_nachtwache',
@@ -143,7 +143,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'aktivitaet',
     icon: 'Moon',
     requirement: '20x nach 00:00 aktiv',
-    xpReward: 150,
+    epReward: 150,
   },
   {
     id: 'ord_flaggentraeger',
@@ -153,7 +153,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'aktivitaet',
     icon: 'Flag',
     requirement: '30x Flagge gehisst',
-    xpReward: 400,
+    epReward: 400,
   },
 
   // === GEMEINSCHAFT ===
@@ -165,7 +165,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'gemeinschaft',
     icon: 'MessageCircle',
     requirement: '50 Kommentare',
-    xpReward: 100,
+    epReward: 100,
   },
   {
     id: 'ord_wortfuehrer_s',
@@ -175,7 +175,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'gemeinschaft',
     icon: 'MessageCircle',
     requirement: '200 Kommentare',
-    xpReward: 300,
+    epReward: 300,
   },
   {
     id: 'ord_wortfuehrer_g',
@@ -185,7 +185,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'gemeinschaft',
     icon: 'MessageCircle',
     requirement: '500 Kommentare',
-    xpReward: 600,
+    epReward: 600,
   },
   {
     id: 'ord_verteidiger_b',
@@ -195,7 +195,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'gemeinschaft',
     icon: 'Swords',
     requirement: '50 Verteidigungen',
-    xpReward: 100,
+    epReward: 100,
   },
   {
     id: 'ord_verteidiger_g',
@@ -205,7 +205,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'gemeinschaft',
     icon: 'Swords',
     requirement: '500 Verteidigungen',
-    xpReward: 600,
+    epReward: 600,
   },
   {
     id: 'ord_bruderschaft',
@@ -215,7 +215,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'gemeinschaft',
     icon: 'Users',
     requirement: '25 Freunde',
-    xpReward: 200,
+    epReward: 200,
   },
   {
     id: 'ord_volksheld',
@@ -225,7 +225,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'gemeinschaft',
     icon: 'Heart',
     requirement: '100 Freunde',
-    xpReward: 1500,
+    epReward: 1500,
   },
 
   // === ENTDECKER ===
@@ -237,7 +237,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'entdecker',
     icon: 'MapPin',
     requirement: '5 Stempel',
-    xpReward: 100,
+    epReward: 100,
   },
   {
     id: 'ord_wanderer_s',
@@ -247,7 +247,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'entdecker',
     icon: 'MapPin',
     requirement: '15 Stempel',
-    xpReward: 250,
+    epReward: 250,
   },
   {
     id: 'ord_wanderer_g',
@@ -257,7 +257,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'entdecker',
     icon: 'MapPin',
     requirement: '30 Stempel',
-    xpReward: 500,
+    epReward: 500,
   },
   {
     id: 'ord_bundeslandkenner',
@@ -267,7 +267,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'entdecker',
     icon: 'Map',
     requirement: '8 Bundesländer',
-    xpReward: 500,
+    epReward: 500,
   },
   {
     id: 'ord_deutschlandkenner',
@@ -277,7 +277,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'entdecker',
     icon: 'Globe',
     requirement: 'Alle 16 Bundesländer',
-    xpReward: 3000,
+    epReward: 3000,
   },
 
   // === INHALT ===
@@ -289,7 +289,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'inhalt',
     icon: 'Feather',
     requirement: '10 Beiträge',
-    xpReward: 100,
+    epReward: 100,
   },
   {
     id: 'ord_chronist_s',
@@ -299,7 +299,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'inhalt',
     icon: 'Feather',
     requirement: '50 Beiträge',
-    xpReward: 300,
+    epReward: 300,
   },
   {
     id: 'ord_chronist_g',
@@ -309,7 +309,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'inhalt',
     icon: 'ScrollText',
     requirement: '100 Beiträge',
-    xpReward: 600,
+    epReward: 600,
   },
   {
     id: 'ord_geschichtenerzaehler',
@@ -319,7 +319,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'inhalt',
     icon: 'UtensilsCrossed',
     requirement: '25 Bewertungen',
-    xpReward: 200,
+    epReward: 200,
   },
   {
     id: 'ord_kritiker',
@@ -329,7 +329,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'inhalt',
     icon: 'Landmark',
     requirement: '25 Orts-Bewertungen',
-    xpReward: 200,
+    epReward: 200,
   },
 
   // === EXTREM SELTEN ===
@@ -341,7 +341,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'selten',
     icon: 'Gem',
     requirement: 'Tag-1-User',
-    xpReward: 5000,
+    epReward: 5000,
   },
   {
     id: 'ord_meister_aller_klassen',
@@ -351,7 +351,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'selten',
     icon: 'Crown',
     requirement: 'Alle Gold-Orden',
-    xpReward: 10000,
+    epReward: 10000,
   },
   {
     id: 'ord_phoenix',
@@ -361,7 +361,7 @@ export const ORDEN_DEFINITIONS: OrdenDefinition[] = [
     category: 'selten',
     icon: 'Bird',
     requirement: 'Comeback + 7er Streak',
-    xpReward: 2000,
+    epReward: 2000,
   },
 ];
 

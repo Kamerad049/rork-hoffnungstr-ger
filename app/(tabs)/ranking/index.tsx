@@ -59,7 +59,7 @@ function PodiumCard({ user, position, colors, onPress }: {
       </View>
       <View style={styles.xpBadge}>
         <Flame size={12} color="#BFA35D" />
-        <Text style={styles.xpText}>{user.xp.toLocaleString()} XP</Text>
+        <Text style={styles.xpText}>{user.ep.toLocaleString()} EP</Text>
       </View>
     </Pressable>
   );
@@ -117,7 +117,7 @@ export default function RankingScreen() {
           <View style={styles.listStats}>
             <View style={styles.listStatRow}>
               <Flame size={14} color="#BFA35D" />
-              <Text style={styles.listXp}>{item.xp.toLocaleString()}</Text>
+              <Text style={styles.listXp}>{item.ep.toLocaleString()}</Text>
             </View>
             <View style={styles.listStatRow}>
               <Award size={12} color="rgba(191,163,93,0.5)" />
@@ -154,7 +154,7 @@ export default function RankingScreen() {
           </View>
           <Text style={styles.podiumTitle}>TOP 25 Entdecker</Text>
           <Text style={styles.podiumSubtitle}>
-            Sammle XP durch Stempel, Beiträge und Kommentare
+            Sammle EP durch Stempel, Beiträge und Kommentare
           </Text>
           <View style={styles.podiumRow}>
             {top3[1] && (

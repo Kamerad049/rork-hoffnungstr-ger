@@ -225,7 +225,7 @@ export default function OrdenCeremony({ visible, orden, onClose }: OrdenCeremony
             <Text style={styles.ordenDesc}>{orden.description}</Text>
             <View style={styles.xpPill}>
               <Zap size={14} color="#FFD700" />
-              <Text style={styles.xpText}>+{orden.xpReward} XP</Text>
+              <Text style={styles.xpText}>+{orden.epReward} EP</Text>
             </View>
           </Animated.View>
 
