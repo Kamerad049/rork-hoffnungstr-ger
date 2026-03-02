@@ -7,7 +7,7 @@ import { Linking, Platform } from 'react-native';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useFavorites } from '@/providers/FavoritesProvider';
 import { useTargetReviews } from '@/providers/ReviewProvider';
-import { useAdmin } from '@/providers/AdminProvider';
+import { useContent } from '@/providers/ContentProvider';
 import { useCanEditContent } from '@/hooks/useCanEditContent';
 
 import StarRating from '@/components/StarRating';
@@ -20,7 +20,7 @@ export default function RestaurantDetailScreen() {
   const { isFavorite, toggleFavorite } = useFavorites();
   const router = useRouter();
 
-  const { restaurants, updateRestaurant } = useAdmin();
+  const { restaurants, updateRestaurant } = useContent();
   const canEdit = useCanEditContent();
   const [editModalVisible, setEditModalVisible] = useState<boolean>(false);
   const [editName, setEditName] = useState<string>('');

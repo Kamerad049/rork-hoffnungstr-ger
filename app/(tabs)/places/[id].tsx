@@ -7,7 +7,7 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { useFavorites } from '@/providers/FavoritesProvider';
 import { useStampPass } from '@/providers/StampPassProvider';
 import { useTargetReviews } from '@/providers/ReviewProvider';
-import { useAdmin } from '@/providers/AdminProvider';
+import { useContent } from '@/providers/ContentProvider';
 import { useCanEditContent } from '@/hooks/useCanEditContent';
 
 import { PLACE_CATEGORIES } from '@/constants/types';
@@ -23,7 +23,7 @@ export default function PlaceDetailScreen() {
   const { hasStamp } = useStampPass();
   const router = useRouter();
 
-  const { places: adminPlaces, updatePlace } = useAdmin();
+  const { places: adminPlaces, updatePlace } = useContent();
   const canEdit = useCanEditContent();
   const [editModalVisible, setEditModalVisible] = useState<boolean>(false);
   const [editTitle, setEditTitle] = useState<string>('');

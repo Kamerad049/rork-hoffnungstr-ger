@@ -9,7 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useStampPass } from '@/providers/StampPassProvider';
-import { useAdmin } from '@/providers/AdminProvider';
+import { useContent } from '@/providers/ContentProvider';
 import WaxSealCeremony from '@/components/WaxSealCeremony';
 import WaxSealStamp from '@/components/WaxSealStamp';
 
@@ -34,7 +34,7 @@ type CheckinStep = 'info' | 'locating' | 'photo' | 'success' | 'error';
 export default function CheckinScreen() {
   const { placeId } = useLocalSearchParams<{ placeId: string }>();
   const { colors } = useTheme();
-  const { places } = useAdmin();
+  const { places } = useContent();
   const router = useRouter();
   const { collectStamp, hasStamp } = useStampPass();
 

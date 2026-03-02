@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useAdmin } from '@/providers/AdminProvider';
+import { useContent } from '@/providers/ContentProvider';
 
 let MapView: React.ComponentType<any> | null = null;
 let Marker: React.ComponentType<any> | null = null;
@@ -25,7 +25,7 @@ const GERMANY_CENTER = {
 
 export default function CuisineMapScreen() {
   const { colors } = useTheme();
-  const { restaurants } = useAdmin();
+  const { restaurants } = useContent();
   const router = useRouter();
 
   const markers = useMemo(

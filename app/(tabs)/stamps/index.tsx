@@ -9,14 +9,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import RankIcon from '@/components/RankIcon';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useStampPass } from '@/providers/StampPassProvider';
-import { useAdmin } from '@/providers/AdminProvider';
+import { useContent } from '@/providers/ContentProvider';
 
 export default function StampsScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { stamps, hasStamp, rank, nextRank, progress, totalPlaces } = useStampPass();
-  const { places } = useAdmin();
+  const { places } = useContent();
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {

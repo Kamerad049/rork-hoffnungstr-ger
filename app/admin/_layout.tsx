@@ -2,6 +2,8 @@ import { Stack, useRouter } from 'expo-router';
 import { Pressable } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
+import { AdminProvider } from '@/providers/AdminProvider';
+import { ModerationProvider } from '@/providers/ModerationProvider';
 
 export default function AdminLayout() {
   const { colors } = useTheme();
@@ -34,6 +36,8 @@ export default function AdminLayout() {
   };
 
   return (
+    <AdminProvider>
+    <ModerationProvider>
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: '#141416' },
@@ -61,5 +65,7 @@ export default function AdminLayout() {
       <Stack.Screen name="reports" options={{ title: '', headerShown: false }} />
       <Stack.Screen name="moderators" options={{ title: 'Moderatoren', ...subPageOptions }} />
     </Stack>
+    </ModerationProvider>
+    </AdminProvider>
   );
 }

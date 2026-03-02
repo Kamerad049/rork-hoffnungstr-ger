@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TextInput, Pressable } from 'react-na
 import { useRouter } from 'expo-router';
 import { Search, Map as MapIcon, X } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useAdmin } from '@/providers/AdminProvider';
+import { useContent } from '@/providers/ContentProvider';
 import RestaurantCard from '@/components/RestaurantCard';
 import type { Restaurant } from '@/constants/types';
 
@@ -16,7 +16,7 @@ const PRICE_FILTERS = [
 
 export default function CuisineScreen() {
   const { colors } = useTheme();
-  const { restaurants } = useAdmin();
+  const { restaurants } = useContent();
   const router = useRouter();
   const [search, setSearch] = useState<string>('');
   const [selectedPrice, setSelectedPrice] = useState<1 | 2 | 3 | null>(null);

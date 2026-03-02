@@ -4,7 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { Calendar, User, Pencil, X, ImageOff } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useAdmin } from '@/providers/AdminProvider';
+import { useContent } from '@/providers/ContentProvider';
 import { useCanEditContent } from '@/hooks/useCanEditContent';
 
 import * as Haptics from 'expo-haptics';
@@ -13,7 +13,7 @@ export default function ArticleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
 
-  const { news: adminNews, updateNews } = useAdmin();
+  const { news: adminNews, updateNews } = useContent();
   const canEdit = useCanEditContent();
   const [editModalVisible, setEditModalVisible] = useState<boolean>(false);
   const [editTitle, setEditTitle] = useState<string>('');

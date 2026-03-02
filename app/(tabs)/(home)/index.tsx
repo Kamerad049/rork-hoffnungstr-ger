@@ -9,7 +9,7 @@ import RankIcon from '@/components/RankIcon';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { useStampPass } from '@/providers/StampPassProvider';
-import { useAdmin } from '@/providers/AdminProvider';
+import { useContent } from '@/providers/ContentProvider';
 import { getLeitsatzDesTages } from '@/mocks/leitsaetze';
 import PlaceCard from '@/components/PlaceCard';
 import RestaurantCard from '@/components/RestaurantCard';
@@ -28,8 +28,8 @@ export default function HomeScreen() {
   const stamps = stampPass?.stamps ?? [];
   const rank = stampPass?.rank ?? { name: 'Neuling', minStamps: 0, icon: 'Eye' };
   const progress = stampPass?.progress ?? 0;
-  const adminCtx = useAdmin();
-  const news = adminCtx?.news ?? [];
+  const contentCtx = useContent();
+  const news = contentCtx?.news ?? [];
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
@@ -60,8 +60,8 @@ export default function HomeScreen() {
     router.push('/(tabs)/(home)/activity' as any);
   }, [bellScale, router]);
 
-  const places = adminCtx?.places ?? [];
-  const restaurants = adminCtx?.restaurants ?? [];
+  const places = contentCtx?.places ?? [];
+  const restaurants = contentCtx?.restaurants ?? [];
   const featuredPlaces = useMemo(() => places.slice(0, 8), [places]);
   const featuredRestaurants = useMemo(() => restaurants.slice(0, 6), [restaurants]);
   const latestNews = useMemo(() => news.slice(0, 4), [news]);

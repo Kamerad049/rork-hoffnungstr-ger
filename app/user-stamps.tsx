@@ -11,7 +11,7 @@ import { useSocial } from '@/providers/SocialProvider';
 import { useStampPass } from '@/providers/StampPassProvider';
 import RankIcon from '@/components/RankIcon';
 import { getUserById } from '@/lib/utils';
-import { useAdmin } from '@/providers/AdminProvider';
+import { useContent } from '@/providers/ContentProvider';
 
 export default function UserStampsScreen() {
   const { colors } = useTheme();
@@ -19,7 +19,7 @@ export default function UserStampsScreen() {
   const { isFriend } = useFriends();
   const { privacy, canViewContent } = useSocial();
   const { stamps, hasStamp, rank, nextRank, progress, totalPlaces } = useStampPass();
-  const { places } = useAdmin();
+  const { places } = useContent();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const progressAnim = useRef(new Animated.Value(0)).current;

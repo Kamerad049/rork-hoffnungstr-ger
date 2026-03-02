@@ -3,14 +3,14 @@ import { View, Text, StyleSheet, FlatList, TextInput, Pressable, ScrollView } fr
 import { useRouter } from 'expo-router';
 import { Search, Map as MapIcon, X } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useAdmin } from '@/providers/AdminProvider';
+import { useContent } from '@/providers/ContentProvider';
 import { PLACE_CATEGORIES } from '@/constants/types';
 import PlaceCard from '@/components/PlaceCard';
 import type { Place, PlaceCategory } from '@/constants/types';
 
 export default function PlacesScreen() {
   const { colors } = useTheme();
-  const { places } = useAdmin();
+  const { places } = useContent();
   const router = useRouter();
   const [search, setSearch] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<PlaceCategory | null>(null);

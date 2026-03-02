@@ -7,7 +7,8 @@ import { trpc, trpcClient } from '@/lib/trpc';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
-import { AuthenticatedProviders } from '@/providers/AuthenticatedProviders';
+import { EssentialProviders } from '@/providers/EssentialProviders';
+import { DeferredProviders } from '@/providers/DeferredProviders';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
 import { markTime, measureSinceBoot, trackRender, printReport } from '@/lib/perf';
@@ -172,11 +173,31 @@ function RootLayoutNav() {
   );
 }
 
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { isLoggedIn, isLoading } = useAuth();
+
+  if (isLoading || !isLoggedIn) {
+    return <>{children}</>;
+  }
+
+  return (
+    <EssentialProviders>
+      <DeferredProviders>
+        {children}
+      </DeferredProviders>
+    </EssentialProviders>
+  );
+}
+
 export default function RootLayout() {
   trackRender('RootLayout');
   useEffect(() => {
     markTime('RootLayout_mounted');
-    console.log('[BOOT] Optimized provider loading enabled');
+    console.log('[BOOT] Tiered provider architecture enabled');
+    console.log('[BOOT] Tier 0: Auth + Theme (immediate)');
+    console.log('[BOOT] Tier 1: Content + StampPass + Favorites + Reviews (on auth)');
+    console.log('[BOOT] Tier 2: Friends + Social + Posts + Chat + Stories + Reels + ... (deferred)');
+    console.log('[BOOT] Tier 3: Kaderschmiede (tab-level), Admin + Moderation (route-level)');
     SplashScreen.hideAsync();
     setTimeout(() => printReport(), 5000);
   }, []);
@@ -187,9 +208,9 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <AuthProvider>
-              <AuthenticatedProviders>
+              <AuthGate>
                 <RootLayoutNav />
-              </AuthenticatedProviders>
+              </AuthGate>
             </AuthProvider>
           </ThemeProvider>
         </QueryClientProvider>

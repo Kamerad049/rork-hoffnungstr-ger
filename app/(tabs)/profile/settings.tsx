@@ -25,7 +25,7 @@ import { useChat } from '@/providers/ChatProvider';
 import { useReels } from '@/providers/ReelsProvider';
 import { useStampPass } from '@/providers/StampPassProvider';
 import { useAuth } from '@/providers/AuthProvider';
-import { useAdmin } from '@/providers/AdminProvider';
+
 import * as Haptics from 'expo-haptics';
 
 export default function SettingsScreen() {
