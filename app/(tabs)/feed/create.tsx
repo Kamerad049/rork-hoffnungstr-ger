@@ -45,7 +45,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/providers/ThemeProvider';
 import { usePosts } from '@/providers/PostsProvider';
-import { useReels } from '@/providers/ReelsProvider';
+
 import { useFriends } from '@/providers/FriendsProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import type { SocialUser } from '@/constants/types';
@@ -329,7 +329,7 @@ const LOCATION_SUGGESTIONS = [
 export default function CreatePostScreen() {
   const { colors } = useTheme();
   const { createPost } = usePosts();
-  const { createReel } = useReels();
+
   const { friendUsers } = useFriends();
   const { user } = useAuth();
   const router = useRouter();
@@ -688,19 +688,11 @@ export default function CreatePostScreen() {
     setIsPublishing(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     try {
-      const tagMentions = taggedUsers.length > 0
-        ? '\n\n' + taggedUsers.map((u) => `@${u.username}`).join(' ')
-        : '';
-      const fullContent = content.trim() + tagMentions;
-      await createPost(fullContent, imageUri ?? undefined, 'image');
-      await createReel({
-        mediaUri: imageUri ?? '',
-        mediaType: 'photo',
-        caption: fullContent,
-        location: locationText || undefined,
-        taggedUsers: taggedUsers.map((u) => u.id),
-      });
-      console.log('[CREATE] Post + Reel created');
+      const cleanContent = content.trim();
+      const taggedIds = taggedUsers.map((u) => u.id);
+      const loc = locationText || undefined;
+      await createPost(cleanContent, imageUri ?? undefined, 'image', loc, taggedIds.length > 0 ? taggedIds : undefined);
+      console.log('[CREATE] Post created');
       router.back();
     } catch (err) {
       console.log('[CREATE] Post error:', err);

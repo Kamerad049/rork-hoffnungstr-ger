@@ -17,6 +17,8 @@ function mapDbPost(p: any, userId: string): FeedPost {
     likeCount: p.like_count ?? 0,
     commentCount: p.comment_count ?? 0,
     createdAt: p.created_at,
+    location: p.location ?? undefined,
+    taggedUserIds: p.tagged_user_ids ?? undefined,
   };
 }
 
@@ -99,16 +101,19 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
   const isLiked = useCallback((postId: string) => likedPosts.includes(postId), [likedPosts]);
 
   const createPostMutation = useMutation({
-    mutationFn: async ({ content, mediaUrl, mediaType }: { content: string; mediaUrl?: string; mediaType?: 'image' | 'video' }) => {
+    mutationFn: async ({ content, mediaUrl, mediaType, location, taggedUserIds }: { content: string; mediaUrl?: string; mediaType?: 'image' | 'video'; location?: string; taggedUserIds?: string[] }) => {
       if (!userId) return null;
+      const insertData: Record<string, unknown> = {
+        user_id: userId,
+        content,
+        media_urls: mediaUrl ? [mediaUrl] : [],
+        media_type: mediaUrl ? (mediaType ?? 'image') : 'none',
+      };
+      if (location) insertData.location = location;
+      if (taggedUserIds && taggedUserIds.length > 0) insertData.tagged_user_ids = taggedUserIds;
       const { data, error } = await supabase
         .from('posts')
-        .insert({
-          user_id: userId,
-          content,
-          media_urls: mediaUrl ? [mediaUrl] : [],
-          media_type: mediaUrl ? (mediaType ?? 'image') : 'none',
-        })
+        .insert(insertData)
         .select('*')
         .single();
       if (error || !data) {
@@ -132,8 +137,8 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
   const { mutateAsync: doCreatePost } = createPostMutation;
 
   const createPost = useCallback(
-    async (content: string, mediaUrl?: string, mediaType?: 'image' | 'video') => {
-      const result = await doCreatePost({ content, mediaUrl, mediaType });
+    async (content: string, mediaUrl?: string, mediaType?: 'image' | 'video', location?: string, taggedUserIds?: string[]) => {
+      const result = await doCreatePost({ content, mediaUrl, mediaType, location, taggedUserIds });
       return result;
     },
     [doCreatePost],

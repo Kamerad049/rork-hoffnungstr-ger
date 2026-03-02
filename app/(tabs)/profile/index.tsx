@@ -67,7 +67,7 @@ import NowPlayingWidget from '@/components/NowPlayingWidget';
 import { useSpotify } from '@/providers/SpotifyProvider';
 import { Radio, Trophy as TrophyIcon } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import type { Reel } from '@/constants/types';
+import type { Reel, FeedPost } from '@/constants/types';
 import OrdenBadge from '@/components/OrdenBadge';
 import { TIER_COLORS, TIER_NAMES, type OrdenDefinition } from '@/constants/orden';
 import { useOrden } from '@/hooks/useOrden';
@@ -98,6 +98,61 @@ const VALUE_ICONS: Record<string, React.ComponentType<{ size: number; color: str
   'Aufrichtigkeit': Eye,
   'Demut': TreePine,
 };
+
+function PostGridItem({ post, onPress, onLongPress }: {
+  post: FeedPost;
+  onPress: () => void;
+  onLongPress?: () => void;
+}) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scaleAnim, { toValue: 0.95, useNativeDriver: true, speed: 50 }).start();
+  }, [scaleAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50 }).start();
+  }, [scaleAnim]);
+
+  const hasImage = post.mediaUrls.length > 0;
+
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <Pressable
+        style={styles.gridTile}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        delayLongPress={400}
+      >
+        {hasImage ? (
+          <Image
+            source={{ uri: post.mediaUrls[0] }}
+            style={styles.gridTileImage}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : (
+          <View style={styles.gridTileTextBg}>
+            <Text style={styles.gridTileTextPreview} numberOfLines={4}>
+              {post.content}
+            </Text>
+          </View>
+        )}
+        <View style={styles.gridTileOverlay}>
+          <View style={styles.gridTileBadge}>
+            {hasImage ? (
+              <ImageIcon size={10} color="#fff" />
+            ) : (
+              <FileText size={10} color="#fff" />
+            )}
+          </View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 function ReelGridItem({ reel, onPress, onLongPress, showArchiveBadge }: {
   reel: Reel;
@@ -256,10 +311,14 @@ export default function ProfileScreen() {
     }
   }, [hasActiveStory, stories, router]);
 
-  const ownPostCount = useMemo(
-    () => allPosts.filter((p) => p.userId === 'me').length,
+  const ownFeedPosts = useMemo(
+    () => allPosts.filter((p) => p.userId === 'me').sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    ),
     [allPosts],
   );
+
+  const ownPostCount = ownFeedPosts.length;
 
   const ownReels = useMemo(() => getOwnReels(), [getOwnReels, userReels]);
   const archivedReels = useMemo(() => getArchivedReels(), [getArchivedReels, userReels]);
@@ -363,14 +422,13 @@ export default function ProfileScreen() {
     }
   }, [activeTab, archiveReel, unarchiveReel, deleteReel]);
 
-  const currentTabData = useMemo((): Reel[] => {
+  const currentReelTabData = useMemo((): Reel[] => {
     switch (activeTab) {
-      case 'posts': return allOwnContent;
       case 'tagged': return taggedReels;
       case 'archive': return archivedReels;
       default: return [];
     }
-  }, [activeTab, allOwnContent, taggedReels, archivedReels]);
+  }, [activeTab, taggedReels, archivedReels]);
 
   if (authLoading) {
     return (
@@ -682,7 +740,7 @@ export default function ProfileScreen() {
 
       <View style={styles.statsBar}>
         {[
-          { label: 'Beiträge', value: allOwnContent.length, icon: FileText, onPress: () => handleTabChange('posts') },
+          { label: 'Beiträge', value: ownPostCount, icon: FileText, onPress: () => handleTabChange('posts') },
           { label: 'Freunde', value: friends.length, icon: Users, onPress: () => router.push('/(tabs)/profile/friends' as any) },
           { label: 'Stempel', value: stamps.length, icon: Award, onPress: () => router.push({ pathname: '/user-stamps', params: { userId: 'me' } } as any) },
         ].map((stat, idx) => (
@@ -784,11 +842,25 @@ export default function ProfileScreen() {
         />
       </View>
 
-      {currentTabData.length === 0 ? (
+      {activeTab === 'posts' ? (
+        ownFeedPosts.length === 0 ? (
+          renderEmptyTab()
+        ) : (
+          <View style={styles.gridContainer}>
+            {ownFeedPosts.map((post) => (
+              <PostGridItem
+                key={post.id}
+                post={post}
+                onPress={() => console.log('[PROFILE] Post tapped:', post.id)}
+              />
+            ))}
+          </View>
+        )
+      ) : currentReelTabData.length === 0 ? (
         renderEmptyTab()
       ) : (
         <View style={styles.gridContainer}>
-          {currentTabData.map((reel, idx) => (
+          {currentReelTabData.map((reel) => (
             <ReelGridItem
               key={reel.id}
               reel={reel}
@@ -1220,6 +1292,19 @@ const styles = StyleSheet.create({
   gridTileImage: {
     width: '100%',
     height: '100%',
+  },
+  gridTileTextBg: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1a1710',
+    padding: 8,
+    justifyContent: 'center',
+  },
+  gridTileTextPreview: {
+    color: 'rgba(232,220,200,0.7)',
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '500' as const,
   },
   gridTileOverlay: {
     position: 'absolute',
