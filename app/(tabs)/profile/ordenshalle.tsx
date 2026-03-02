@@ -95,19 +95,18 @@ export default function OrdenshalleScreen() {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <Animated.View style={{ opacity: headerAnim }}>
           <LinearGradient colors={['#1e1d1a', '#1a1918', '#141416']} style={styles.heroSection}>
-            <View style={[styles.customHeader, { paddingTop: insets.top + 8 }]}>
+            <View style={styles.heroPattern}>
+              {[...Array(4)].map((_, i) => (
+                <View key={i} style={[styles.heroLine, { top: 30 + i * 24, opacity: 0.03 + i * 0.005, transform: [{ rotate: '-8deg' }] }]} />
+              ))}
+            </View>
+            <View style={[styles.customHeader, { paddingTop: insets.top + 8, zIndex: 10 }]}>
               <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={12}>
                 <ChevronLeft size={22} color="#BFA35D" />
               </Pressable>
               <Text style={styles.headerTitle}>Ordenshalle</Text>
               <View style={{ width: 40 }} />
             </View>
-            <View style={styles.heroPattern}>
-              {[...Array(4)].map((_, i) => (
-                <View key={i} style={[styles.heroLine, { top: 30 + i * 24, opacity: 0.03 + i * 0.005, transform: [{ rotate: '-8deg' }] }]} />
-              ))}
-            </View>
-
             <View style={styles.heroIcon}>
               <Trophy size={32} color="#BFA35D" />
             </View>
