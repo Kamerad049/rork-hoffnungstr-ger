@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   Animated,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -73,9 +74,13 @@ function TruppCard({ trupp, isMember, onJoin, onLeave, onPress }: {
         onPressOut={handlePressOut}
       >
         <View style={styles.truppHeader}>
-          <View style={styles.truppIconWrap}>
-            <SportIcon size={22} color="#BFA35D" />
-          </View>
+          {trupp.logoUrl ? (
+            <Image source={{ uri: trupp.logoUrl }} style={styles.truppLogo} />
+          ) : (
+            <View style={styles.truppIconWrap}>
+              <SportIcon size={22} color="#BFA35D" />
+            </View>
+          )}
           <View style={styles.truppHeaderInfo}>
             <View style={styles.truppNameRow}>
               <Text style={styles.truppName} numberOfLines={1}>{trupp.name}</Text>
@@ -324,6 +329,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(191,163,93,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  truppLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.15)',
   },
   truppHeaderInfo: {
     flex: 1,

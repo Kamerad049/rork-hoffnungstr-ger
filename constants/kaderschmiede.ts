@@ -52,6 +52,7 @@ export interface Trupp {
   weeklyGoal: string;
   streak: number;
   description: string;
+  logoUrl: string | null;
 }
 
 export interface Challenge {

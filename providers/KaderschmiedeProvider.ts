@@ -66,6 +66,7 @@ function mapDbTrupp(
     createdAt: t.created_at,
     weeklyGoal: t.weekly_goal ?? '',
     streak: t.streak ?? 0,
+    logoUrl: t.logo_url ?? null,
   };
 }
 
@@ -532,6 +533,7 @@ export const [KaderschmiedeProvider, useKaderschmiede] = createContextHook(() =>
         leader_id: userId,
         is_open: trupp.isOpen,
         weekly_goal: trupp.weeklyGoal,
+        logo_url: trupp.logoUrl ?? null,
       })
       .select('*')
       .single();

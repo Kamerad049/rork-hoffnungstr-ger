@@ -9,9 +9,13 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 import {
   ChevronLeft,
   Dumbbell,
@@ -25,9 +29,13 @@ import {
   Check,
   Lock,
   Unlock,
+  Camera,
+  ImagePlus,
+  X,
 } from 'lucide-react-native';
 import { useKaderschmiede } from '@/providers/KaderschmiedeProvider';
 import { SPORT_CATEGORIES, BUNDESLAND_COORDS } from '@/constants/kaderschmiede';
+import { supabase } from '@/lib/supabase';
 import type { SportCategory } from '@/constants/kaderschmiede';
 
 const SPORT_ICON_MAP: Record<SportCategory, React.ComponentType<any>> = {
@@ -57,10 +65,74 @@ export default function CreateTruppScreen() {
   const [bundesland, setBundesland] = useState('');
   const [weeklyGoal, setWeeklyGoal] = useState('');
   const [isOpen, setIsOpen] = useState(true);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
-  const canSubmit = name.trim() && motto.trim() && sport && city.trim() && bundesland && weeklyGoal.trim();
+  const canSubmit = name.trim() && motto.trim() && sport && city.trim() && bundesland && weeklyGoal.trim() && logoUrl;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const pickLogo = useCallback(async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Berechtigung erforderlich', 'Bitte erlaube den Zugriff auf deine Fotos.');
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (result.canceled || !result.assets?.length) return;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setUploadingLogo(true);
+      const asset = result.assets[0];
+      const url = await uploadLogo(asset.uri, asset.mimeType ?? 'image/jpeg');
+      if (url) {
+        setLogoUrl(url);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        Alert.alert('Upload fehlgeschlagen', 'Logo konnte nicht hochgeladen werden.');
+      }
+    } catch (err) {
+      console.log('[CREATE-TRUPP] Logo pick error:', err);
+      Alert.alert('Fehler', 'Logo konnte nicht ausgewählt werden.');
+    } finally {
+      setUploadingLogo(false);
+    }
+  }, []);
+
+  const takeLogo = useCallback(async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Berechtigung erforderlich', 'Bitte erlaube den Zugriff auf deine Kamera.');
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (result.canceled || !result.assets?.length) return;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setUploadingLogo(true);
+      const asset = result.assets[0];
+      const url = await uploadLogo(asset.uri, asset.mimeType ?? 'image/jpeg');
+      if (url) {
+        setLogoUrl(url);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        Alert.alert('Upload fehlgeschlagen', 'Logo konnte nicht hochgeladen werden.');
+      }
+    } catch (err) {
+      console.log('[CREATE-TRUPP] Logo camera error:', err);
+    } finally {
+      setUploadingLogo(false);
+    }
+  }, []);
 
   const handleCreate = useCallback(async () => {
     if (!canSubmit || !sport || isSubmitting) return;
@@ -76,6 +148,7 @@ export default function CreateTruppScreen() {
         bundesland,
         isOpen,
         weeklyGoal: weeklyGoal.trim(),
+        logoUrl,
       });
       Alert.alert('Trupp erstellt!', `"${name}" wurde erfolgreich gegründet.`, [
         { text: 'OK', onPress: () => router.back() },
@@ -86,7 +159,7 @@ export default function CreateTruppScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [canSubmit, name, motto, description, sport, city, bundesland, isOpen, weeklyGoal, createTrupp, router, isSubmitting]);
+  }, [canSubmit, name, motto, description, sport, city, bundesland, isOpen, weeklyGoal, logoUrl, createTrupp, router, isSubmitting]);
 
   return (
     <View style={styles.container}>
@@ -107,6 +180,53 @@ export default function CreateTruppScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+          <View style={styles.field}>
+            <Text style={styles.label}>TRUPP-LOGO *</Text>
+            <View style={styles.logoSection}>
+              {logoUrl ? (
+                <View style={styles.logoPreviewWrap}>
+                  <Image source={{ uri: logoUrl }} style={styles.logoPreview} />
+                  <Pressable
+                    style={styles.logoRemoveBtn}
+                    onPress={() => { setLogoUrl(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                    hitSlop={8}
+                  >
+                    <X size={12} color="#fff" />
+                  </Pressable>
+                </View>
+              ) : uploadingLogo ? (
+                <View style={styles.logoPlaceholder}>
+                  <ActivityIndicator size="small" color="#BFA35D" />
+                  <Text style={styles.logoPlaceholderText}>Wird hochgeladen...</Text>
+                </View>
+              ) : (
+                <View style={styles.logoPlaceholder}>
+                  <ImagePlus size={28} color="rgba(191,163,93,0.3)" />
+                  <Text style={styles.logoPlaceholderText}>Logo hochladen</Text>
+                </View>
+              )}
+              <View style={styles.logoButtons}>
+                <Pressable
+                  style={styles.logoPickBtn}
+                  onPress={pickLogo}
+                  disabled={uploadingLogo}
+                >
+                  <ImagePlus size={16} color="#BFA35D" />
+                  <Text style={styles.logoPickBtnText}>Galerie</Text>
+                </Pressable>
+                {Platform.OS !== 'web' && (
+                  <Pressable
+                    style={styles.logoCameraBtn}
+                    onPress={takeLogo}
+                    disabled={uploadingLogo}
+                  >
+                    <Camera size={16} color="#BFA35D" />
+                  </Pressable>
+                )}
+              </View>
+            </View>
+          </View>
+
           <View style={styles.field}>
             <Text style={styles.label}>NAME *</Text>
             <TextInput
@@ -413,4 +533,126 @@ const styles = StyleSheet.create({
   createBtnTextDisabled: {
     color: 'rgba(20,20,22,0.4)',
   },
+  logoSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  logoPreviewWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 2,
+    borderColor: 'rgba(191,163,93,0.25)',
+  },
+  logoPreview: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+  },
+  logoRemoveBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: 'rgba(42,42,46,0.5)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(191,163,93,0.1)',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  logoPlaceholderText: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: 'rgba(191,163,93,0.3)',
+  },
+  logoButtons: {
+    flex: 1,
+    gap: 8,
+  },
+  logoPickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(42,42,46,0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
+  logoPickBtnText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#BFA35D',
+  },
+  logoCameraBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(42,42,46,0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
 });
+
+async function uploadLogo(uri: string, mimeType: string): Promise<string | null> {
+  try {
+    const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+    const fileName = `trupp-logos/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+    console.log('[CREATE-TRUPP] Uploading logo:', fileName);
+
+    if (Platform.OS === 'web') {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const { data, error } = await supabase.storage
+        .from('admin-uploads')
+        .upload(fileName, blob, { contentType: mimeType, upsert: false });
+      if (error) {
+        console.log('[CREATE-TRUPP] Upload error:', error.message);
+        return null;
+      }
+      const { data: urlData } = supabase.storage.from('admin-uploads').getPublicUrl(data.path);
+      return urlData.publicUrl;
+    }
+
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(blob);
+    });
+
+    const { data, error } = await supabase.storage
+      .from('admin-uploads')
+      .upload(fileName, arrayBuffer, { contentType: mimeType, upsert: false });
+    if (error) {
+      console.log('[CREATE-TRUPP] Upload error:', error.message);
+      return null;
+    }
+    const { data: urlData } = supabase.storage.from('admin-uploads').getPublicUrl(data.path);
+    console.log('[CREATE-TRUPP] Logo URL:', urlData.publicUrl);
+    return urlData.publicUrl;
+  } catch (err) {
+    console.log('[CREATE-TRUPP] Upload exception:', err);
+    return null;
+  }
+}

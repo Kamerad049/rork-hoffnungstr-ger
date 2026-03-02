@@ -7,6 +7,7 @@ import {
   Pressable,
   Animated,
   Alert,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -289,9 +290,13 @@ export default function TruppDetailScreen() {
           </View>
 
           <Animated.View style={[styles.heroContent, { opacity: heroAnim }]}>
-            <View style={styles.truppIconLarge}>
-              <SportIcon size={32} color="#BFA35D" />
-            </View>
+            {trupp.logoUrl ? (
+              <Image source={{ uri: trupp.logoUrl }} style={styles.truppLogoLarge} />
+            ) : (
+              <View style={styles.truppIconLarge}>
+                <SportIcon size={32} color="#BFA35D" />
+              </View>
+            )}
             <Text style={styles.truppName}>{trupp.name}</Text>
             <Text style={styles.truppMotto}>„{trupp.motto}"</Text>
 
@@ -487,6 +492,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(191,163,93,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 14,
+  },
+  truppLogoLarge: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: 'rgba(191,163,93,0.25)',
     marginBottom: 14,
   },
   truppName: {
