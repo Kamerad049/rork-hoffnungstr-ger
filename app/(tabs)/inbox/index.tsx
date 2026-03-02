@@ -22,7 +22,7 @@ import {
   Volume2,
 } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useNotifications, type InboxNotification } from '@/providers/NotificationProvider';
+import { useNotifications, type InboxNotification } from '@/hooks/useNotifications';
 import * as Haptics from 'expo-haptics';
 
 

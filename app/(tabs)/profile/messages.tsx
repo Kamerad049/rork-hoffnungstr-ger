@@ -37,7 +37,7 @@ import {
   ChevronLeft,
 } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useNotifications, type InboxNotification } from '@/providers/NotificationProvider';
+import { useNotifications, type InboxNotification } from '@/hooks/useNotifications';
 import { useChat } from '@/providers/ChatProvider';
 import { useFriends } from '@/providers/FriendsProvider';
 import { getUserById, formatTimeAgo, cleanPanHandlers } from '@/lib/utils';

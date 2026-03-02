@@ -5,9 +5,9 @@ import { Image } from 'expo-image';
 import { MapPin, Heart, ArrowLeft, Navigation, Pencil, X } from 'lucide-react-native';
 import { Linking, Platform } from 'react-native';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useFavorites } from '@/providers/FavoritesProvider';
-import { useTargetReviews } from '@/providers/ReviewProvider';
-import { useContent } from '@/providers/ContentProvider';
+import { useFavorites } from '@/hooks/useFavorites';
+import { useTargetReviews } from '@/hooks/useReviews';
+import { useContent } from '@/hooks/useContent';
 import { useCanEditContent } from '@/hooks/useCanEditContent';
 
 import StarRating from '@/components/StarRating';

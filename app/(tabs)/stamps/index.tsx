@@ -8,8 +8,8 @@ import WaxSealStamp from '@/components/WaxSealStamp';
 import { LinearGradient } from 'expo-linear-gradient';
 import RankIcon from '@/components/RankIcon';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useStampPass } from '@/providers/StampPassProvider';
-import { useContent } from '@/providers/ContentProvider';
+import { useStampPass } from '@/hooks/useStampPass';
+import { useContent } from '@/hooks/useContent';
 
 export default function StampsScreen() {
   const { colors } = useTheme();

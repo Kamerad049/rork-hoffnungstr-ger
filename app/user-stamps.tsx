@@ -8,10 +8,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useFriends } from '@/providers/FriendsProvider';
 import { useSocial } from '@/providers/SocialProvider';
-import { useStampPass } from '@/providers/StampPassProvider';
+import { useStampPass } from '@/hooks/useStampPass';
 import RankIcon from '@/components/RankIcon';
 import { getUserById } from '@/lib/utils';
-import { useContent } from '@/providers/ContentProvider';
+import { useContent } from '@/hooks/useContent';
 
 export default function UserStampsScreen() {
   const { colors } = useTheme();

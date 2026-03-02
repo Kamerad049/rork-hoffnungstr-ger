@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import * as Notifications from 'expo-notifications';
-import { useNotifications } from '@/providers/NotificationProvider';
+import { useNotifications } from '@/hooks/useNotifications';
 import { queryKeys } from '@/constants/queryKeys';
 import type { NewsArticle, Place, Restaurant, FeedPost, SocialUser } from '@/constants/types';
 

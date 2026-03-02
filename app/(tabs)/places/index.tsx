@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TextInput, Pressable, ScrollView, Pla
 import { useRouter } from 'expo-router';
 import { Search, Map as MapIcon, X } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useContent } from '@/providers/ContentProvider';
+import { useContent } from '@/hooks/useContent';
 import { PLACE_CATEGORIES } from '@/constants/types';
 import PlaceCard from '@/components/PlaceCard';
 import type { Place, PlaceCategory } from '@/constants/types';

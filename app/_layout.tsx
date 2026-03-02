@@ -192,11 +192,6 @@ export default function RootLayout() {
   trackRender('RootLayout');
   useEffect(() => {
     markTime('RootLayout_mounted');
-    console.log('[BOOT] Optimized provider architecture: 6 providers converted to plain hooks');
-    console.log('[BOOT] Tier 0: Auth + Theme (immediate)');
-    console.log('[BOOT] Tier 1: 8 deferred providers (flat compose, after interactions)');
-    console.log('[BOOT] Plain hooks (no context): Content, StampPass, Favorites, Reviews, Notifications, Orden');
-    console.log('[BOOT] Route-level: Kaderschmiede (tab), Admin + Moderation (route)');
     SplashScreen.hideAsync();
     setTimeout(() => printReport(), 5000);
   }, []);

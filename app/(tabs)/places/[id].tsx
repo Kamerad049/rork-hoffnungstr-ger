@@ -4,10 +4,10 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
 import { MapPin, Heart, Navigation, ArrowLeft, Route, Stamp, Pencil, X } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useFavorites } from '@/providers/FavoritesProvider';
-import { useStampPass } from '@/providers/StampPassProvider';
-import { useTargetReviews } from '@/providers/ReviewProvider';
-import { useContent } from '@/providers/ContentProvider';
+import { useFavorites } from '@/hooks/useFavorites';
+import { useStampPass } from '@/hooks/useStampPass';
+import { useTargetReviews } from '@/hooks/useReviews';
+import { useContent } from '@/hooks/useContent';
 import { useCanEditContent } from '@/hooks/useCanEditContent';
 
 import { PLACE_CATEGORIES } from '@/constants/types';

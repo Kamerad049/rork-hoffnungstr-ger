@@ -16,7 +16,7 @@ import {
   TIER_COLORS, TIER_NAMES, CATEGORY_NAMES,
   type OrdenDefinition, type OrdenTier, type OrdenCategory,
 } from '@/constants/orden';
-import { useOrden } from '@/providers/OrdenProvider';
+import { useOrden } from '@/hooks/useOrden';
 import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

@@ -4,9 +4,9 @@ import OptimizedImage from '@/components/OptimizedImage';
 import { MapPin, Heart } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useFavorites } from '@/providers/FavoritesProvider';
+import { useFavorites } from '@/hooks/useFavorites';
 import StarRating from './StarRating';
-import { useTargetReviews } from '@/providers/ReviewProvider';
+import { useTargetReviews } from '@/hooks/useReviews';
 import type { Restaurant } from '@/constants/types';
 import * as Haptics from 'expo-haptics';
 

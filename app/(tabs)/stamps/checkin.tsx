@@ -8,8 +8,8 @@ import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useStampPass } from '@/providers/StampPassProvider';
-import { useContent } from '@/providers/ContentProvider';
+import { useStampPass } from '@/hooks/useStampPass';
+import { useContent } from '@/hooks/useContent';
 import WaxSealCeremony from '@/components/WaxSealCeremony';
 import WaxSealStamp from '@/components/WaxSealStamp';
 

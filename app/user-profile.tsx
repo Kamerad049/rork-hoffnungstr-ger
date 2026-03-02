@@ -21,7 +21,7 @@ import WavingFlag from '@/components/WavingFlag';
 import OrdenBadge from '@/components/OrdenBadge';
 import NowPlayingWidget from '@/components/NowPlayingWidget';
 import { useSpotify } from '@/providers/SpotifyProvider';
-import { useUserOrdenQuery } from '@/providers/OrdenProvider';
+import { useUserOrdenQuery } from '@/hooks/useOrden';
 import * as Haptics from 'expo-haptics';
 import { Alert } from 'react-native';
 

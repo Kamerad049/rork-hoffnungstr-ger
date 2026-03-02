@@ -4,7 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { Calendar, User, Pencil, X, ImageOff } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useContent } from '@/providers/ContentProvider';
+import { useContent } from '@/hooks/useContent';
 import { useCanEditContent } from '@/hooks/useCanEditContent';
 
 import * as Haptics from 'expo-haptics';

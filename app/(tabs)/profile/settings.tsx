@@ -23,7 +23,7 @@ import {
 import { useFriends } from '@/providers/FriendsProvider';
 import { useChat } from '@/providers/ChatProvider';
 import { useReels } from '@/providers/ReelsProvider';
-import { useStampPass } from '@/providers/StampPassProvider';
+import { useStampPass } from '@/hooks/useStampPass';
 import { useAuth } from '@/providers/AuthProvider';
 
 import * as Haptics from 'expo-haptics';

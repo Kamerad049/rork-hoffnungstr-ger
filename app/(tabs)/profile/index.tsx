@@ -51,7 +51,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { trackRender, measureSinceBoot } from '@/lib/perf';
-import { useStampPass } from '@/providers/StampPassProvider';
+import { useStampPass } from '@/hooks/useStampPass';
 import { useLiveLocation } from '@/providers/LiveLocationProvider';
 import { useSocial } from '@/providers/SocialProvider';
 import { useFriends } from '@/providers/FriendsProvider';
@@ -70,7 +70,7 @@ import * as Haptics from 'expo-haptics';
 import type { Reel } from '@/constants/types';
 import OrdenBadge from '@/components/OrdenBadge';
 import { TIER_COLORS, TIER_NAMES, type OrdenDefinition } from '@/constants/orden';
-import { useOrden } from '@/providers/OrdenProvider';
+import { useOrden } from '@/hooks/useOrden';
 import { Trophy } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

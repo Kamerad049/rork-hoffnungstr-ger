@@ -4,7 +4,7 @@ import { ThumbsUp, ThumbsDown, Send, MessageSquare, LogIn } from 'lucide-react-n
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useAuth } from '@/providers/AuthProvider';
-import { useReviews, useTargetReviews } from '@/providers/ReviewProvider';
+import { useReviews, useTargetReviews } from '@/hooks/useReviews';
 import MonumentRatingIcon from '@/components/MonumentRatingIcon';
 import BrezelRatingIcon from '@/components/BrezelRatingIcon';
 import StarRating from '@/components/StarRating';
