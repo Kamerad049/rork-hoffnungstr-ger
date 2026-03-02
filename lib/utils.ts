@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { getCachedUser } from '@/lib/userCache';
 import type { SocialUser } from '@/constants/types';
 
@@ -21,6 +22,7 @@ export function formatTimeAgo(dateStr: string): string {
 }
 
 export function cleanPanHandlers(panHandlers: Record<string, unknown>): Record<string, unknown> {
+  if (Platform.OS === 'web') return {};
   const cleaned: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(panHandlers)) {
     if (key && key.length > 0 && typeof value === 'function') {
