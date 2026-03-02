@@ -70,9 +70,9 @@ const DEFAULT_LAT = 51.0;
 
 const DOT_COUNT = 60;
 const DOT_SIZE = 2;
-const DOT_RADIUS = 76;
-const SUN_ICON_SIZE = 16;
-const SUN_HIT_SIZE = 44;
+const DOT_RADIUS = 84;
+const SUN_ICON_SIZE = 18;
+const SUN_HIT_SIZE = 52;
 const CONTAINER_SIZE = DOT_RADIUS * 2 + SUN_ICON_SIZE + 8;
 
 function getDayOfYear(): number {
@@ -402,10 +402,10 @@ const styles = StyleSheet.create({
   },
   childContainer: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: DOT_RADIUS - 50,
+    left: DOT_RADIUS - 50,
+    right: DOT_RADIUS - 50,
+    bottom: DOT_RADIUS - 50,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 3,
