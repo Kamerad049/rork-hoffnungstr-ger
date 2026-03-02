@@ -18,6 +18,7 @@ import {
   PanResponderGestureState,
   PanResponder,
 } from 'react-native';
+import { cleanPanHandlers } from '@/lib/utils';
 import { useRouter, Stack } from 'expo-router';
 import {
   ArrowLeft,
@@ -1027,7 +1028,7 @@ export default function CreatePostScreen() {
 
             {hasImage ? (
               <View style={styles.imageSection}>
-                <View style={styles.imageFrame} {...imagePanResponder.panHandlers}>
+                <View style={styles.imageFrame} {...cleanPanHandlers(imagePanResponder.panHandlers)}>
                   <Animated.View
                     style={[
                       styles.imageInner,

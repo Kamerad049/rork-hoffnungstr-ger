@@ -20,6 +20,16 @@ export function formatTimeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('de-DE');
 }
 
+export function cleanPanHandlers(panHandlers: Record<string, unknown>): Record<string, unknown> {
+  const cleaned: Record<string, unknown> = {};
+  for (const key of Object.keys(panHandlers)) {
+    if (key !== '') {
+      cleaned[key] = panHandlers[key];
+    }
+  }
+  return cleaned;
+}
+
 export function formatReelCount(count: number): string {
   if (count >= 1000000) {
     return `${(count / 1000000).toFixed(1)}M`;

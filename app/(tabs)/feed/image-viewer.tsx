@@ -12,6 +12,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { cleanPanHandlers } from '@/lib/utils';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -127,7 +128,7 @@ export default function ImageViewerScreen() {
             ],
           },
         ]}
-        {...panResponder.panHandlers}
+        {...cleanPanHandlers(panResponder.panHandlers)}
       >
         <Pressable style={styles.imagePressable} onPress={dismissWithAnimation}>
           <Image

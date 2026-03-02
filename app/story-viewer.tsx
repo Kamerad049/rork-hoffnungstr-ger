@@ -22,7 +22,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useStories, STORY_DURATION_SECONDS } from '@/providers/StoriesProvider';
 import { useSocial } from '@/providers/SocialProvider';
-import { getUserById, formatTimeAgo } from '@/lib/utils';
+import { getUserById, formatTimeAgo, cleanPanHandlers } from '@/lib/utils';
 import type { StoryItem, StoryGroup, SocialUser } from '@/constants/types';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -381,7 +381,7 @@ export default function StoryViewerScreen() {
 
       <Animated.View
         style={[styles.dismissWrap, { transform: dismissAnim.getTranslateTransform(), opacity: dismissOpacity }]}
-        {...panResponder.panHandlers}
+        {...cleanPanHandlers(panResponder.panHandlers)}
       >
       <Pressable
         style={styles.touchArea}

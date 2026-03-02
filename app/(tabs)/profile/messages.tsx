@@ -40,7 +40,7 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { useNotifications, type InboxNotification } from '@/providers/NotificationProvider';
 import { useChat } from '@/providers/ChatProvider';
 import { useFriends } from '@/providers/FriendsProvider';
-import { getUserById, formatTimeAgo } from '@/lib/utils';
+import { getUserById, formatTimeAgo, cleanPanHandlers } from '@/lib/utils';
 import type { Conversation } from '@/constants/types';
 import * as Haptics from 'expo-haptics';
 
@@ -521,7 +521,7 @@ function SwipeableChatItem({
         </Animated.View>
         <Animated.View
           style={[styles.chatSlider, { transform: [{ translateX }], backgroundColor: colors.surface }]}
-          {...panResponder.panHandlers}
+          {...cleanPanHandlers(panResponder.panHandlers)}
         >
           <Pressable
             style={[styles.chatItem, { backgroundColor: colors.surface }]}

@@ -18,6 +18,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Stack } from 'expo-router';
 import { X, Send, ImagePlus, Type, Trash2 } from 'lucide-react-native';
+import { cleanPanHandlers } from '@/lib/utils';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
@@ -318,7 +319,7 @@ export default function CreateStoryScreen() {
         <Pressable
           style={[styles.preview, !imageUri && { backgroundColor: selectedBg }]}
           onPress={handleBackgroundPress}
-          {...imagePanResponder.panHandlers}
+          {...cleanPanHandlers(imagePanResponder.panHandlers)}
         >
           {imageUri && (
             <Animated.Image
@@ -417,7 +418,7 @@ export default function CreateStoryScreen() {
                   ],
                 },
               ]}
-              {...textPanResponder.panHandlers}
+              {...cleanPanHandlers(textPanResponder.panHandlers)}
             >
               <Pressable
                 onPress={() => {

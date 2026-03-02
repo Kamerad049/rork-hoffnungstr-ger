@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { cleanPanHandlers } from '@/lib/utils';
 import { Mail, Lock, ChevronRight, Eye, EyeOff } from 'lucide-react-native';
 import { useAuth } from '@/providers/AuthProvider';
 import { Switch } from 'react-native';
@@ -452,7 +453,7 @@ export default function LoginScreen() {
                 styles.sliderKnob,
                 { transform: [{ translateX: sliderX }, { scale: pulseAnim }] },
               ]}
-              {...panResponder.panHandlers}
+              {...cleanPanHandlers(panResponder.panHandlers)}
             >
               <Image
                 source={require('@/assets/images/slider-button.png')}
