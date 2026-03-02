@@ -45,6 +45,7 @@ interface FeedCardProps {
   onLocationPress?: (location: string) => void;
   onEditPress?: (post: FeedPost) => void;
   onArchivePress?: (postId: string) => void;
+  onDeletePress?: (postId: string) => void;
   onToggleCommentsPress?: (postId: string) => void;
   reaction: PostReactionType | null;
   onReaction: (postId: string, type: PostReactionType) => void;
@@ -61,6 +62,7 @@ function FeedCardInner({
   onLocationPress,
   onEditPress,
   onArchivePress,
+  onDeletePress,
   onToggleCommentsPress,
   reaction,
   onReaction,
@@ -326,7 +328,19 @@ function FeedCardInner({
 
       <Pressable
         style={StyleSheet.absoluteFill}
-        onPress={handleCardPress}
+        onPress={() => {
+          if (showOwnMenu) {
+            setShowOwnMenu(false);
+            ownMenuAnim.setValue(0);
+            return;
+          }
+          if (showTaggedPeople) {
+            setShowTaggedPeople(false);
+            taggedPeopleAnim.setValue(0);
+            return;
+          }
+          handleCardPress();
+        }}
 
         testID={`feed-card-${post.id}`}
       />
@@ -448,6 +462,18 @@ function FeedCardInner({
               >
                 <Archive size={15} color="#E8DCC8" />
                 <Text style={cardStyles.ownMenuItemText}>Archivieren</Text>
+              </Pressable>
+              <View style={cardStyles.ownMenuDivider} />
+              <Pressable
+                style={cardStyles.ownMenuItem}
+                onPress={() => {
+                  setShowOwnMenu(false);
+                  ownMenuAnim.setValue(0);
+                  onDeletePress?.(post.id);
+                }}
+              >
+                <Trash2 size={15} color="#C0392B" />
+                <Text style={[cardStyles.ownMenuItemText, { color: '#C0392B' }]}>Löschen</Text>
               </Pressable>
             </Animated.View>
           )}
