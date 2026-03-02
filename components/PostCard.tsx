@@ -6,6 +6,7 @@ import RankIcon from '@/components/RankIcon';
 import { useTheme } from '@/providers/ThemeProvider';
 import { usePosts } from '@/providers/PostsProvider';
 import { useAuth } from '@/providers/AuthProvider';
+import { useSocial } from '@/providers/SocialProvider';
 import { getUserById, formatTimeAgo } from '@/lib/utils';
 import type { FeedPost } from '@/constants/types';
 import * as Haptics from 'expo-haptics';
@@ -21,15 +22,16 @@ function PostCardInner({ post, onCommentPress, onUserPress }: PostCardProps) {
   const { colors } = useTheme();
   const { toggleLike, isLiked } = usePosts();
   const { user } = useAuth();
+  const { profile: socialProfile } = useSocial();
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const author = post.userId === 'me'
     ? {
-        displayName: user?.name ?? 'Ich',
+        displayName: socialProfile?.displayName || user?.name || 'Ich',
         username: user?.name?.toLowerCase().replace(/\s/g, '_') ?? 'ich',
         rankIcon: 'Compass',
         rank: 'Entdecker',
-        avatarUrl: null as string | null,
+        avatarUrl: socialProfile?.avatarUrl ?? null,
       }
     : (() => {
         const u = getUserById(post.userId);

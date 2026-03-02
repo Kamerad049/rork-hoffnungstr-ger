@@ -59,7 +59,7 @@ function FeedCardInner({
   isActive = true,
 }: FeedCardProps) {
   const { toggleLike, isLiked } = usePosts();
-  const { isUserFlagActive } = useSocial();
+  const { isUserFlagActive, profile: socialProfile } = useSocial();
   const { user } = useAuth();
 
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
@@ -75,11 +75,11 @@ function FeedCardInner({
 
   const author = post.userId === 'me'
     ? {
-        displayName: user?.name ?? 'Ich',
+        displayName: socialProfile?.displayName || user?.name || 'Ich',
         username: user?.name?.toLowerCase().replace(/\s/g, '_') ?? 'ich',
         rankIcon: 'Compass',
         rank: 'Entdecker',
-        avatarUrl: null as string | null,
+        avatarUrl: socialProfile?.avatarUrl ?? null,
       }
     : (() => {
         const u = getUserById(post.userId);
