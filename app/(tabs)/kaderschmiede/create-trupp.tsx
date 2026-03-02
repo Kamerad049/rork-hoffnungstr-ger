@@ -168,7 +168,7 @@ export default function CreateTruppScreen() {
           <ChevronLeft size={22} color="#BFA35D" />
         </Pressable>
         <Text style={styles.headerTitle}>Trupp gründen</Text>
-        <View style={styles.backBtn} />
+        <View style={{ width: 40 }} />
       </View>
 
       <KeyboardAvoidingView
@@ -579,6 +579,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600' as const,
     color: 'rgba(191,163,93,0.3)',
+    textAlign: 'center' as const,
   },
   logoButtons: {
     flex: 1,
