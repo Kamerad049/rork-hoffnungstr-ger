@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rork-app",
+    "sdkVersion": "54.0.0",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
