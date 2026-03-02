@@ -41,6 +41,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const [stayLoggedIn, setStayLoggedIn] = useState<boolean>(true);
   const initDone = useRef<boolean>(false);
   const retryCount = useRef<number>(0);
+  const userRef = useRef<AuthUser | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(STAY_LOGGED_IN_KEY).then((val) => {
@@ -88,6 +89,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const forceLogout = useCallback(async () => {
     console.log('[AUTH] Force logout - clearing state');
     setUser(null);
+    userRef.current = null;
     setSession(null);
     try {
       await supabase.auth.signOut();
@@ -128,6 +130,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         const profile = await fetchProfile(currentSession.user);
         if (profile) {
           setUser(profile);
+          userRef.current = profile;
           retryCount.current = 0;
         } else {
           console.log('[AUTH] Profile fetch failed on init, retrying once...');
@@ -135,10 +138,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           const retryProfile = await fetchProfile(currentSession.user);
           if (retryProfile) {
             setUser(retryProfile);
+            userRef.current = retryProfile;
             retryCount.current = 0;
           } else {
             console.log('[AUTH] Profile fetch failed after retry - session exists but no profile');
             setUser(null);
+            userRef.current = null;
           }
         }
       } catch (e: any) {
@@ -168,20 +173,26 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         if (event === 'TOKEN_REFRESHED') {
           console.log('[AUTH] Token refreshed successfully');
           setSession(newSession);
+          if (userRef.current) {
+            console.log('[AUTH] Token refreshed, user already set — skipping profile fetch');
+          }
           return;
         }
 
         if (newSession?.user) {
           setSession(newSession);
-          if (!user) {
+          if (!userRef.current) {
+            console.log('[AUTH] No user in ref, fetching profile after auth state change');
             const profile = await fetchProfile(newSession.user);
             if (profile) {
               setUser(profile);
+              userRef.current = profile;
             }
           }
         } else if (!newSession) {
           console.log('[AUTH] Session lost (null session in state change)');
           setUser(null);
+          userRef.current = null;
           setSession(null);
         }
       });
@@ -221,6 +232,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       const profile = await fetchProfile(data.user);
       if (profile) {
         setUser(profile);
+        userRef.current = profile;
         retryCount.current = 0;
         return profile;
       }
@@ -270,6 +282,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         isAdmin: false,
       };
       setUser(authUser);
+      userRef.current = authUser;
       return authUser;
     }
 
@@ -289,6 +302,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const logout = useCallback(async () => {
     console.log('[AUTH] Logging out');
     setUser(null);
+    userRef.current = null;
     setSession(null);
     try {
       const { error } = await supabase.auth.signOut();

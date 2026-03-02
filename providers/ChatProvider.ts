@@ -39,15 +39,15 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   useEffect(() => {
     if (!user) return;
-    const load = async () => {
+    const loadInboxPreview = async () => {
       try {
-        console.log('[CHAT] Loading messages for user:', userId);
+        console.log('[CHAT] Loading inbox preview (latest per conversation) for user:', userId);
         const { data } = await supabase
           .from('chat_messages')
           .select('*')
           .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`)
           .order('created_at', { ascending: false })
-          .limit(500);
+          .limit(PAGE_SIZE * 3);
 
         const msgMap: Record<string, ChatMessage[]> = {};
         for (const m of (data ?? [])) {
@@ -56,12 +56,12 @@ export const [ChatProvider, useChat] = createContextHook(() => {
           msgMap[partnerId].push(msg);
         }
         setMessages(msgMap);
-        console.log('[CHAT] Loaded messages for', Object.keys(msgMap).length, 'conversations');
+        console.log('[CHAT] Inbox preview loaded for', Object.keys(msgMap).length, 'conversations,', (data ?? []).length, 'messages total');
       } catch (e) {
-        console.log('[CHAT] Load error:', e);
+        console.log('[CHAT] Inbox preview load error:', e);
       }
     };
-    load();
+    loadInboxPreview();
   }, [user, userId, mapRow]);
 
   useEffect(() => {
