@@ -13,25 +13,29 @@ import {
   Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { ArrowLeft, Send, Shield, CornerDownRight, ChevronDown, MapPin, Share2, Bookmark } from 'lucide-react-native';
+import { ArrowLeft, Send, CornerDownRight, ChevronDown, MapPin, Share2, Bookmark } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import OptimizedImage, { OptimizedAvatar } from '@/components/OptimizedImage';
 import RankIcon from '@/components/RankIcon';
 import FloatingReactions from '@/components/FloatingReactions';
+import { RespektIcon, AnerkennungIcon, ZuspruchIcon, VerbundenheitIcon, EhreIcon } from '@/components/ReactionIcons';
 import { usePosts } from '@/providers/PostsProvider';
 import { useSocial } from '@/providers/SocialProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { getUserById, formatTimeAgo } from '@/lib/utils';
 import type { PostComment } from '@/constants/types';
 
-type PostReactionType = 'respekt' | 'anerkennung' | 'zuspruch' | 'verbundenheit';
+type PostReactionType = 'respekt' | 'anerkennung' | 'zuspruch' | 'verbundenheit' | 'ehre';
 
-const REACTION_CONFIG: { type: PostReactionType; emoji: string; label: string }[] = [
-  { type: 'respekt', emoji: '🛡️', label: 'Respekt' },
-  { type: 'anerkennung', emoji: '⭐', label: 'Anerkennung' },
-  { type: 'zuspruch', emoji: '💪', label: 'Zuspruch' },
-  { type: 'verbundenheit', emoji: '🤝', label: 'Verbundenheit' },
+type ReactionSvgComponent = React.FC<{ size?: number; color?: string; fill?: string }>;
+
+const REACTION_CONFIG: { type: PostReactionType; SvgIcon: ReactionSvgComponent; emoji: string; label: string }[] = [
+  { type: 'respekt', SvgIcon: RespektIcon, emoji: '🛡️', label: 'Respekt' },
+  { type: 'anerkennung', SvgIcon: AnerkennungIcon, emoji: '⭐', label: 'Anerkennung' },
+  { type: 'zuspruch', SvgIcon: ZuspruchIcon, emoji: '💪', label: 'Zuspruch' },
+  { type: 'verbundenheit', SvgIcon: VerbundenheitIcon, emoji: '🤝', label: 'Verbundenheit' },
+  { type: 'ehre', SvgIcon: EhreIcon, emoji: '🏆', label: 'Ehre' },
 ];
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -62,6 +66,7 @@ export default function PostDetailScreen() {
   const inputRef = useRef<TextInput>(null);
   const defendAnims = useRef<Record<string, Animated.Value>>({}).current;
   const reactionPickerAnim = useRef(new Animated.Value(0)).current;
+  const reactionItemAnims = useRef(REACTION_CONFIG.map(() => new Animated.Value(0))).current;
   const likeScaleAnim = useRef(new Animated.Value(1)).current;
 
   const post = useMemo(() => allPosts.find((p) => p.id === postId), [allPosts, postId]);
@@ -186,7 +191,27 @@ export default function PostDetailScreen() {
       tension: 200,
       friction: 15,
     }).start();
-  }, [reactionPickerAnim]);
+    reactionItemAnims.forEach((anim, idx) => {
+      Animated.spring(anim, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 180,
+        friction: 12,
+        delay: idx * 60,
+      }).start();
+    });
+  }, [reactionPickerAnim, reactionItemAnims]);
+
+  const closeReactionPicker = useCallback(() => {
+    Animated.timing(reactionPickerAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowReactionPicker(false);
+      reactionItemAnims.forEach((a) => a.setValue(0));
+    });
+  }, [reactionPickerAnim, reactionItemAnims]);
 
   const handleReaction = useCallback((type: PostReactionType, emoji: string) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -194,10 +219,12 @@ export default function PostDetailScreen() {
     if (postId && !liked) toggleLike(postId);
     setFloatingEmoji(emoji);
     setFloatingTrigger((prev) => prev + 1);
-    Animated.timing(reactionPickerAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
-      setShowReactionPicker(false);
-    });
-  }, [postId, liked, toggleLike, reactionPickerAnim]);
+    closeReactionPicker();
+    Animated.sequence([
+      Animated.spring(likeScaleAnim, { toValue: 1.3, useNativeDriver: true, speed: 50 }),
+      Animated.spring(likeScaleAnim, { toValue: 1, useNativeDriver: true, speed: 50 }),
+    ]).start();
+  }, [postId, liked, toggleLike, closeReactionPicker, likeScaleAnim]);
 
   const handleSave = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -221,6 +248,7 @@ export default function PostDetailScreen() {
   const hasImage = post.mediaUrls.length > 0;
   const initial = author.displayName.charAt(0).toUpperCase();
   const activeReaction = reaction ? REACTION_CONFIG.find((r) => r.type === reaction) : null;
+  const imageContainerRef = useRef<View>(null);
 
   const renderComment = (item: PostComment, isReply: boolean) => {
     const isMe = item.userId === 'me';
@@ -325,13 +353,85 @@ export default function PostDetailScreen() {
           </Pressable>
 
           {hasImage && (
-            <View style={styles.imageContainer}>
+            <View ref={imageContainerRef} style={styles.imageContainer}>
               <OptimizedImage
                 source={{ uri: post.mediaUrls[0] }}
                 style={styles.postImage}
                 contentFit="cover"
                 variant="dark"
               />
+              <Pressable
+                style={StyleSheet.absoluteFill}
+                onLongPress={handleLongPressLike}
+                delayLongPress={400}
+              />
+              {showReactionPicker && (
+                <Animated.View
+                  style={[
+                    styles.reactionOverlay,
+                    { opacity: reactionPickerAnim },
+                  ]}
+                >
+                  <Pressable style={StyleSheet.absoluteFill} onPress={closeReactionPicker} />
+                  <Animated.View
+                    style={[
+                      styles.reactionBubble,
+                      {
+                        transform: [{
+                          scale: reactionPickerAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.6, 1],
+                          }),
+                        }],
+                      },
+                    ]}
+                  >
+                    <Text style={styles.reactionTitle}>Bewertung wählen</Text>
+                    <View style={styles.reactionRow}>
+                      {REACTION_CONFIG.map((r, idx) => {
+                        const isChosen = reaction === r.type;
+                        return (
+                          <Animated.View
+                            key={r.type}
+                            style={{
+                              opacity: reactionItemAnims[idx],
+                              transform: [{
+                                translateY: reactionItemAnims[idx].interpolate({
+                                  inputRange: [0, 1],
+                                  outputRange: [20, 0],
+                                }),
+                              }, {
+                                scale: reactionItemAnims[idx].interpolate({
+                                  inputRange: [0, 0.5, 1],
+                                  outputRange: [0.5, 1.1, 1],
+                                }),
+                              }],
+                            }}
+                          >
+                            <Pressable
+                              style={[
+                                styles.reactionBtn,
+                                isChosen && styles.reactionBtnActive,
+                              ]}
+                              onPress={() => handleReaction(r.type, r.emoji)}
+                            >
+                              <r.SvgIcon
+                                size={28}
+                                color={isChosen ? '#BFA35D' : 'rgba(232,220,200,0.7)'}
+                                fill={isChosen ? 'rgba(191,163,93,0.15)' : 'none'}
+                              />
+                              <Text style={[
+                                styles.reactionLabel,
+                                isChosen && styles.reactionLabelActive,
+                              ]}>{r.label}</Text>
+                            </Pressable>
+                          </Animated.View>
+                        );
+                      })}
+                    </View>
+                  </Animated.View>
+                </Animated.View>
+              )}
             </View>
           )}
 
@@ -366,12 +466,16 @@ export default function PostDetailScreen() {
               >
                 <Animated.View style={{ transform: [{ scale: likeScaleAnim }] }}>
                   {activeReaction ? (
-                    <Text style={styles.actionEmoji}>{activeReaction.emoji}</Text>
-                  ) : (
-                    <Shield
+                    <activeReaction.SvgIcon
                       size={22}
                       color={liked ? '#BFA35D' : 'rgba(232,220,200,0.5)'}
-                      fill={liked ? 'rgba(191,163,93,0.3)' : 'transparent'}
+                      fill={liked ? 'rgba(191,163,93,0.2)' : 'none'}
+                    />
+                  ) : (
+                    <RespektIcon
+                      size={22}
+                      color={liked ? '#BFA35D' : 'rgba(232,220,200,0.5)'}
+                      fill={liked ? 'rgba(191,163,93,0.2)' : 'none'}
                     />
                   )}
                 </Animated.View>
@@ -394,37 +498,72 @@ export default function PostDetailScreen() {
             </Pressable>
           </View>
 
-          {showReactionPicker && (
+          {!hasImage && showReactionPicker && (
             <Animated.View
               style={[
-                styles.reactionPicker,
+                styles.noImageReactionOverlay,
                 {
                   opacity: reactionPickerAnim,
                   transform: [{
                     scale: reactionPickerAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [0.8, 1],
+                      outputRange: [0.6, 1],
                     }),
                   }],
                 },
               ]}
             >
-              {REACTION_CONFIG.map((r) => {
-                const isChosen = reaction === r.type;
-                return (
-                  <Pressable
-                    key={r.type}
-                    style={[styles.reactionPickerBtn, isChosen && styles.reactionPickerBtnActive]}
-                    onPress={() => handleReaction(r.type, r.emoji)}
-                  >
-                    <Text style={styles.reactionPickerEmoji}>{r.emoji}</Text>
-                    <Text style={[styles.reactionPickerLabel, isChosen && styles.reactionPickerLabelActive]}>
-                      {r.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+              <Text style={styles.reactionTitle}>Bewertung wählen</Text>
+              <View style={styles.reactionRow}>
+                {REACTION_CONFIG.map((r, idx) => {
+                  const isChosen = reaction === r.type;
+                  return (
+                    <Animated.View
+                      key={r.type}
+                      style={{
+                        opacity: reactionItemAnims[idx],
+                        transform: [{
+                          translateY: reactionItemAnims[idx].interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [20, 0],
+                          }),
+                        }, {
+                          scale: reactionItemAnims[idx].interpolate({
+                            inputRange: [0, 0.5, 1],
+                            outputRange: [0.5, 1.1, 1],
+                          }),
+                        }],
+                      }}
+                    >
+                      <Pressable
+                        style={[
+                          styles.reactionBtn,
+                          isChosen && styles.reactionBtnActive,
+                        ]}
+                        onPress={() => handleReaction(r.type, r.emoji)}
+                      >
+                        <r.SvgIcon
+                          size={28}
+                          color={isChosen ? '#BFA35D' : 'rgba(232,220,200,0.7)'}
+                          fill={isChosen ? 'rgba(191,163,93,0.15)' : 'none'}
+                        />
+                        <Text style={[
+                          styles.reactionLabel,
+                          isChosen && styles.reactionLabelActive,
+                        ]}>{r.label}</Text>
+                      </Pressable>
+                    </Animated.View>
+                  );
+                })}
+              </View>
             </Animated.View>
+          )}
+
+          {reaction && activeReaction && (
+            <View style={styles.reactionIndicator}>
+              <activeReaction.SvgIcon size={14} color="#BFA35D" fill="rgba(191,163,93,0.15)" />
+              <Text style={styles.reactionIndicatorLabel}>{activeReaction.label}</Text>
+            </View>
           )}
 
           <View style={styles.commentsSectionHeader}>
@@ -682,47 +821,89 @@ const styles = StyleSheet.create({
   actionCountActive: {
     color: '#BFA35D',
   },
-  reactionPicker: {
-    flexDirection: 'row',
+  reactionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: 'rgba(20,18,16,0.95)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.15)',
-    ...(Platform.OS !== 'web'
-      ? { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16 }
-      : {}),
-    elevation: 12,
-  },
-  reactionPickerBtn: {
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 14,
+    zIndex: 100,
+  },
+  reactionBubble: {
+    backgroundColor: 'rgba(20,18,16,0.97)',
+    borderRadius: 24,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.2)',
+    alignItems: 'center',
+    ...(Platform.OS !== 'web'
+      ? { shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.6, shadowRadius: 24 }
+      : {}),
+    elevation: 20,
+  },
+  reactionTitle: {
+    color: 'rgba(232,220,200,0.6)',
+    fontSize: 12,
+    fontWeight: '600' as const,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase' as const,
+    marginBottom: 16,
+  },
+  reactionRow: {
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  reactionBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 16,
     backgroundColor: 'rgba(191,163,93,0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.08)',
-    minWidth: 68,
+    borderColor: 'rgba(191,163,93,0.1)',
+    minWidth: 58,
   },
-  reactionPickerBtnActive: {
+  reactionBtnActive: {
     backgroundColor: 'rgba(191,163,93,0.18)',
-    borderColor: 'rgba(191,163,93,0.3)',
+    borderColor: 'rgba(191,163,93,0.35)',
   },
-  reactionPickerEmoji: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  reactionPickerLabel: {
-    color: 'rgba(232,220,200,0.5)',
-    fontSize: 9,
+  reactionLabel: {
+    color: 'rgba(232,220,200,0.6)',
+    fontSize: 10,
     fontWeight: '600' as const,
+    textAlign: 'center' as const,
   },
-  reactionPickerLabelActive: {
+  reactionLabelActive: {
     color: '#BFA35D',
+  },
+  noImageReactionOverlay: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    borderRadius: 24,
+    backgroundColor: 'rgba(20,18,16,0.97)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.2)',
+    ...(Platform.OS !== 'web'
+      ? { shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.6, shadowRadius: 24 }
+      : {}),
+    elevation: 20,
+  },
+  reactionIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  reactionIndicatorLabel: {
+    color: 'rgba(191,163,93,0.6)',
+    fontSize: 11,
+    fontWeight: '600' as const,
   },
   commentsSectionHeader: {
     paddingHorizontal: 16,
