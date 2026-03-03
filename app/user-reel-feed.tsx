@@ -249,6 +249,7 @@ const PostFeedItem = React.memo(function PostFeedItem({
               }],
             },
           ]}
+          pointerEvents="auto"
         >
           <Pressable
             style={itemStyles.menuItem}
@@ -332,6 +333,7 @@ const PostFeedItem = React.memo(function PostFeedItem({
               }],
             },
           ]}
+          pointerEvents="auto"
         >
           <View style={itemStyles.taggedDropdownHeader}>
             <Text style={itemStyles.taggedDropdownTitle}>Markiert</Text>
@@ -663,6 +665,7 @@ const styles = StyleSheet.create({
 const itemStyles = StyleSheet.create({
   container: {
     paddingBottom: 16,
+    position: 'relative' as const,
   },
   header: {
     flexDirection: 'row',
@@ -670,6 +673,7 @@ const itemStyles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    zIndex: 20,
   },
   authorRow: {
     flexDirection: 'row',
@@ -754,8 +758,11 @@ const itemStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   menuDropdown: {
-    marginHorizontal: 16,
-    marginBottom: 8,
+    position: 'absolute' as const,
+    top: 58,
+    left: 16,
+    right: 16,
+    zIndex: 50,
     backgroundColor: '#1e1e20',
     borderRadius: 14,
     borderWidth: 0.5,
@@ -789,8 +796,11 @@ const itemStyles = StyleSheet.create({
     marginHorizontal: 14,
   },
   taggedDropdown: {
-    marginHorizontal: 16,
-    marginBottom: 8,
+    position: 'absolute' as const,
+    top: 58,
+    left: 16,
+    right: 16,
+    zIndex: 50,
     backgroundColor: '#1e1e20',
     borderRadius: 14,
     borderWidth: 0.5,
