@@ -11,10 +11,33 @@
 --   - CREATE TABLE IF NOT EXISTS = ueberspringt wenn Tabelle existiert
 --   - ALTER TABLE ADD COLUMN IF NOT EXISTS = ueberspringt wenn Spalte existiert
 --   - DROP POLICY IF EXISTS = loescht alte Policy bevor neue erstellt wird
---   - DO $$ ... IF NOT EXISTS = prueft vor Constraint-Erstellung
+--   - DO $ ... IF NOT EXISTS = prueft vor Constraint-Erstellung
 --
 -- Du kannst es also MEHRFACH ausfuehren ohne Fehler.
 -- ============================================================
+
+
+-- ############################################################
+-- TEIL 0: FIX users.id TYPE (TEXT -> UUID falls noetig)
+-- Falls users.id frueher als TEXT angelegt wurde,
+-- wird es hier auf UUID korrigiert.
+-- ############################################################
+
+DO $
+DECLARE
+  col_type text;
+BEGIN
+  SELECT data_type INTO col_type
+  FROM information_schema.columns
+  WHERE table_schema = 'public'
+    AND table_name = 'users'
+    AND column_name = 'id';
+
+  IF col_type IS NOT NULL AND col_type <> 'uuid' THEN
+    ALTER TABLE public.users ALTER COLUMN id TYPE UUID USING id::uuid;
+    RAISE NOTICE 'users.id wurde von % auf UUID geaendert', col_type;
+  END IF;
+END$;
 
 
 -- ############################################################
@@ -1075,15 +1098,19 @@ ALTER TABLE kaderschmiede_checkin_entries ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 STABLE
-AS $$
-  SELECT COALESCE(
-    (SELECT is_admin FROM users WHERE id = auth.uid()),
-    false
-  );
-$$;
+AS $
+DECLARE
+  result boolean;
+BEGIN
+  SELECT u.is_admin INTO result
+  FROM public.users u
+  WHERE u.id::text = auth.uid()::text;
+  RETURN COALESCE(result, false);
+END;
+$;
 
 
 -- ############################################################
@@ -1100,12 +1127,12 @@ CREATE POLICY "users_select_authenticated" ON users
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "users_insert_own" ON users
-  FOR INSERT TO authenticated WITH CHECK (id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (id::text = auth.uid()::text);
 
 CREATE POLICY "users_update_own" ON users
   FOR UPDATE TO authenticated
-  USING (id = auth.uid() OR public.is_admin())
-  WITH CHECK (id = auth.uid() OR public.is_admin());
+  USING (id::text = auth.uid()::text OR public.is_admin())
+  WITH CHECK (id::text = auth.uid()::text OR public.is_admin());
 
 CREATE POLICY "users_delete_admin" ON users
   FOR DELETE TO authenticated USING (public.is_admin());
