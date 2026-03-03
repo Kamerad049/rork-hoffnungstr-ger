@@ -419,6 +419,7 @@ function FeedCardInner({
               <MoreHorizontal size={16} color="rgba(255,255,255,0.6)" />
             </Pressable>
           </View>
+        </View>
 
           {showOwnMenu && isOwnPost && (
             <Animated.View
@@ -502,7 +503,7 @@ function FeedCardInner({
           {showTaggedPeople && taggedUsers.length > 0 && (
             <Animated.View
               style={[
-                cardStyles.taggedDropdown,
+                cardStyles.taggedDropdown, { zIndex: 50 },
                 {
                   opacity: taggedPeopleAnim,
                   transform: [{
@@ -545,7 +546,6 @@ function FeedCardInner({
               })}
             </Animated.View>
           )}
-        </View>
 
         <View style={cardStyles.reactionBar} pointerEvents="box-none">
           <View style={cardStyles.reactionBarInner}>
@@ -654,6 +654,7 @@ const cardStyles = StyleSheet.create({
   },
   topSection: {
     paddingTop: 14,
+    zIndex: 30,
   },
   topRow: {
     flexDirection: 'row',
@@ -726,9 +727,12 @@ const cardStyles = StyleSheet.create({
     fontWeight: '700' as const,
   },
   taggedDropdown: {
-    marginHorizontal: 14,
-    marginTop: 8,
-    backgroundColor: 'rgba(15,14,11,0.85)',
+    position: 'absolute' as const,
+    top: 58,
+    left: 14,
+    right: 14,
+    zIndex: 50,
+    backgroundColor: 'rgba(15,14,11,0.92)',
     borderRadius: 14,
     borderWidth: 0.5,
     borderColor: 'rgba(191,163,93,0.15)',
@@ -802,9 +806,12 @@ const cardStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   ownMenuDropdown: {
-    marginHorizontal: 14,
-    marginTop: 8,
-    backgroundColor: 'rgba(15,14,11,0.9)',
+    position: 'absolute' as const,
+    top: 58,
+    left: 14,
+    right: 14,
+    zIndex: 50,
+    backgroundColor: 'rgba(15,14,11,0.95)',
     borderRadius: 14,
     borderWidth: 0.5,
     borderColor: 'rgba(191,163,93,0.15)',
