@@ -10,7 +10,6 @@ import {
   StatusBar,
   ScrollView,
   PanResponder,
-  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { X, Trash2, Flag, Eye, ChevronUp, ChevronRight, MapPin, CloudSun, AtSign, BarChart3 } from 'lucide-react-native';
@@ -23,6 +22,7 @@ import { useSocial } from '@/providers/SocialProvider';
 import { getUserById, formatTimeAgo, cleanPanHandlers } from '@/lib/utils';
 import type { StoryItem, StoryGroup, SocialUser, StoryMetadata } from '@/constants/types';
 import { useAuth } from '@/providers/AuthProvider';
+import CustomAlert, { AlertConfig } from '@/components/CustomAlert';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -83,6 +83,8 @@ export default function StoryViewerScreen() {
   const [currentGroupIdx, setCurrentGroupIdx] = useState<number>(startGroupIndex);
   const [currentStoryIdx, setCurrentStoryIdx] = useState<number>(0);
   const [showReport, setShowReport] = useState<boolean>(false);
+  const [alertVisible, setAlertVisible] = useState<boolean>(false);
+  const [alertConfig, setAlertConfig] = useState<AlertConfig | null>(null);
   const [showViewers, setShowViewers] = useState<boolean>(false);
   const viewersPanelAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -344,10 +346,11 @@ export default function StoryViewerScreen() {
     animRef.current?.stop();
     isPaused.current = true;
 
-    Alert.alert(
-      'Story löschen',
-      'Möchtest du diese Story wirklich löschen?',
-      [
+    setAlertConfig({
+      title: 'Story löschen',
+      message: 'Möchtest du diese Story wirklich löschen?',
+      type: 'warning',
+      buttons: [
         {
           text: 'Abbrechen',
           style: 'cancel',
@@ -380,8 +383,9 @@ export default function StoryViewerScreen() {
             }
           },
         },
-      ]
-    );
+      ],
+    });
+    setAlertVisible(true);
   }, [currentStory, isOwnStory, currentGroup, currentGroupIdx, currentStoryIdx, stories.length, deleteStory, router, startProgress]);
 
   if (!currentGroup || !currentStory || !storyUser) {
@@ -730,6 +734,12 @@ export default function StoryViewerScreen() {
         contentId={currentStory?.id ?? ''}
         contentPreview={currentStory?.caption ?? 'Story'}
         reportedUserId={currentGroup?.userId ?? ''}
+      />
+
+      <CustomAlert
+        visible={alertVisible}
+        config={alertConfig}
+        onDismiss={() => setAlertVisible(false)}
       />
     </View>
   );
