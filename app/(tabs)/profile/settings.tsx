@@ -5,6 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  Share,
+  Platform,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +20,7 @@ import {
   Bookmark,
   Shield,
   LogOut,
+  Share2,
 } from 'lucide-react-native';
 import { useFriends } from '@/providers/FriendsProvider';
 import { useChat } from '@/providers/ChatProvider';
@@ -155,6 +158,33 @@ export default function SettingsScreen() {
             )}
             <ChevronRight size={18} color="rgba(232,220,200,0.25)" />
           </View>
+        </Pressable>
+
+        <Pressable
+          style={styles.inviteCard}
+          onPress={async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            const message = `Ich bin Hoffnungsträger \u2013 Du auch schon?\n\nFolg mir doch gerne, falls noch nicht. Wir werden täglich mehr.\n\nEine werteorientierte Interessengemeinschaft zum kulturellen Erhalt unserer Heimat samt Sitten, Bräuchen und Traditionen.\n\nWerde jetzt Teil der Bewegung!`;
+            try {
+              await Share.share(
+                Platform.OS === 'ios'
+                  ? { message }
+                  : { message, title: 'Hoffnungsträger' }
+              );
+            } catch (e) {
+              console.log('[INVITE] Share failed:', e);
+            }
+          }}
+          testID="settings-invite-friends"
+        >
+          <View style={styles.inviteIconWrap}>
+            <Share2 size={20} color="#BFA35D" />
+          </View>
+          <View style={styles.inviteTextWrap}>
+            <Text style={styles.inviteTitle}>Freunde einladen</Text>
+            <Text style={styles.inviteSub}>Teile die Bewegung mit deinen Freunden</Text>
+          </View>
+          <ChevronRight size={18} color="rgba(191,163,93,0.4)" />
         </Pressable>
       </View>
 
@@ -315,6 +345,38 @@ const styles = StyleSheet.create({
   },
   adminSub: {
     color: 'rgba(28,28,30,0.6)',
+    fontSize: 12,
+    marginTop: 1,
+  },
+  inviteCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 6,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.15)',
+  },
+  inviteIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inviteTextWrap: {
+    flex: 1,
+  },
+  inviteTitle: {
+    color: '#BFA35D',
+    fontSize: 15,
+    fontWeight: '700' as const,
+  },
+  inviteSub: {
+    color: 'rgba(191,163,93,0.5)',
     fontSize: 12,
     marginTop: 1,
   },
