@@ -38,14 +38,10 @@ export interface ChatInputAreaProps {
   onCancelRecording: () => void;
   isRecording: boolean;
   recordingDuration: number;
-  inputMode: InputMode;
-  onSwitchMode: (mode: InputMode) => void;
   bottomInset: number;
   recordPulseAnim: any;
   recordRingAnim: any;
   recordRing2Anim: any;
-  recordGlowAnim: any;
-  wheelSlideAnim: any;
   recordWaveAnims: any[];
   partnerName?: string;
 }

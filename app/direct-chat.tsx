@@ -24,7 +24,6 @@ import { trackRender, measureSinceBoot } from '@/lib/perf';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageItem from '@/components/chat/ChatMessageItem';
 import ChatInputArea from '@/components/chat/ChatInputArea';
-import type { InputMode } from '@/components/chat/types';
 import { useAlert } from '@/providers/AlertProvider';
 
 let ScreenCapture: any = null;
@@ -60,7 +59,6 @@ export default function DirectChatScreen() {
   const [input, setInput] = useState<string>('');
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const [inputMode, setInputMode] = useState<InputMode>('text');
   const listRef = useRef<FlatList>(null);
   const justSentRef = useRef<boolean>(false);
 
@@ -73,7 +71,6 @@ export default function DirectChatScreen() {
   const recordRingAnim = useRef(new Animated.Value(0)).current;
   const recordRing2Anim = useRef(new Animated.Value(0)).current;
   const recordGlowAnim = useRef(new Animated.Value(0)).current;
-  const wheelSlideAnim = useRef(new Animated.Value(0)).current;
   const recordWaveAnims = useRef(
     Array.from({ length: WAVE_COUNT }, () => new Animated.Value(0.15))
   ).current;
@@ -218,24 +215,6 @@ export default function DirectChatScreen() {
       }
     };
   }, []);
-
-  const switchMode = useCallback((mode: InputMode) => {
-    if (mode === inputMode) {
-      if (mode === 'audio') {
-        handleStartRecording();
-      }
-      return;
-    }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setInputMode(mode);
-    const modeIndex = mode === 'image' ? 0 : mode === 'text' ? 1 : 2;
-    Animated.spring(wheelSlideAnim, {
-      toValue: modeIndex,
-      useNativeDriver: false,
-      tension: 65,
-      friction: 9,
-    }).start();
-  }, [inputMode, wheelSlideAnim]);
 
   const startRecordingWaves = useCallback(() => {
     recordWaveAnims.forEach((anim, i) => {
@@ -735,14 +714,10 @@ export default function DirectChatScreen() {
             onCancelRecording={handleCancelRecording}
             isRecording={isRecording}
             recordingDuration={recordingDuration}
-            inputMode={inputMode}
-            onSwitchMode={switchMode}
             bottomInset={insets.bottom}
             recordPulseAnim={recordPulseAnim}
             recordRingAnim={recordRingAnim}
             recordRing2Anim={recordRing2Anim}
-            recordGlowAnim={recordGlowAnim}
-            wheelSlideAnim={wheelSlideAnim}
             recordWaveAnims={recordWaveAnims}
             partnerName={partner?.displayName}
           />

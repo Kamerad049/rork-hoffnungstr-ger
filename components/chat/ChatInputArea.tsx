@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   TextInput,
   Pressable,
   Animated,
-  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -19,31 +18,13 @@ import {
   Ban,
   Mic,
   Trash2,
-  Type,
   ImagePlus,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import type { ChatInputAreaProps, InputMode } from './types';
+import type { ChatInputAreaProps } from './types';
 import { useAlert } from '@/providers/AlertProvider';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const WAVE_COUNT = 12;
-
-const MODES: { key: InputMode; label: string }[] = [
-  { key: 'image', label: 'Bild' },
-  { key: 'text', label: 'Text' },
-  { key: 'audio', label: 'Ton' },
-];
-
-function getModeIcon(modeKey: InputMode, isActive: boolean) {
-  const color = isActive ? '#1a1a1a' : 'rgba(191,163,93,0.45)';
-  const size = 15;
-  switch (modeKey) {
-    case 'image': return <ImagePlus size={size} color={color} strokeWidth={2.2} />;
-    case 'text': return <Type size={size} color={color} strokeWidth={2.2} />;
-    case 'audio': return <Mic size={size} color={color} strokeWidth={2.2} />;
-  }
-}
 
 function ChatInputAreaInner({
   isPartnerBlocked,
@@ -63,28 +44,38 @@ function ChatInputAreaInner({
   onCancelRecording,
   isRecording,
   recordingDuration,
-  inputMode,
-  onSwitchMode,
   bottomInset,
   recordPulseAnim,
   recordRingAnim,
   recordRing2Anim,
-  wheelSlideAnim,
   recordWaveAnims,
   partnerName,
 }: ChatInputAreaProps) {
   const { showAlert } = useAlert();
-  const wheelWidth = SCREEN_WIDTH - 32;
-  const segmentWidth = (wheelWidth - 8) / 3;
-  const wheelIndicatorLeft = wheelSlideAnim.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: [4, 4 + segmentWidth, 4 + segmentWidth * 2],
-  });
+  const micScaleAnim = useRef(new Animated.Value(1)).current;
 
   const formatRecordingTime = (seconds: number): string => {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleMicPressIn = () => {
+    Animated.spring(micScaleAnim, {
+      toValue: 0.85,
+      useNativeDriver: true,
+      tension: 200,
+      friction: 10,
+    }).start();
+  };
+
+  const handleMicPressOut = () => {
+    Animated.spring(micScaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 200,
+      friction: 10,
+    }).start();
   };
 
   if (isPartnerBlocked) {
@@ -218,6 +209,9 @@ function ChatInputAreaInner({
     );
   }
 
+  const hasText = input.trim().length > 0;
+  const isEditable = canSend || !!editingMessage;
+
   return (
     <View style={[styles.inputArea, { paddingBottom: bottomInset + 4 }]}>
       {editingMessage && (
@@ -261,132 +255,76 @@ function ChatInputAreaInner({
         </>
       )}
 
-      <View style={styles.commandWheelWrap}>
-        <View style={[styles.commandWheel, { width: wheelWidth }]}>
-          <View style={styles.commandWheelTrack}>
-            <View style={styles.commandWheelNotches}>
-              {[...Array(14)].map((_, i) => (
-                <View key={i} style={styles.commandWheelNotch} />
-              ))}
-            </View>
-          </View>
+      <View style={styles.inputRow}>
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            showAlert('Bild', 'Bildversand kommt bald!');
+          }}
+          style={({ pressed }) => [
+            styles.attachBtn,
+            pressed && { opacity: 0.6, transform: [{ scale: 0.9 }] },
+          ]}
+          testID="image-btn"
+        >
+          <ImagePlus size={20} color="rgba(191,163,93,0.6)" />
+        </Pressable>
 
-          <Animated.View
-            style={[
-              styles.commandWheelIndicator,
-              {
-                width: segmentWidth,
-                left: wheelIndicatorLeft,
-              },
-            ]}
-          >
-            <LinearGradient
-              colors={['#D4B96A', '#BFA35D']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.commandWheelIndicatorGradient}
-            />
-          </Animated.View>
-
-          {MODES.map((mode) => {
-            const isActive = inputMode === mode.key;
-            return (
-              <Pressable
-                key={mode.key}
-                onPress={() => onSwitchMode(mode.key)}
-                style={[styles.commandWheelBtn, { width: segmentWidth }]}
-                testID={`mode-${mode.key}-btn`}
-              >
-                {getModeIcon(mode.key, isActive)}
-                <Text
-                  style={[
-                    styles.commandWheelLabel,
-                    { color: isActive ? '#1a1a1a' : 'rgba(191,163,93,0.45)' },
-                    isActive && styles.commandWheelLabelActive,
-                  ]}
-                >
-                  {mode.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      {inputMode === 'text' ? (
-        <View style={styles.textInputRow}>
+        <View style={styles.textInputWrap}>
           <TextInput
             style={styles.textInput}
-            placeholder={!isFriend && !canSend ? 'Anfrage ausstehend...' : 'Nachricht schreiben...'}
-            placeholderTextColor="rgba(142,142,147,0.5)"
+            placeholder={!isFriend && !canSend ? 'Anfrage ausstehend...' : 'Nachricht...'}
+            placeholderTextColor="rgba(142,142,147,0.4)"
             value={input}
             onChangeText={onInputChange}
             maxLength={2000}
-            editable={canSend || !!editingMessage}
+            editable={isEditable}
             multiline
             testID="direct-chat-input"
           />
+        </View>
+
+        {hasText || editingMessage ? (
           <Pressable
             style={({ pressed }) => [
               styles.sendBtn,
               {
-                backgroundColor: input.trim() && (canSend || editingMessage) ? '#BFA35D' : 'rgba(60,60,64,0.6)',
-                transform: [{ scale: pressed ? 0.9 : 1 }],
+                backgroundColor: hasText && isEditable ? '#BFA35D' : 'rgba(60,60,64,0.6)',
+                transform: [{ scale: pressed ? 0.88 : 1 }],
               },
             ]}
             onPress={onSend}
-            disabled={!input.trim() || (!canSend && !editingMessage)}
+            disabled={!hasText || !isEditable}
             testID="direct-send-btn"
           >
             {editingMessage ? (
-              <Check size={18} color={input.trim() ? '#FFFFFF' : '#636366'} />
+              <Check size={18} color={hasText ? '#FFFFFF' : '#636366'} />
             ) : (
-              <Send size={18} color={input.trim() && canSend ? '#FFFFFF' : '#636366'} />
+              <Send size={18} color={hasText && canSend ? '#FFFFFF' : '#636366'} />
             )}
           </Pressable>
-        </View>
-      ) : inputMode === 'audio' ? (
-        <View style={styles.audioInputRow}>
-          <Pressable
-            onPress={onStartRecording}
-            style={({ pressed }) => [
-              styles.audioRecordBtn,
-              pressed && { transform: [{ scale: 0.94 }] },
-            ]}
-            testID="mic-btn"
-          >
-            <LinearGradient
-              colors={['#D4B96A', '#BFA35D', '#A88D45']}
-              style={styles.audioRecordBtnInner}
+        ) : (
+          <Animated.View style={{ transform: [{ scale: micScaleAnim }] }}>
+            <Pressable
+              onPressIn={handleMicPressIn}
+              onPressOut={handleMicPressOut}
+              onPress={() => {
+                if (!canSend) return;
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                onStartRecording();
+              }}
+              disabled={!canSend}
+              style={({ pressed }) => [
+                styles.micBtn,
+                !canSend && { opacity: 0.3 },
+              ]}
+              testID="mic-btn"
             >
-              <Mic size={24} color="#FFFFFF" />
-            </LinearGradient>
-          </Pressable>
-          <Text style={styles.audioReadyText}>Tippe zum Aufnehmen</Text>
-        </View>
-      ) : (
-        <View style={styles.imageInputRow}>
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              showAlert('Bild', 'Bildversand kommt bald!');
-            }}
-            style={({ pressed }) => [
-              styles.imagePickBtn,
-              pressed && { transform: [{ scale: 0.94 }] },
-            ]}
-            testID="image-btn"
-          >
-            <LinearGradient
-              colors={['#D4B96A', '#BFA35D', '#A88D45']}
-              style={styles.imagePickBtnInner}
-            >
-              <ImagePlus size={24} color="#FFFFFF" />
-            </LinearGradient>
-          </Pressable>
-          <Text style={styles.audioReadyText}>Bild senden</Text>
-        </View>
-      )}
+              <Mic size={20} color="#BFA35D" />
+            </Pressable>
+          </Animated.View>
+        )}
+      </View>
     </View>
   );
 }
@@ -396,8 +334,8 @@ export default React.memo(ChatInputAreaInner);
 const styles = StyleSheet.create({
   inputArea: {
     backgroundColor: '#161618',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(191,163,93,0.06)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(191,163,93,0.1)',
   },
   editBanner: {
     flexDirection: 'row',
@@ -405,7 +343,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     gap: 10,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(191,163,93,0.06)',
     backgroundColor: 'rgba(191,163,93,0.03)',
   },
@@ -424,160 +362,58 @@ const styles = StyleSheet.create({
     marginTop: 2,
     color: '#8e8e93',
   },
-  commandWheelWrap: {
-    alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 6,
-    paddingHorizontal: 16,
-  },
-  commandWheel: {
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#1a1a1e',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.12)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    position: 'relative' as const,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  commandWheelTrack: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-  },
-  commandWheelNotches: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    paddingHorizontal: 20,
-  },
-  commandWheelNotch: {
-    width: 1,
-    height: 8,
-    backgroundColor: 'rgba(191,163,93,0.06)',
-    borderRadius: 1,
-  },
-  commandWheelIndicator: {
-    position: 'absolute' as const,
-    top: 3,
-    height: 36,
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
-  commandWheelIndicatorGradient: {
-    flex: 1,
-    borderRadius: 18,
-  },
-  commandWheelBtn: {
-    height: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    zIndex: 2,
-  },
-  commandWheelLabel: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    letterSpacing: 0.3,
-  },
-  commandWheelLabelActive: {
-    fontWeight: '700' as const,
-  },
-  textInputRow: {
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 14,
-    paddingTop: 4,
-    paddingBottom: 8,
-    gap: 8,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 6,
+    gap: 6,
+  },
+  attachBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    marginBottom: 1,
+  },
+  textInputWrap: {
+    flex: 1,
+    borderRadius: 20,
+    backgroundColor: '#1e1e22',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(191,163,93,0.08)',
+    overflow: 'hidden',
   },
   textInput: {
-    flex: 1,
     fontSize: 15,
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    minHeight: 44,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
+    minHeight: 40,
     maxHeight: 120,
-    backgroundColor: '#1e1e22',
     color: '#E8DCC8',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.06)',
   },
   sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 1,
   },
-  audioInputRow: {
+  micBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-    gap: 10,
-  },
-  imageInputRow: {
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-    gap: 10,
-  },
-  imagePickBtn: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    justifyContent: 'center',
     backgroundColor: 'rgba(191,163,93,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(191,163,93,0.15)',
-  },
-  imagePickBtnInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#BFA35D',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  audioReadyText: {
-    fontSize: 12,
-    color: 'rgba(191,163,93,0.35)',
-    letterSpacing: 0.3,
-  },
-  audioRecordBtn: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: 'rgba(191,163,93,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(191,163,93,0.15)',
-  },
-  audioRecordBtnInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#BFA35D',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
+    marginBottom: 1,
   },
   recordingPanel: {
     backgroundColor: '#161618',
