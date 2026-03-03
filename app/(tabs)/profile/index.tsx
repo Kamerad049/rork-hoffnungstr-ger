@@ -641,16 +641,34 @@ export default function ProfileScreen() {
               style={[styles.heroStripe, styles.heroStripeBlack]}
             />
             <LinearGradient
+              colors={['rgba(10,10,10,0.5)', 'rgba(10,10,10,0.25)', 'rgba(10,10,10,0)']}
+              start={{ x: 1, y: 0 }}
+              end={{ x: 0, y: 0.5 }}
+              style={[styles.heroStripe, styles.heroStripeBlackAccent]}
+            />
+            <LinearGradient
               colors={['rgba(180,30,30,0.7)', 'rgba(180,30,30,0.45)', 'rgba(180,30,30,0)']}
               start={{ x: 1, y: 0 }}
               end={{ x: 0, y: 0.5 }}
               style={[styles.heroStripe, styles.heroStripeRed]}
             />
             <LinearGradient
+              colors={['rgba(160,25,25,0.4)', 'rgba(160,25,25,0.2)', 'rgba(160,25,25,0)']}
+              start={{ x: 1, y: 0 }}
+              end={{ x: 0, y: 0.5 }}
+              style={[styles.heroStripe, styles.heroStripeRedAccent]}
+            />
+            <LinearGradient
               colors={['rgba(212,175,55,0.6)', 'rgba(212,175,55,0.35)', 'rgba(212,175,55,0)']}
               start={{ x: 1, y: 0 }}
               end={{ x: 0, y: 0.5 }}
               style={[styles.heroStripe, styles.heroStripeGold]}
+            />
+            <LinearGradient
+              colors={['rgba(191,163,93,0.3)', 'rgba(191,163,93,0.15)', 'rgba(191,163,93,0)']}
+              start={{ x: 1, y: 0 }}
+              end={{ x: 0, y: 0.5 }}
+              style={[styles.heroStripe, styles.heroStripeGoldAccent]}
             />
           </View>
 
@@ -1111,19 +1129,40 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-32deg' }],
   },
   heroStripeBlack: {
-    top: 18,
+    top: 12,
     right: -60,
-    width: SCREEN_WIDTH * 0.85,
+    width: SCREEN_WIDTH * 0.9,
+  },
+  heroStripeBlackAccent: {
+    top: 28,
+    right: -50,
+    width: SCREEN_WIDTH * 0.78,
+    height: 6,
+    opacity: 0.6,
   },
   heroStripeRed: {
-    top: 38,
+    top: 40,
     right: -60,
-    width: SCREEN_WIDTH * 0.75,
+    width: SCREEN_WIDTH * 0.8,
+  },
+  heroStripeRedAccent: {
+    top: 56,
+    right: -50,
+    width: SCREEN_WIDTH * 0.68,
+    height: 6,
+    opacity: 0.7,
   },
   heroStripeGold: {
-    top: 58,
+    top: 68,
     right: -60,
-    width: SCREEN_WIDTH * 0.65,
+    width: SCREEN_WIDTH * 0.7,
+  },
+  heroStripeGoldAccent: {
+    top: 84,
+    right: -50,
+    width: SCREEN_WIDTH * 0.55,
+    height: 5,
+    opacity: 0.5,
   },
   headerTopRow: {
     flexDirection: 'row',
