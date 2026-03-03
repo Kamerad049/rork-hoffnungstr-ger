@@ -90,15 +90,26 @@ $$;
 
 -- Drop existing policies if they exist (idempotent)
 DROP POLICY IF EXISTS "sponsors_select_public" ON sponsors;
+DROP POLICY IF EXISTS "sponsors_select_via_active_promotions" ON sponsors;
 DROP POLICY IF EXISTS "sponsors_admin_insert" ON sponsors;
 DROP POLICY IF EXISTS "sponsors_admin_update" ON sponsors;
 DROP POLICY IF EXISTS "sponsors_admin_delete" ON sponsors;
 
--- Anyone authenticated can read sponsors (needed for logo/name in feed)
-CREATE POLICY "sponsors_select_public"
+-- Users can only see sponsors that have at least one active promotion right now.
+-- Admins can see all sponsors (needed for admin panel CRUD).
+CREATE POLICY "sponsors_select_via_active_promotions"
   ON sponsors FOR SELECT
   TO authenticated
-  USING (true);
+  USING (
+    public.is_admin()
+    OR EXISTS (
+      SELECT 1 FROM promotions pr
+      WHERE pr.sponsor_id = sponsors.id
+        AND pr.status = 'active'
+        AND now() >= pr.start_date
+        AND now() <= pr.end_date
+    )
+  );
 
 -- Only admins can create/update/delete sponsors
 CREATE POLICY "sponsors_admin_insert"
@@ -293,10 +304,46 @@ CREATE INDEX IF NOT EXISTS idx_promotions_status_dates
   ON promotions (status, start_date, end_date);
 
 -- ============================================================
--- DONE
--- Run: SELECT public.aggregate_promotion_daily_stats('2025-03-02');
--- to manually aggregate a specific day.
--- Set up a Supabase cron job to call daily:
---   SELECT public.aggregate_promotion_daily_stats();
--- (defaults to yesterday)
+-- L) OPTIONAL: sponsor_private table for contract/internal data
+-- If you later store contract details, billing info, or internal
+-- notes per sponsor, create a separate table:
+--
+--   CREATE TABLE sponsor_private (
+--     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--     sponsor_id uuid REFERENCES sponsors(id) ON DELETE CASCADE,
+--     contract_start date,
+--     contract_end date,
+--     monthly_fee numeric(10,2),
+--     notes text,
+--     created_at timestamptz DEFAULT now()
+--   );
+--   ALTER TABLE sponsor_private ENABLE ROW LEVEL SECURITY;
+--   CREATE POLICY "sponsor_private_admin_only"
+--     ON sponsor_private FOR ALL TO authenticated
+--     USING (public.is_admin()) WITH CHECK (public.is_admin());
+--
+-- This keeps public sponsor data (name, logo) separate from
+-- sensitive business data. Normal users never see contract info.
+-- ============================================================
+
+-- ============================================================
+-- CRON SETUP (Supabase Dashboard > Database > Extensions > pg_cron)
+-- ============================================================
+--
+-- 1) Daily aggregation (yesterday) — run at 00:10 UTC:
+--    SELECT cron.schedule(
+--      'aggregate-promo-daily',
+--      '10 0 * * *',
+--      $SELECT public.aggregate_promotion_daily_stats(current_date - 1);$
+--    );
+--
+-- 2) Optional: hourly live-ish aggregation (today) for dashboard:
+--    SELECT cron.schedule(
+--      'aggregate-promo-hourly',
+--      '5 * * * *',
+--      $SELECT public.aggregate_promotion_daily_stats(current_date);$
+--    );
+--
+-- Manual run for a specific day:
+--    SELECT public.aggregate_promotion_daily_stats('2026-03-02'::date);
 -- ============================================================
