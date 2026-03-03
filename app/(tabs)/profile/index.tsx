@@ -676,7 +676,6 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.headerTopRow}>
-            <View style={{ width: 36 }} />
             <Pressable
               style={styles.settingsBtn}
               onPress={() => router.push('/(tabs)/profile/settings' as any)}
@@ -1143,7 +1142,7 @@ const styles = StyleSheet.create({
   },
   headerTopRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     width: '100%',
     position: 'absolute',
