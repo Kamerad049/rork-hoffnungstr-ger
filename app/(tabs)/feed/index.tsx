@@ -35,7 +35,6 @@ type FeedItem =
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_HORIZONTAL_MARGIN = 16;
 const CARD_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_MARGIN * 2;
-const CARD_HEIGHT = CARD_WIDTH * 1.25;
 
 export default function FeedScreen() {
   trackRender('FeedScreen');
@@ -113,10 +112,10 @@ export default function FeedScreen() {
     [router]
   );
 
-  const handleImagePress = useCallback(
-    (imageUrl: string) => {
+  const handlePostPress = useCallback(
+    (postId: string) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.push({ pathname: '/(tabs)/feed/image-viewer', params: { imageUrl } } as any);
+      router.push({ pathname: '/(tabs)/feed/post-detail', params: { postId } } as any);
     },
     [router]
   );
@@ -205,7 +204,7 @@ export default function FeedScreen() {
               promotion={promo}
               sponsor={sponsor}
               cardWidth={CARD_WIDTH}
-              cardHeight={CARD_HEIGHT}
+              cardHeight={CARD_WIDTH * 1.25}
               isVisible={true}
               onImpression={trackImpression}
               onClick={trackClick}
@@ -221,10 +220,9 @@ export default function FeedScreen() {
             <FeedCardComponent
               post={post}
               cardWidth={CARD_WIDTH}
-              cardHeight={CARD_HEIGHT}
               onCommentPress={handleCommentPress}
               onUserPress={handleUserPress}
-              onImagePress={handleImagePress}
+              onPostPress={handlePostPress}
               onLocationPress={handleLocationPress}
               onEditPress={handleEditPress}
               onArchivePress={handleArchivePress}
@@ -237,7 +235,7 @@ export default function FeedScreen() {
         </View>
       );
     },
-    [handleCommentPress, handleUserPress, handleImagePress, handleLocationPress, handleEditPress, handleArchivePress, handleToggleCommentsPress, postReactions, handleReaction, getSponsorById, trackImpression, trackClick]
+    [handleCommentPress, handleUserPress, handlePostPress, handleLocationPress, handleEditPress, handleArchivePress, handleToggleCommentsPress, postReactions, handleReaction, getSponsorById, trackImpression, trackClick]
   );
 
   const renderHeader = useCallback(() => (
@@ -353,7 +351,7 @@ export default function FeedScreen() {
 
       {!ready ? (
         <View style={styles.loadingPlaceholder}>
-          <View style={[styles.placeholderCard, { width: CARD_WIDTH, height: CARD_HEIGHT }]} />
+          <View style={[styles.placeholderCard, { width: CARD_WIDTH, height: CARD_WIDTH * 1.25 }]} />
         </View>
       ) : (
         <Animated.FlatList

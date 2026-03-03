@@ -39,6 +39,13 @@ export default function FeedLayout() {
           animation: 'fade',
         }}
       />
+      <Stack.Screen
+        name="post-detail"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      />
     </Stack>
   );
 }
