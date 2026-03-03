@@ -19,6 +19,8 @@ import {
   Snowflake,
   Mountain,
   Check,
+  Eye,
+  EyeOff,
 } from 'lucide-react-native';
 import { useKaderschmiede } from '@/providers/KaderschmiedeProvider';
 import { SPORT_CATEGORIES } from '@/constants/kaderschmiede';
@@ -54,6 +56,7 @@ export default function CreateChallengeScreen() {
   const [goal, setGoal] = useState('');
   const [unit, setUnit] = useState('');
   const [durationDays, setDurationDays] = useState('7');
+  const [allowSpectators, setAllowSpectators] = useState(true);
 
   const canSubmit = title.trim() && sport && type && goal.trim() && unit.trim() && durationDays.trim();
 
@@ -217,6 +220,30 @@ export default function CreateChallengeScreen() {
                 maxLength={3}
               />
             </View>
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>ZUSCHAUER</Text>
+            <Pressable
+              style={[styles.spectatorToggle, allowSpectators && styles.spectatorToggleActive]}
+              onPress={() => setAllowSpectators(prev => !prev)}
+            >
+              {allowSpectators ? (
+                <Eye size={16} color="#141416" />
+              ) : (
+                <EyeOff size={16} color="rgba(232,220,200,0.4)" />
+              )}
+              <View style={styles.spectatorToggleContent}>
+                <Text style={[styles.spectatorToggleText, allowSpectators && styles.spectatorToggleTextActive]}>
+                  {allowSpectators ? 'Zuschauer erlaubt' : 'Keine Zuschauer'}
+                </Text>
+                <Text style={[styles.spectatorToggleDesc, allowSpectators && styles.spectatorToggleDescActive]}>
+                  {allowSpectators
+                    ? 'Freunde k\u00f6nnen live zuschauen & anfeuern'
+                    : 'Nur Teilnehmer sehen die Challenge'}
+                </Text>
+              </View>
+            </Pressable>
           </View>
 
           <Pressable
@@ -412,5 +439,39 @@ const styles = StyleSheet.create({
   },
   createBtnTextDisabled: {
     color: 'rgba(20,20,22,0.4)',
+  },
+  spectatorToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(42,42,46,0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.08)',
+  },
+  spectatorToggleActive: {
+    backgroundColor: 'rgba(191,163,93,0.15)',
+    borderColor: 'rgba(191,163,93,0.3)',
+  },
+  spectatorToggleContent: {
+    flex: 1,
+  },
+  spectatorToggleText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: 'rgba(232,220,200,0.5)',
+  },
+  spectatorToggleTextActive: {
+    color: '#BFA35D',
+  },
+  spectatorToggleDesc: {
+    fontSize: 11,
+    color: 'rgba(232,220,200,0.25)',
+    marginTop: 2,
+  },
+  spectatorToggleDescActive: {
+    color: 'rgba(191,163,93,0.5)',
   },
 });

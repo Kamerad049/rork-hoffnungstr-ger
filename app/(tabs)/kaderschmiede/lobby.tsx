@@ -30,13 +30,27 @@ import {
   AlertTriangle,
   Flame,
   Trophy,
+  Eye,
+  EyeOff,
+  Radio,
 } from 'lucide-react-native';
 import { useKaderschmiede } from '@/providers/KaderschmiedeProvider';
 import { useAuth } from '@/providers/AuthProvider';
+import type {
+  RacerPosition,
+  SpectatorInfo,
+  CheerMessage,
+} from '@/constants/kaderschmiede';
+import {
+  CHEER_TYPES,
+  RACE_GPS_INTERVAL_MS,
+  CHEER_DISPLAY_DURATION_MS,
+} from '@/constants/kaderschmiede';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type LobbyPhase = 'setup' | 'waiting' | 'countdown' | 'go' | 'racing' | 'surrendered' | 'victory_by_surrender' | 'finished';
+type SpectatorRole = 'racer' | 'spectator';
 type ChallengeMode = '1v1' | 'team';
 type DistanceOption = 1000 | 2000 | 5000;
 
@@ -755,6 +769,488 @@ function GoScreen({ distance, onStart }: { distance: DistanceOption; onStart: ()
   );
 }
 
+function CheerBubble({ cheer }: { cheer: CheerMessage }) {
+  const slideAnim = useRef(new Animated.Value(60)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.5)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(slideAnim, { toValue: 0, friction: 5, tension: 120, useNativeDriver: true }),
+      Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, friction: 4, tension: 150, useNativeDriver: true }),
+    ]).start();
+
+    const fadeTimer = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: -40, duration: 400, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ]).start();
+    }, CHEER_DISPLAY_DURATION_MS - 500);
+
+    return () => clearTimeout(fadeTimer);
+  }, []);
+
+  const cheerData = CHEER_TYPES.find(c => c.type === cheer.type);
+  const emoji = cheerData?.emoji ?? '\u{1F525}';
+
+  return (
+    <Animated.View
+      style={[
+        cheerBubbleStyles.container,
+        {
+          opacity: opacityAnim,
+          transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+        },
+      ]}
+    >
+      <Text style={cheerBubbleStyles.emoji}>{emoji}</Text>
+      <Text style={cheerBubbleStyles.name} numberOfLines={1}>{cheer.fromName}</Text>
+    </Animated.View>
+  );
+}
+
+const cheerBubbleStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(191,163,93,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.2)',
+    alignSelf: 'flex-start' as const,
+  },
+  emoji: {
+    fontSize: 18,
+  },
+  name: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: 'rgba(232,220,200,0.6)',
+    maxWidth: 80,
+  },
+});
+
+function SpectatorBar({
+  spectators,
+  allowSpectators,
+}: {
+  spectators: SpectatorInfo[];
+  allowSpectators: boolean;
+}) {
+  const pulseAnim = useRef(new Animated.Value(0.6)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0.6, duration: 1500, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  if (!allowSpectators) return null;
+
+  return (
+    <View style={spectatorBarStyles.container}>
+      <Animated.View style={[spectatorBarStyles.liveDot, { opacity: pulseAnim }]} />
+      <Eye size={12} color="rgba(191,163,93,0.5)" />
+      <Text style={spectatorBarStyles.count}>
+        {spectators.length} {spectators.length === 1 ? 'Zuschauer' : 'Zuschauer'}
+      </Text>
+      {spectators.slice(0, 3).map((s) => (
+        <View key={s.userId} style={spectatorBarStyles.avatarDot}>
+          <Text style={spectatorBarStyles.avatarInitial}>
+            {s.name.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+      ))}
+      {spectators.length > 3 && (
+        <Text style={spectatorBarStyles.more}>+{spectators.length - 3}</Text>
+      )}
+    </View>
+  );
+}
+
+const spectatorBarStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
+  liveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#BFA35D',
+  },
+  count: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: 'rgba(191,163,93,0.5)',
+    letterSpacing: 0.5,
+  },
+  avatarDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(191,163,93,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    color: '#BFA35D',
+  },
+  more: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: 'rgba(191,163,93,0.4)',
+  },
+});
+
+function CheerBar({ onSendCheer }: { onSendCheer: (type: CheerMessage['type']) => void }) {
+  return (
+    <View style={cheerBarStyles.container}>
+      <Text style={cheerBarStyles.label}>ANFEUERN</Text>
+      <View style={cheerBarStyles.buttons}>
+        {CHEER_TYPES.map((ct) => (
+          <Pressable
+            key={ct.type}
+            style={cheerBarStyles.btn}
+            onPress={() => onSendCheer(ct.type)}
+          >
+            <Text style={cheerBarStyles.emoji}>{ct.emoji}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const cheerBarStyles = StyleSheet.create({
+  container: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
+  label: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    color: 'rgba(191,163,93,0.35)',
+    letterSpacing: 1.5,
+    marginBottom: 8,
+    textAlign: 'center' as const,
+  },
+  buttons: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-around',
+  },
+  btn: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emoji: {
+    fontSize: 22,
+  },
+});
+
+function LiveRaceTrack({
+  distance,
+  racerPositions,
+  cheers,
+}: {
+  distance: DistanceOption;
+  racerPositions: RacerPosition[];
+  cheers: CheerMessage[];
+}) {
+  const pathWidth = SCREEN_WIDTH - 80;
+  const glowAnim = useRef(new Animated.Value(0.5)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0.5, duration: 800, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const pathPoints = useMemo(() => {
+    const points: { x: number; y: number }[] = [];
+    const segments = 40;
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const x = t * pathWidth;
+      const y = 50 + Math.sin(t * Math.PI * 3) * 18 + Math.cos(t * Math.PI * 1.5) * 12;
+      points.push({ x, y });
+    }
+    return points;
+  }, [pathWidth]);
+
+  const RACER_COLORS = ['#BFA35D', '#5DA3BF', '#BF5D5D', '#5DBF7A'];
+
+  return (
+    <View style={liveTrackStyles.container}>
+      <View style={liveTrackStyles.header}>
+        <Zap size={12} color="#BFA35D" />
+        <Text style={liveTrackStyles.headerText}>LIVE STRECKE</Text>
+      </View>
+
+      <View style={liveTrackStyles.trackArea}>
+        <View style={liveTrackStyles.startMarker}>
+          <View style={liveTrackStyles.markerOuter}>
+            <Play size={7} color="#141416" />
+          </View>
+          <Text style={liveTrackStyles.markerLabel}>START</Text>
+        </View>
+
+        <View style={liveTrackStyles.finishMarker}>
+          <View style={liveTrackStyles.markerOuterFinish}>
+            <Flag size={7} color="#141416" />
+          </View>
+          <Text style={liveTrackStyles.markerLabel}>ZIEL</Text>
+        </View>
+
+        {pathPoints.map((point, i) => {
+          if (i === 0) return null;
+          const prev = pathPoints[i - 1];
+          return (
+            <View
+              key={i}
+              style={[
+                liveTrackStyles.pathDot,
+                {
+                  left: prev.x + (point.x - prev.x) * 0.5,
+                  top: prev.y + (point.y - prev.y) * 0.5,
+                  opacity: 0.1 + (i / pathPoints.length) * 0.2,
+                },
+              ]}
+            />
+          );
+        })}
+
+        {racerPositions.map((rp, idx) => {
+          const progress = Math.min(rp.distanceCovered / distance, 1);
+          const xPos = progress * pathWidth;
+          const segIdx = Math.floor(progress * 40);
+          const yPos = pathPoints[Math.min(segIdx, pathPoints.length - 1)]?.y ?? 50;
+          const color = RACER_COLORS[idx % RACER_COLORS.length];
+
+          return (
+            <View
+              key={rp.userId}
+              style={[
+                liveTrackStyles.racerDot,
+                {
+                  left: xPos - 14,
+                  top: yPos - 14,
+                },
+              ]}
+            >
+              <Animated.View
+                style={[
+                  liveTrackStyles.racerGlow,
+                  {
+                    backgroundColor: color,
+                    opacity: glowAnim.interpolate({
+                      inputRange: [0.5, 1],
+                      outputRange: [0.15, 0.35],
+                    }),
+                  },
+                ]}
+              />
+              <View style={[liveTrackStyles.racerDotInner, { backgroundColor: color, borderColor: color }]}>
+                <Text style={liveTrackStyles.racerInitial}>
+                  {rp.name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              {rp.isFinished && (
+                <View style={liveTrackStyles.finishedBadge}>
+                  <Text style={liveTrackStyles.finishedEmoji}>{"\ud83c\udfc1"}</Text>
+                </View>
+              )}
+            </View>
+          );
+        })}
+
+        {[0.25, 0.5, 0.75].map((pct) => (
+          <View key={pct} style={[liveTrackStyles.distMark, { left: pct * pathWidth }]}>
+            <View style={liveTrackStyles.distTick} />
+            <Text style={liveTrackStyles.distText}>{Math.round(distance * pct)}m</Text>
+          </View>
+        ))}
+      </View>
+
+      {cheers.length > 0 && (
+        <View style={liveTrackStyles.cheersOverlay}>
+          {cheers.slice(-3).map((c) => (
+            <CheerBubble key={c.id} cheer={c} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const liveTrackStyles = StyleSheet.create({
+  container: {
+    backgroundColor: '#0e0e10',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.08)',
+    overflow: 'hidden',
+  },
+  header: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    marginBottom: 12,
+  },
+  headerText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: 'rgba(191,163,93,0.6)',
+    letterSpacing: 1.5,
+  },
+  trackArea: {
+    height: 120,
+    position: 'relative' as const,
+  },
+  startMarker: {
+    position: 'absolute' as const,
+    left: 0,
+    top: 22,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  finishMarker: {
+    position: 'absolute' as const,
+    right: 0,
+    top: 22,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  markerOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#BFA35D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerOuterFinish: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#BFA35D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerLabel: {
+    fontSize: 7,
+    fontWeight: '800' as const,
+    color: 'rgba(191,163,93,0.4)',
+    letterSpacing: 1,
+    marginTop: 3,
+  },
+  pathDot: {
+    position: 'absolute' as const,
+    width: 2.5,
+    height: 2.5,
+    borderRadius: 1.25,
+    backgroundColor: '#BFA35D',
+  },
+  racerDot: {
+    position: 'absolute' as const,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
+  racerGlow: {
+    position: 'absolute' as const,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  racerDotInner: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  racerInitial: {
+    fontSize: 10,
+    fontWeight: '900' as const,
+    color: '#141416',
+  },
+  finishedBadge: {
+    position: 'absolute' as const,
+    top: -6,
+    right: -4,
+  },
+  finishedEmoji: {
+    fontSize: 12,
+  },
+  distMark: {
+    position: 'absolute' as const,
+    top: 85,
+    alignItems: 'center',
+  },
+  distTick: {
+    width: 1,
+    height: 6,
+    backgroundColor: 'rgba(191,163,93,0.12)',
+    marginBottom: 2,
+  },
+  distText: {
+    fontSize: 7,
+    fontWeight: '600' as const,
+    color: 'rgba(191,163,93,0.2)',
+  },
+  cheersOverlay: {
+    marginTop: 10,
+    gap: 4,
+  },
+});
+
 function InactivityWarning({ secondsLeft }: { secondsLeft: number }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -800,6 +1296,15 @@ export default function LobbyScreen() {
   const [countdownValue] = useState(10);
   const [showInactivity] = useState(false);
   const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
+  const [allowSpectators, setAllowSpectators] = useState(true);
+  const [spectators, setSpectators] = useState<SpectatorInfo[]>([]);
+  const [myRole] = useState<SpectatorRole>('racer');
+  const [cheers, setCheers] = useState<CheerMessage[]>([]);
+  const [racerPositions, setRacerPositions] = useState<RacerPosition[]>([]);
+  const [raceElapsed, setRaceElapsed] = useState(0);
+  const raceStartTime = useRef<number>(0);
+  const gpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cheerTimeoutRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const heroAnim = useRef(new Animated.Value(0)).current;
   const readyBtnScale = useRef(new Animated.Value(1)).current;
@@ -898,11 +1403,118 @@ export default function LobbyScreen() {
 
   const handleGoStart = useCallback(() => {
     setPhase('racing');
+    raceStartTime.current = Date.now();
     console.log('[LOBBY] Race started! Distance:', distance);
-  }, [distance]);
+
+    const initialPositions: RacerPosition[] = players.map(p => ({
+      userId: p.id,
+      name: p.name,
+      avatarUrl: p.avatarUrl,
+      latitude: 0,
+      longitude: 0,
+      distanceCovered: 0,
+      pace: 0,
+      timestamp: Date.now(),
+      isFinished: false,
+      hasSurrendered: false,
+    }));
+    setRacerPositions(initialPositions);
+
+    gpsIntervalRef.current = setInterval(() => {
+      const elapsed = (Date.now() - raceStartTime.current) / 1000;
+      setRaceElapsed(elapsed);
+
+      setRacerPositions(prev => prev.map((rp, idx) => {
+        if (rp.isFinished || rp.hasSurrendered) return rp;
+        const baseSpeed = idx === 0 ? 3.2 : 2.8;
+        const jitter = (Math.random() - 0.5) * 0.4;
+        const speed = baseSpeed + jitter + Math.sin(elapsed * 0.1 + idx) * 0.3;
+        const newDist = Math.min(rp.distanceCovered + speed, distance);
+        const pace = elapsed > 0 ? (elapsed / 60) / (newDist / 1000) : 0;
+        return {
+          ...rp,
+          distanceCovered: newDist,
+          pace: Math.round(pace * 10) / 10,
+          timestamp: Date.now(),
+          isFinished: newDist >= distance,
+        };
+      }));
+    }, RACE_GPS_INTERVAL_MS);
+
+    if (allowSpectators) {
+      setTimeout(() => {
+        const mockSpec: SpectatorInfo = {
+          userId: 'spec_1',
+          name: 'Zuschauer_Max',
+          avatarUrl: null,
+          joinedAt: Date.now(),
+        };
+        setSpectators(prev => [...prev, mockSpec]);
+        console.log('[LOBBY] Spectator joined:', mockSpec.name);
+      }, 5000);
+    }
+
+    return () => {
+      if (gpsIntervalRef.current) clearInterval(gpsIntervalRef.current);
+    };
+  }, [distance, players, allowSpectators]);
+
+  const handleSendCheer = useCallback((type: CheerMessage['type']) => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    const cheer: CheerMessage = {
+      id: `cheer_${Date.now()}_${Math.random()}`,
+      fromUserId: userId,
+      fromName: user?.name ?? 'Zuschauer',
+      fromAvatarUrl: null,
+      type,
+      timestamp: Date.now(),
+    };
+    setCheers(prev => [...prev, cheer]);
+    console.log('[LOBBY] Cheer sent:', type);
+
+    const timeout = setTimeout(() => {
+      setCheers(prev => prev.filter(c => c.id !== cheer.id));
+    }, CHEER_DISPLAY_DURATION_MS);
+    cheerTimeoutRef.current.push(timeout);
+  }, [userId, user]);
+
+  useEffect(() => {
+    return () => {
+      if (gpsIntervalRef.current) clearInterval(gpsIntervalRef.current);
+      cheerTimeoutRef.current.forEach(t => clearTimeout(t));
+    };
+  }, []);
+
+  useEffect(() => {
+    if (phase === 'racing' && allowSpectators) {
+      const cheerInterval = setInterval(() => {
+        if (spectators.length > 0 && Math.random() > 0.6) {
+          const spec = spectators[Math.floor(Math.random() * spectators.length)];
+          const cheerType = CHEER_TYPES[Math.floor(Math.random() * CHEER_TYPES.length)];
+          const cheer: CheerMessage = {
+            id: `cheer_auto_${Date.now()}`,
+            fromUserId: spec.userId,
+            fromName: spec.name,
+            fromAvatarUrl: spec.avatarUrl,
+            type: cheerType.type,
+            timestamp: Date.now(),
+          };
+          setCheers(prev => [...prev, cheer]);
+          const timeout = setTimeout(() => {
+            setCheers(prev => prev.filter(c => c.id !== cheer.id));
+          }, CHEER_DISPLAY_DURATION_MS);
+          cheerTimeoutRef.current.push(timeout);
+        }
+      }, 4000);
+      return () => clearInterval(cheerInterval);
+    }
+  }, [phase, spectators, allowSpectators]);
 
   const handleSurrender = useCallback(() => {
     setShowSurrenderConfirm(false);
+    if (gpsIntervalRef.current) clearInterval(gpsIntervalRef.current);
     if (Platform.OS !== 'web') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
@@ -968,57 +1580,103 @@ export default function LobbyScreen() {
   }
 
   if (phase === 'racing') {
+    const formatElapsed = (s: number) => {
+      const mins = Math.floor(s / 60);
+      const secs = Math.floor(s % 60);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <LinearGradient colors={['#1a1917', '#141416']} style={styles.racingScreen}>
-          <View style={styles.racingHeader}>
-            <View style={styles.racingLiveBadge}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>LIVE</Text>
-            </View>
-            <Text style={styles.racingTitle}>{(distance / 1000).toFixed(0)}K CHALLENGE</Text>
-          </View>
-
-          <RoutePreview distance={distance} isActive={true} />
-
-          <View style={styles.racingPlayers}>
-            {players.map((p, i) => (
-              <View key={p.id} style={styles.racingPlayerRow}>
-                <View style={styles.racingPlayerAvatar}>
-                  <Text style={styles.racingPlayerInitial}>
-                    {p.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-                <View style={styles.racingPlayerInfo}>
-                  <Text style={styles.racingPlayerName}>{p.name}</Text>
-                  <View style={styles.racingProgressOuter}>
-                    <Animated.View style={[styles.racingProgressInner, { width: `${20 + i * 15}%` }]} />
-                  </View>
-                </View>
-                <Text style={styles.racingPlayerDist}>{Math.round((20 + i * 15) / 100 * distance)}m</Text>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          <LinearGradient colors={['#1a1917', '#141416']} style={styles.racingScreen}>
+            <View style={styles.racingHeader}>
+              <View style={styles.racingLiveBadge}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>LIVE</Text>
               </View>
-            ))}
-          </View>
+              <Text style={styles.racingTitle}>{(distance / 1000).toFixed(0)}K CHALLENGE</Text>
+              <View style={styles.racingTimer}>
+                <Timer size={12} color="rgba(232,220,200,0.5)" />
+                <Text style={styles.racingTimerText}>{formatElapsed(raceElapsed)}</Text>
+              </View>
+            </View>
 
-          <View style={styles.racingFooter}>
-            <Text style={styles.racingFooterText}>GPS-Tracking aktiv</Text>
-            <MapPin size={14} color="rgba(191,163,93,0.5)" />
-          </View>
+            <SpectatorBar spectators={spectators} allowSpectators={allowSpectators} />
 
-          <Pressable
-            style={styles.surrenderBtn}
-            onPress={() => {
-              if (Platform.OS !== 'web') {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              }
-              setShowSurrenderConfirm(true);
-            }}
-            testID="surrender-button"
-          >
-            <Flag size={16} color="#C06060" />
-            <Text style={styles.surrenderBtnText}>AUFGEBEN</Text>
-          </Pressable>
-        </LinearGradient>
+            <View style={{ marginTop: 16 }}>
+              <LiveRaceTrack
+                distance={distance}
+                racerPositions={racerPositions}
+                cheers={cheers}
+              />
+            </View>
+
+            <View style={styles.racingPlayers}>
+              {racerPositions.map((rp, i) => {
+                const progress = Math.min(rp.distanceCovered / distance, 1);
+                const RACER_COLORS = ['#BFA35D', '#5DA3BF', '#BF5D5D', '#5DBF7A'];
+                const color = RACER_COLORS[i % RACER_COLORS.length];
+                return (
+                  <View key={rp.userId} style={styles.racingPlayerRow}>
+                    <View style={[styles.racingPlayerAvatar, { borderColor: color }]}>
+                      {rp.avatarUrl ? (
+                        <Image source={{ uri: rp.avatarUrl }} style={{ width: 36, height: 36, borderRadius: 10 }} />
+                      ) : (
+                        <Text style={[styles.racingPlayerInitial, { color }]}>
+                          {rp.name.charAt(0).toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.racingPlayerInfo}>
+                      <View style={styles.racingPlayerNameRow}>
+                        <Text style={styles.racingPlayerName}>{rp.name}</Text>
+                        {rp.isFinished && <Text style={styles.racingFinishedBadge}>{"\ud83c\udfc1"}</Text>}
+                        {rp.hasSurrendered && <Text style={styles.racingSurrenderedBadge}>\u274C</Text>}
+                      </View>
+                      <View style={styles.racingProgressOuter}>
+                        <View style={[styles.racingProgressInner, { width: `${progress * 100}%`, backgroundColor: color }]} />
+                      </View>
+                      <View style={styles.racingPlayerStats}>
+                        <Text style={styles.racingPaceText}>
+                          {rp.pace > 0 ? `${rp.pace.toFixed(1)} min/km` : '--'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.racingPlayerDist, { color }]}>
+                      {Math.round(rp.distanceCovered)}m
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+
+            <View style={styles.racingFooter}>
+              <Radio size={12} color="rgba(191,163,93,0.4)" />
+              <Text style={styles.racingFooterText}>GPS alle {RACE_GPS_INTERVAL_MS / 1000}s</Text>
+              <MapPin size={12} color="rgba(191,163,93,0.4)" />
+              <Text style={styles.racingFooterText}>Echtzeit</Text>
+            </View>
+
+            {(allowSpectators || myRole === 'spectator') && (
+              <CheerBar onSendCheer={handleSendCheer} />
+            )}
+
+            <Pressable
+              style={styles.surrenderBtn}
+              onPress={() => {
+                if (Platform.OS !== 'web') {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                }
+                setShowSurrenderConfirm(true);
+              }}
+              testID="surrender-button"
+            >
+              <Flag size={16} color="#C06060" />
+              <Text style={styles.surrenderBtnText}>AUFGEBEN</Text>
+            </Pressable>
+          </LinearGradient>
+        </ScrollView>
 
         {showSurrenderConfirm && (
           <SurrenderConfirmModal
@@ -1177,6 +1835,35 @@ export default function LobbyScreen() {
               <Text style={styles.cancelReadyText}>Abbrechen</Text>
             </Pressable>
           )}
+        </View>
+
+        <View style={styles.spectatorSection}>
+          <Text style={styles.sectionLabel}>ZUSCHAUER</Text>
+          <Pressable
+            style={[styles.spectatorToggleBtn, allowSpectators && styles.spectatorToggleBtnActive]}
+            onPress={() => {
+              setAllowSpectators(prev => !prev);
+              if (Platform.OS !== 'web') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
+            }}
+          >
+            {allowSpectators ? (
+              <Eye size={18} color="#BFA35D" />
+            ) : (
+              <EyeOff size={18} color="rgba(232,220,200,0.3)" />
+            )}
+            <View style={styles.spectatorToggleInfo}>
+              <Text style={[styles.spectatorToggleTitle, allowSpectators && styles.spectatorToggleTitleActive]}>
+                {allowSpectators ? 'Zuschauer erlaubt' : 'Keine Zuschauer'}
+              </Text>
+              <Text style={styles.spectatorToggleDesc}>
+                {allowSpectators
+                  ? 'Freunde k\u00f6nnen live zuschauen & anfeuern'
+                  : 'Nur Teilnehmer sehen den Wettkampf'}
+              </Text>
+            </View>
+          </Pressable>
         </View>
 
         <View style={styles.rulesSection}>
@@ -1865,8 +2552,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     alignItems: 'center',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 16,
     paddingTop: 8,
+  },
+  racingTimer: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 5,
+    marginLeft: 'auto' as any,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: 'rgba(232,220,200,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(232,220,200,0.08)',
+  },
+  racingTimerText: {
+    fontSize: 13,
+    fontWeight: '800' as const,
+    color: 'rgba(232,220,200,0.6)',
+    fontVariant: ['tabular-nums'] as any,
+  },
+  racingPlayerNameRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  racingFinishedBadge: {
+    fontSize: 12,
+  },
+  racingSurrenderedBadge: {
+    fontSize: 12,
+  },
+  racingPlayerStats: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  racingPaceText: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: 'rgba(191,163,93,0.4)',
   },
   racingLiveBadge: {
     flexDirection: 'row' as const,
@@ -1966,12 +2693,47 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: 'rgba(191,163,93,0.4)',
   },
+  spectatorSection: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  spectatorToggleBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: '#1e1e20',
+    borderWidth: 1.5,
+    borderColor: 'rgba(191,163,93,0.06)',
+  },
+  spectatorToggleBtnActive: {
+    backgroundColor: 'rgba(191,163,93,0.08)',
+    borderColor: 'rgba(191,163,93,0.2)',
+  },
+  spectatorToggleInfo: {
+    flex: 1,
+  },
+  spectatorToggleTitle: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: 'rgba(232,220,200,0.4)',
+  },
+  spectatorToggleTitleActive: {
+    color: '#BFA35D',
+  },
+  spectatorToggleDesc: {
+    fontSize: 11,
+    color: 'rgba(232,220,200,0.2)',
+    marginTop: 3,
+  },
   surrenderBtn: {
     flexDirection: 'row' as const,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 'auto' as any,
+    marginTop: 24,
     marginBottom: 20,
     paddingVertical: 14,
     borderRadius: 14,

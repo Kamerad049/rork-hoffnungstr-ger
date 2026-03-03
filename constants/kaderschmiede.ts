@@ -164,6 +164,55 @@ export const CHECKIN_TOKEN_ROTATION_S = 30;
 export const CHECKIN_TOKEN_VALIDITY_S = 60;
 export const CHECKIN_MAX_GPS_ACCURACY_M = 100;
 
+export interface LiveChallengeSettings {
+  allowSpectators: boolean;
+  distance: 1000 | 2000 | 5000;
+  mode: '1v1' | 'team';
+  maxTeamSize: number;
+}
+
+export interface RacerPosition {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  latitude: number;
+  longitude: number;
+  distanceCovered: number;
+  pace: number;
+  timestamp: number;
+  isFinished: boolean;
+  hasSurrendered: boolean;
+}
+
+export interface SpectatorInfo {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  joinedAt: number;
+}
+
+export interface CheerMessage {
+  id: string;
+  fromUserId: string;
+  fromName: string;
+  fromAvatarUrl: string | null;
+  type: 'fire' | 'lightning' | 'muscle' | 'clap' | 'horn';
+  timestamp: number;
+}
+
+export const CHEER_TYPES: { type: CheerMessage['type']; emoji: string; label: string }[] = [
+  { type: 'fire', emoji: '🔥', label: 'Feuer' },
+  { type: 'lightning', emoji: '⚡', label: 'Energie' },
+  { type: 'muscle', emoji: '💪', label: 'Kraft' },
+  { type: 'clap', emoji: '👏', label: 'Applaus' },
+  { type: 'horn', emoji: '📯', label: 'Horn' },
+];
+
+export const RACE_GPS_INTERVAL_MS = 1000;
+export const SPECTATOR_POLL_INTERVAL_MS = 2000;
+export const MAX_SPECTATORS = 20;
+export const CHEER_DISPLAY_DURATION_MS = 3000;
+
 export const BUNDESLAND_COORDS: Record<string, { lat: number; lng: number }> = {
   'Baden-Württemberg': { lat: 48.66, lng: 9.35 },
   'Bayern': { lat: 48.79, lng: 11.50 },
