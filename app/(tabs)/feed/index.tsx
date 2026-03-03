@@ -51,11 +51,25 @@ export default function FeedScreen() {
   const [ready, setReady] = useState<boolean>(false);
   const [editingPost, setEditingPost] = useState<FeedPost | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [feedMode, setFeedMode] = useState<'discover' | 'foryou'>('discover');
+  const tabIndicatorX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setReady(true));
     return () => cancelAnimationFrame(id);
   }, []);
+
+  const handleFeedModeChange = useCallback((mode: 'discover' | 'foryou') => {
+    if (mode === feedMode) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setFeedMode(mode);
+    Animated.spring(tabIndicatorX, {
+      toValue: mode === 'discover' ? 0 : 1,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 25,
+    }).start();
+  }, [feedMode, tabIndicatorX]);
 
   const sortedPosts = useMemo(() => {
     return [...allPosts].sort(
@@ -287,10 +301,46 @@ export default function FeedScreen() {
       </LinearGradient>
 
       <View style={[styles.heroHeader, { paddingTop: insets.top + 12 }]}>
-        <View>
-          <Text style={styles.heroLabel}>Entdecken</Text>
+        <View style={styles.heroLeft}>
           <Text style={styles.heroTitle}>Feed</Text>
         </View>
+
+        <View style={styles.feedToggleContainer}>
+          <Animated.View
+            style={[
+              styles.feedToggleIndicator,
+              {
+                transform: [{
+                  translateX: tabIndicatorX.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 100],
+                  }),
+                }],
+              },
+            ]}
+          />
+          <Pressable
+            style={styles.feedToggleTab}
+            onPress={() => handleFeedModeChange('discover')}
+            testID="feed-tab-discover"
+          >
+            <Text style={[
+              styles.feedToggleText,
+              feedMode === 'discover' && styles.feedToggleTextActive,
+            ]}>ENTDECKEN</Text>
+          </Pressable>
+          <Pressable
+            style={styles.feedToggleTab}
+            onPress={() => handleFeedModeChange('foryou')}
+            testID="feed-tab-foryou"
+          >
+            <Text style={[
+              styles.feedToggleText,
+              feedMode === 'foryou' && styles.feedToggleTextActive,
+            ]}>FÜR DICH</Text>
+          </Pressable>
+        </View>
+
         <Pressable
           style={styles.heroIconWrap}
           onPress={() => {
@@ -377,19 +427,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 8,
   },
-  heroLabel: {
-    fontSize: 13,
-    fontWeight: '500' as const,
-    color: 'rgba(191,163,93,0.5)',
-    marginBottom: 2,
+  heroLeft: {
+    width: 42,
   },
   heroTitle: {
-    fontSize: 26,
+    fontSize: 20,
     fontWeight: '800' as const,
     color: '#E8DCC8',
+  },
+  feedToggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(191,163,93,0.08)',
+    borderRadius: 20,
+    height: 36,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
+  feedToggleIndicator: {
+    position: 'absolute',
+    top: 2,
+    left: 2,
+    width: 98,
+    height: 30,
+    borderRadius: 16,
+    backgroundColor: 'rgba(191,163,93,0.18)',
+  },
+  feedToggleTab: {
+    width: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  feedToggleText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: 'rgba(191,163,93,0.35)',
+    letterSpacing: 0.8,
+  },
+  feedToggleTextActive: {
+    color: '#BFA35D',
   },
   heroIconWrap: {
     width: 42,
