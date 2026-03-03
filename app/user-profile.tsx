@@ -34,7 +34,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_PADDING = 16;
 const GRID_GAP = 3;
 const GRID_COLS = 3;
-const TILE_SIZE = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
+const TILE_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
+const TILE_HEIGHT = TILE_WIDTH * (5 / 4);
 
 type ProfileTab = 'posts' | 'tagged';
 
@@ -1745,10 +1746,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   gridTile: {
-    width: TILE_SIZE,
-    height: TILE_SIZE,
+    width: TILE_WIDTH,
+    height: TILE_HEIGHT,
     borderRadius: 8,
-    position: 'relative',
+    position: 'relative' as const,
     overflow: 'hidden',
   },
   gridTileImage: {

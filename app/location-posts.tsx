@@ -22,7 +22,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_PADDING = 12;
 const GRID_GAP = 3;
 const GRID_COLS = 3;
-const TILE_SIZE = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
+const TILE_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
+const TILE_HEIGHT = TILE_WIDTH * (5 / 4);
 
 type SortMode = 'recent' | 'popular';
 
@@ -268,11 +269,11 @@ const styles = StyleSheet.create({
     gap: GRID_GAP,
   },
   gridTile: {
-    width: TILE_SIZE,
-    height: TILE_SIZE,
+    width: TILE_WIDTH,
+    height: TILE_HEIGHT,
     borderRadius: 8,
     overflow: 'hidden',
-    position: 'relative',
+    position: 'relative' as const,
     marginBottom: GRID_GAP,
   },
   gridTileImage: {

@@ -329,7 +329,12 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
       if (newLocation !== undefined) updateData.location = newLocation || null;
       if (newTaggedUserIds !== undefined) updateData.tagged_user_ids = newTaggedUserIds.length > 0 ? newTaggedUserIds : null;
       if (newTags !== undefined) updateData.tags = newTags.length > 0 ? newTags : null;
-      await supabase.from('posts').update(updateData).eq('id', postId).eq('user_id', userId);
+      const { error } = await supabase.from('posts').update(updateData).eq('id', postId).eq('user_id', userId);
+      if (error) {
+        console.log('[POSTS] Edit post error:', error.message, 'code:', error.code);
+        throw new Error(error.message);
+      }
+      console.log('[POSTS] Post updated in DB successfully:', postId);
     }
     queryClient.setQueryData<{ posts: FeedPost[]; likedPosts: string[] }>(
       queryKeys.posts(userId),
@@ -346,6 +351,7 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
         likedPosts: old?.likedPosts ?? [],
       }),
     );
+    queryClient.invalidateQueries({ queryKey: queryKeys.posts(userId) });
   }, [userId, queryClient]);
 
   const toggleCommentsDisabled = useCallback((postId: string) => {

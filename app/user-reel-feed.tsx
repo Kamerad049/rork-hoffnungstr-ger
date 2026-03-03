@@ -869,9 +869,9 @@ const itemStyles = StyleSheet.create({
   },
   imageContainer: {
     width: SCREEN_WIDTH,
-    aspectRatio: 1,
+    aspectRatio: 4 / 5,
     backgroundColor: '#1a1a1c',
-    position: 'relative',
+    position: 'relative' as const,
   },
   image: {
     width: '100%',
