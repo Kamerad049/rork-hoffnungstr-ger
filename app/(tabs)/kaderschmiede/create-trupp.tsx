@@ -97,7 +97,7 @@ export default function CreateTruppScreen() {
     } finally {
       setUploadingLogo(false);
     }
-  }, []);
+  }, [showAlert]);
 
   const takeLogo = useCallback(async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -127,7 +127,7 @@ export default function CreateTruppScreen() {
     } finally {
       setUploadingLogo(false);
     }
-  }, []);
+  }, [showAlert]);
 
   const handleCreate = useCallback(async () => {
     if (!canSubmit || !sport || isSubmitting) return;
@@ -154,7 +154,7 @@ export default function CreateTruppScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [canSubmit, name, motto, description, sport, city, bundesland, isOpen, weeklyGoal, logoUrl, createTrupp, router, isSubmitting]);
+  }, [canSubmit, name, motto, description, sport, city, bundesland, isOpen, weeklyGoal, logoUrl, createTrupp, router, isSubmitting, showAlert]);
 
   return (
     <View style={styles.container}>
@@ -612,7 +612,7 @@ async function uploadLogo(uri: string, mimeType: string): Promise<string | null>
   try {
     const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
     const fileName = `trupp-logos/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
-    console.log('[CREATE-TRUPP] Uploading logo:', fileName);
+    console.log('[CREATE-TRUPP] Uploading logo:', fileName, 'platform:', Platform.OS);
 
     if (Platform.OS === 'web') {
       const response = await fetch(uri);
@@ -621,30 +621,51 @@ async function uploadLogo(uri: string, mimeType: string): Promise<string | null>
         .from('admin-uploads')
         .upload(fileName, blob, { contentType: mimeType, upsert: false });
       if (error) {
-        console.log('[CREATE-TRUPP] Upload error:', error.message);
+        console.log('[CREATE-TRUPP] Upload error (web):', error.message);
         return null;
       }
       const { data: urlData } = supabase.storage.from('admin-uploads').getPublicUrl(data.path);
       return urlData.publicUrl;
     }
 
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as ArrayBuffer);
-      reader.onerror = reject;
-      reader.readAsArrayBuffer(blob);
-    });
+    const formData = new FormData();
+    const fileObj = {
+      uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+      name: fileName.split('/').pop() ?? `logo.${ext}`,
+      type: mimeType,
+    } as any;
+    formData.append('file', fileObj);
 
-    const { data, error } = await supabase.storage
-      .from('admin-uploads')
-      .upload(fileName, arrayBuffer, { contentType: mimeType, upsert: false });
-    if (error) {
-      console.log('[CREATE-TRUPP] Upload error:', error.message);
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) {
+      console.log('[CREATE-TRUPP] Missing Supabase config');
       return null;
     }
-    const { data: urlData } = supabase.storage.from('admin-uploads').getPublicUrl(data.path);
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token ?? supabaseKey;
+
+    const uploadUrl = `${supabaseUrl}/storage/v1/object/admin-uploads/${fileName}`;
+    console.log('[CREATE-TRUPP] Uploading to:', uploadUrl);
+
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'apikey': supabaseKey,
+        'x-upsert': 'false',
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.log('[CREATE-TRUPP] Upload error (native):', response.status, errText);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage.from('admin-uploads').getPublicUrl(fileName);
     console.log('[CREATE-TRUPP] Logo URL:', urlData.publicUrl);
     return urlData.publicUrl;
   } catch (err) {

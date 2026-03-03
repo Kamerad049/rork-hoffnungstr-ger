@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Animated,
   Pressable,
-  Alert,
   Platform,
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
@@ -16,10 +15,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { usePromotions } from '@/providers/PromotionProvider';
 import type { PromotionAnalytics } from '@/constants/types';
+import { useAlert } from '@/providers/AlertProvider';
 
 export default function PromotionAnalyticsScreen() {
   const { promotionId } = useLocalSearchParams<{ promotionId: string }>();
   const { getPromotionAnalytics, promotions, getSponsorById, triggerAggregation, exportAnalyticsCsv } = usePromotions();
+  const { showAlert } = useAlert();
   const [analytics, setAnalytics] = useState<PromotionAnalytics | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isAggregating, setIsAggregating] = useState<boolean>(false);
@@ -85,13 +86,13 @@ export default function PromotionAnalyticsScreen() {
       const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
       await triggerAggregation(yesterday);
       await loadAnalytics();
-      Alert.alert('Aggregation', 'Daily Stats wurden aktualisiert.');
+      showAlert('Aggregation', 'Daily Stats wurden aktualisiert.', undefined, 'success');
     } catch (e: any) {
-      Alert.alert('Fehler', e?.message ?? 'Aggregation fehlgeschlagen');
+      showAlert('Fehler', e?.message ?? 'Aggregation fehlgeschlagen', undefined, 'error');
     } finally {
       setIsAggregating(false);
     }
-  }, [triggerAggregation, loadAnalytics]);
+  }, [triggerAggregation, loadAnalytics, showAlert]);
 
   const handleExportCsv = useCallback(async () => {
     if (!promotionId) return;
@@ -107,19 +108,21 @@ export default function PromotionAnalyticsScreen() {
         link.download = `promotion_${promotionId}_analytics.csv`;
         link.click();
         URL.revokeObjectURL(url);
-        Alert.alert('Export', 'CSV wurde heruntergeladen.');
+        showAlert('Export', 'CSV wurde heruntergeladen.', undefined, 'success');
       } else {
-        Alert.alert(
+        showAlert(
           'CSV Export',
-          'CSV-Daten generiert. Sharing ist noch nicht implementiert.\n\nVorschau:\n' + csvContent.split('\n').slice(0, 5).join('\n') + '\n...',
+          'CSV-Daten generiert. Sharing ist noch nicht implementiert.',
+          undefined,
+          'info',
         );
       }
     } catch (e: any) {
-      Alert.alert('Fehler', e?.message ?? 'Export fehlgeschlagen');
+      showAlert('Fehler', e?.message ?? 'Export fehlgeschlagen', undefined, 'error');
     } finally {
       setIsExporting(false);
     }
-  }, [promotionId, exportAnalyticsCsv]);
+  }, [promotionId, exportAnalyticsCsv, showAlert]);
 
   if (loading) {
     return (
