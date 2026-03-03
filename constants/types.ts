@@ -214,6 +214,31 @@ export interface PostComment {
   defendCount?: number;
 }
 
+export interface StoryPollOption {
+  id: string;
+  text: string;
+  votes: number;
+}
+
+export interface StoryPoll {
+  question: string;
+  options: StoryPollOption[];
+}
+
+export interface StoryWeather {
+  temp: number;
+  condition: string;
+}
+
+export interface StoryMetadata {
+  poll?: StoryPoll;
+  mentions?: string[];
+  location?: string;
+  weather?: StoryWeather;
+  showClock?: boolean;
+  clockTime?: string;
+}
+
 export interface StoryItem {
   id: string;
   mediaUrl: string;
@@ -227,6 +252,7 @@ export interface StoryItem {
   textX?: number;
   textY?: number;
   textScale?: number;
+  metadata?: StoryMetadata;
 }
 
 export interface StoryGroup {

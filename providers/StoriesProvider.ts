@@ -3,7 +3,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useFriends } from '@/providers/FriendsProvider';
-import type { StoryItem, StoryGroup, SocialUser } from '@/constants/types';
+import type { StoryItem, StoryGroup, SocialUser, StoryMetadata } from '@/constants/types';
 
 export const STORY_DURATION_SECONDS = 5;
 const STORY_EXPIRY_HOURS = 24;
@@ -31,6 +31,10 @@ export const [StoriesProvider, useStories] = createContextHook(() => {
         const ownS: StoryItem[] = [];
         const extGroups: Record<string, StoryItem[]> = {};
         for (const s of storyData) {
+          let parsedMeta: StoryMetadata | undefined;
+          try {
+            if (s.metadata) parsedMeta = typeof s.metadata === 'string' ? JSON.parse(s.metadata) : s.metadata;
+          } catch { parsedMeta = undefined; }
           const item: StoryItem = {
             id: s.id,
             mediaUrl: s.media_url ?? '',
@@ -44,6 +48,7 @@ export const [StoriesProvider, useStories] = createContextHook(() => {
             textX: s.text_x ?? undefined,
             textY: s.text_y ?? undefined,
             textScale: s.text_scale ?? undefined,
+            metadata: parsedMeta,
           };
           if (s.user_id === userId) {
             ownS.push(item);
@@ -93,22 +98,26 @@ export const [StoriesProvider, useStories] = createContextHook(() => {
   const isStoryViewed = useCallback((storyId: string) => viewedStories.includes(storyId), [viewedStories]);
 
   const createStory = useCallback(
-    async (caption: string, bgColor: string, mediaUrl?: string, fontFamily?: string, textPos?: { x: number; y: number; scale: number }) => {
+    async (caption: string, bgColor: string, mediaUrl?: string, fontFamily?: string, textPos?: { x: number; y: number; scale: number }, metadata?: StoryMetadata) => {
       if (!userId) return null;
       const expiresAt = new Date(Date.now() + STORY_EXPIRY_HOURS * 3600000).toISOString();
+      const insertPayload: Record<string, unknown> = {
+        user_id: userId,
+        media_url: mediaUrl ?? '',
+        caption,
+        bg_color: bgColor,
+        font_family: fontFamily,
+        text_x: textPos?.x,
+        text_y: textPos?.y,
+        text_scale: textPos?.scale,
+        expires_at: expiresAt,
+      };
+      if (metadata) {
+        insertPayload.metadata = JSON.stringify(metadata);
+      }
       const { data, error } = await supabase
         .from('stories')
-        .insert({
-          user_id: userId,
-          media_url: mediaUrl ?? '',
-          caption,
-          bg_color: bgColor,
-          font_family: fontFamily,
-          text_x: textPos?.x,
-          text_y: textPos?.y,
-          text_scale: textPos?.scale,
-          expires_at: expiresAt,
-        })
+        .insert(insertPayload)
         .select('id, created_at')
         .single();
       if (error || !data) {
@@ -125,6 +134,7 @@ export const [StoriesProvider, useStories] = createContextHook(() => {
         textX: textPos?.x,
         textY: textPos?.y,
         textScale: textPos?.scale,
+        metadata,
       };
       setOwnStories((prev) => [...prev, story]);
       return story;

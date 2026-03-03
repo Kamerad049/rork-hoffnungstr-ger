@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,27 @@ import {
   PanResponder,
   Animated,
   Keyboard,
+  Modal,
+  FlatList,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Stack } from 'expo-router';
-import { X, Send, ImagePlus, Type, Trash2 } from 'lucide-react-native';
+import { useRouter, Stack } from 'expo-router';
+import {
+  X,
+  Send,
+  ImagePlus,
+  Type,
+  Trash2,
+  BarChart3,
+  Clock,
+  AtSign,
+  MapPin,
+  CloudSun,
+  Palette,
+  Plus,
+  Check,
+  Search,
+} from 'lucide-react-native';
 import { cleanPanHandlers } from '@/lib/utils';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -24,26 +41,16 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useStories } from '@/providers/StoriesProvider';
 import { useAlert } from '@/providers/AlertProvider';
+import { useFriends } from '@/providers/FriendsProvider';
+import type { StoryMetadata, StoryPoll, StoryWeather, SocialUser } from '@/constants/types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const BG_COLORS = [
-  '#1c1c1e',
-  '#2C3E50',
-  '#8E44AD',
-  '#C0392B',
-  '#27AE60',
-  '#2980B9',
-  '#D35400',
-  '#16A085',
-  '#E74C3C',
-  '#3498DB',
-  '#F39C12',
-  '#1ABC9C',
-  '#9B59B6',
-  '#34495E',
-  '#E67E22',
-  '#BFA35D',
+  '#1c1c1e', '#2C3E50', '#8E44AD', '#C0392B',
+  '#27AE60', '#2980B9', '#D35400', '#16A085',
+  '#E74C3C', '#3498DB', '#F39C12', '#1ABC9C',
+  '#9B59B6', '#34495E', '#E67E22', '#BFA35D',
 ];
 
 interface FontOption {
@@ -62,22 +69,135 @@ const FONT_OPTIONS: FontOption[] = [
   { label: 'Schwer', family: Platform.OS === 'ios' ? 'System' : 'sans-serif', style: 'normal', weight: '900' },
 ];
 
-type StoryMode = 'text' | 'photo';
+const WEATHER_CODES: Record<number, string> = {
+  0: 'Klar', 1: 'Heiter', 2: 'Bewölkt', 3: 'Bedeckt',
+  45: 'Nebel', 48: 'Nebel', 51: 'Nieselregen', 53: 'Nieselregen',
+  55: 'Nieselregen', 61: 'Regen', 63: 'Regen', 65: 'Starkregen',
+  71: 'Schnee', 73: 'Schnee', 75: 'Schnee', 80: 'Schauer',
+  81: 'Schauer', 82: 'Schauer', 95: 'Gewitter', 96: 'Gewitter',
+};
+
+function FlipClockDisplay({ time }: { time: string }) {
+  const parts = time.split(':');
+  const h = parts[0] ?? '00';
+  const m = parts[1] ?? '00';
+
+  const renderDigit = (digit: string) => (
+    <View style={flipStyles.digitBox}>
+      <View style={flipStyles.digitTop}>
+        <Text style={flipStyles.digitText}>{digit}</Text>
+      </View>
+      <View style={flipStyles.digitLine} />
+      <View style={flipStyles.digitBottom}>
+        <Text style={flipStyles.digitText}>{digit}</Text>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={flipStyles.container}>
+      <View style={flipStyles.group}>
+        {renderDigit(h[0] ?? '0')}
+        {renderDigit(h[1] ?? '0')}
+      </View>
+      <Text style={flipStyles.colon}>:</Text>
+      <View style={flipStyles.group}>
+        {renderDigit(m[0] ?? '0')}
+        {renderDigit(m[1] ?? '0')}
+      </View>
+    </View>
+  );
+}
+
+const flipStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  group: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  digitBox: {
+    width: 32,
+    height: 44,
+    borderRadius: 6,
+    backgroundColor: '#111',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  digitTop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    width: '100%',
+    paddingBottom: 0,
+  },
+  digitLine: {
+    height: 1,
+    width: '100%',
+    backgroundColor: 'rgba(0,0,0,0.8)',
+  },
+  digitBottom: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    backgroundColor: '#141414',
+    width: '100%',
+    paddingTop: 0,
+  },
+  digitText: {
+    fontSize: 26,
+    fontWeight: '800' as const,
+    color: '#e0d5b0',
+    fontVariant: ['tabular-nums'],
+  },
+  colon: {
+    fontSize: 28,
+    fontWeight: '800' as const,
+    color: '#e0d5b0',
+    marginHorizontal: 2,
+    marginTop: -4,
+  },
+});
 
 export default function CreateStoryScreen() {
-  const { colors } = useTheme();
+  useTheme();
   const { showAlert } = useAlert();
   const { createStory } = useStories();
+  const { allUsersState } = useFriends();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [mode, setMode] = useState<StoryMode>('text');
   const [text, setText] = useState<string>('');
   const [selectedBg, setSelectedBg] = useState<string>(BG_COLORS[0]);
   const [selectedFont, setSelectedFont] = useState<number>(0);
   const [imageUri, setImageUri] = useState<string | null>(null);
-  const [showFontPicker, setShowFontPicker] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
+
+  const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
+  const [showFontPicker, setShowFontPicker] = useState<boolean>(false);
+
+  const [pollData, setPollData] = useState<StoryPoll | null>(null);
+  const [showPollCreator, setShowPollCreator] = useState<boolean>(false);
+  const [pollQuestion, setPollQuestion] = useState<string>('');
+  const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
+
+  const [showClock, setShowClock] = useState<boolean>(false);
+  const [clockTime, setClockTime] = useState<string>('');
+
+  const [mentions, setMentions] = useState<SocialUser[]>([]);
+  const [showMentionPicker, setShowMentionPicker] = useState<boolean>(false);
+  const [mentionSearch, setMentionSearch] = useState<string>('');
+
+  const [locationName, setLocationName] = useState<string | null>(null);
+  const [loadingLocation, setLoadingLocation] = useState<boolean>(false);
+
+  const [weatherData, setWeatherData] = useState<StoryWeather | null>(null);
+  const [loadingWeather, setLoadingWeather] = useState<boolean>(false);
 
   const imgScaleVal = useRef(new Animated.Value(1)).current;
   const imgTranslateX = useRef(new Animated.Value(0)).current;
@@ -91,6 +211,8 @@ export default function CreateStoryScreen() {
   const imgLastTransY = useRef(0);
   const imgInitialPinchDist = useRef(0);
   const imgIsPinching = useRef(false);
+  const imgPinchCenterX = useRef(0);
+  const imgPinchCenterY = useRef(0);
 
   const textPanX = useRef(new Animated.Value(0)).current;
   const textPanY = useRef(new Animated.Value(0)).current;
@@ -104,6 +226,18 @@ export default function CreateStoryScreen() {
   const textIsPinching = useRef(false);
   const textIsDragging = useRef(false);
 
+  useEffect(() => {
+    if (showClock) {
+      const now = new Date();
+      setClockTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+      const interval = setInterval(() => {
+        const d = new Date();
+        setClockTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+      }, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [showClock]);
+
   const getDistance = (touches: { pageX: number; pageY: number }[]) => {
     const dx = touches[0].pageX - touches[1].pageX;
     const dy = touches[0].pageY - touches[1].pageY;
@@ -113,10 +247,13 @@ export default function CreateStoryScreen() {
   const imagePanResponder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => false,
-        onMoveShouldSetPanResponder: (_, gestureState) => {
+        onStartShouldSetPanResponder: (evt) => {
+          return evt.nativeEvent.touches.length >= 2 && !!imageUri;
+        },
+        onMoveShouldSetPanResponder: (evt, gestureState) => {
           if (!imageUri) return false;
-          return gestureState.numberActiveTouches === 2;
+          if (evt.nativeEvent.touches.length >= 2) return true;
+          return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
         },
         onPanResponderGrant: (evt) => {
           const touches = evt.nativeEvent.touches;
@@ -126,9 +263,14 @@ export default function CreateStoryScreen() {
             imgBaseScale.current = imgLastScale.current;
             imgBaseTransX.current = imgLastTransX.current;
             imgBaseTransY.current = imgLastTransY.current;
+            imgPinchCenterX.current = (touches[0].pageX + touches[1].pageX) / 2;
+            imgPinchCenterY.current = (touches[0].pageY + touches[1].pageY) / 2;
+          } else {
+            imgBaseTransX.current = imgLastTransX.current;
+            imgBaseTransY.current = imgLastTransY.current;
           }
         },
-        onPanResponderMove: (evt) => {
+        onPanResponderMove: (evt, gs) => {
           const touches = evt.nativeEvent.touches;
           if (touches.length >= 2 && imgIsPinching.current) {
             const dist = getDistance(touches as { pageX: number; pageY: number }[]);
@@ -136,6 +278,22 @@ export default function CreateStoryScreen() {
             newScale = Math.max(0.3, Math.min(5, newScale));
             imgScaleVal.setValue(newScale);
             imgLastScale.current = newScale;
+
+            const newCenterX = (touches[0].pageX + touches[1].pageX) / 2;
+            const newCenterY = (touches[0].pageY + touches[1].pageY) / 2;
+            const panX = imgBaseTransX.current + (newCenterX - imgPinchCenterX.current);
+            const panY = imgBaseTransY.current + (newCenterY - imgPinchCenterY.current);
+            imgTranslateX.setValue(panX);
+            imgTranslateY.setValue(panY);
+            imgLastTransX.current = panX;
+            imgLastTransY.current = panY;
+          } else if (!imgIsPinching.current) {
+            const newX = imgBaseTransX.current + gs.dx;
+            const newY = imgBaseTransY.current + gs.dy;
+            imgTranslateX.setValue(newX);
+            imgTranslateY.setValue(newY);
+            imgLastTransX.current = newX;
+            imgLastTransY.current = newY;
           }
         },
         onPanResponderRelease: () => {
@@ -145,7 +303,7 @@ export default function CreateStoryScreen() {
           imgIsPinching.current = false;
         },
       }),
-    [imageUri, imgScaleVal]
+    [imageUri, imgScaleVal, imgTranslateX, imgTranslateY]
   );
 
   const textPanResponder = useMemo(
@@ -187,7 +345,6 @@ export default function CreateStoryScreen() {
             newScale = Math.max(0.3, Math.min(4, newScale));
             textScaleVal.setValue(newScale);
             textLastScale.current = newScale;
-
             const newX = textLastX.current + gs.dx;
             const newY = textLastY.current + gs.dy;
             textPanX.setValue(newX);
@@ -226,31 +383,25 @@ export default function CreateStoryScreen() {
         allowsEditing: false,
         quality: 0.9,
       });
-
       if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        setImageUri(asset.uri);
-        setMode('photo');
-
+        setImageUri(result.assets[0].uri);
         imgScaleVal.setValue(1);
         imgTranslateX.setValue(0);
         imgTranslateY.setValue(0);
         imgLastScale.current = 1;
         imgLastTransX.current = 0;
         imgLastTransY.current = 0;
-
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        console.log('[STORY] Image picked:', asset.uri);
+        console.log('[STORY] Image picked:', result.assets[0].uri);
       }
     } catch (err) {
       console.log('[STORY] Image picker error:', err);
       showAlert('Fehler', 'Bild konnte nicht geladen werden.');
     }
-  }, [imgScaleVal, imgTranslateX, imgTranslateY]);
+  }, [imgScaleVal, imgTranslateX, imgTranslateY, showAlert]);
 
   const removeImage = useCallback(() => {
     setImageUri(null);
-    setMode('text');
     imgScaleVal.setValue(1);
     imgTranslateX.setValue(0);
     imgTranslateY.setValue(0);
@@ -260,10 +411,111 @@ export default function CreateStoryScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [imgScaleVal, imgTranslateX, imgTranslateY]);
 
+  const fetchLocation = useCallback(async () => {
+    setLoadingLocation(true);
+    try {
+      let lat = 0;
+      let lon = 0;
+      if (Platform.OS === 'web') {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+        });
+        lat = pos.coords.latitude;
+        lon = pos.coords.longitude;
+      } else {
+        const Location = await import('expo-location');
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          showAlert('Standort', 'Standort-Berechtigung wurde nicht erteilt.');
+          setLoadingLocation(false);
+          return;
+        }
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        lat = loc.coords.latitude;
+        lon = loc.coords.longitude;
+      }
+      const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=de`);
+      const data = await resp.json();
+      const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || '';
+      const state = data.address?.state || '';
+      const name = city ? (state ? `${city}, ${state}` : city) : (state || 'Unbekannter Ort');
+      setLocationName(name);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      console.log('[STORY] Location fetched:', name);
+      return { lat, lon };
+    } catch (err) {
+      console.log('[STORY] Location error:', err);
+      showAlert('Standort', 'Standort konnte nicht ermittelt werden.');
+      return null;
+    } finally {
+      setLoadingLocation(false);
+    }
+  }, [showAlert]);
+
+  const fetchWeather = useCallback(async () => {
+    setLoadingWeather(true);
+    try {
+      let lat = 0;
+      let lon = 0;
+      if (Platform.OS === 'web') {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+        });
+        lat = pos.coords.latitude;
+        lon = pos.coords.longitude;
+      } else {
+        const Location = await import('expo-location');
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          showAlert('Wetter', 'Standort-Berechtigung wird für Wetter benötigt.');
+          setLoadingWeather(false);
+          return;
+        }
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+        lat = loc.coords.latitude;
+        lon = loc.coords.longitude;
+      }
+      const resp = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+      const data = await resp.json();
+      const cw = data.current_weather;
+      if (cw) {
+        const condition = WEATHER_CODES[cw.weathercode] ?? 'Unbekannt';
+        setWeatherData({ temp: Math.round(cw.temperature), condition });
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        console.log('[STORY] Weather fetched:', cw.temperature, condition);
+      }
+    } catch (err) {
+      console.log('[STORY] Weather error:', err);
+      showAlert('Wetter', 'Wetter konnte nicht geladen werden.');
+    } finally {
+      setLoadingWeather(false);
+    }
+  }, [showAlert]);
+
+  const handleAddPoll = useCallback(() => {
+    if (!pollQuestion.trim() || pollOptions.filter((o) => o.trim()).length < 2) {
+      showAlert('Umfrage', 'Frage und mindestens 2 Antworten sind nötig.');
+      return;
+    }
+    const poll: StoryPoll = {
+      question: pollQuestion.trim(),
+      options: pollOptions.filter((o) => o.trim()).map((o, i) => ({
+        id: `opt_${i}`,
+        text: o.trim(),
+        votes: 0,
+      })),
+    };
+    setPollData(poll);
+    setShowPollCreator(false);
+    setPollQuestion('');
+    setPollOptions(['', '']);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [pollQuestion, pollOptions, showAlert]);
+
   const handlePublish = useCallback(() => {
     const trimmed = text.trim();
-    if (!trimmed && !imageUri) {
-      showAlert('Hinweis', 'Bitte schreibe etwas oder füge ein Foto hinzu.');
+    if (!trimmed && !imageUri && !pollData && !showClock && !locationName && !weatherData) {
+      showAlert('Hinweis', 'Bitte füge Inhalt hinzu.');
       return;
     }
     const font = FONT_OPTIONS[selectedFont];
@@ -273,41 +525,71 @@ export default function CreateStoryScreen() {
       y: textLastY.current / SCREEN_HEIGHT,
       scale: textLastScale.current,
     } : undefined;
-    createStory(trimmed, selectedBg, imageUri || undefined, fontId, textPos);
+
+    const metadata: StoryMetadata = {};
+    if (pollData) metadata.poll = pollData;
+    if (mentions.length > 0) metadata.mentions = mentions.map((m) => m.id);
+    if (locationName) metadata.location = locationName;
+    if (weatherData) metadata.weather = weatherData;
+    if (showClock) {
+      metadata.showClock = true;
+      metadata.clockTime = clockTime;
+    }
+
+    const hasMetadata = Object.keys(metadata).length > 0;
+    createStory(trimmed, selectedBg, imageUri || undefined, fontId, textPos, hasMetadata ? metadata : undefined);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    console.log('[STORY] Published story, mode:', mode, 'font:', fontId, 'textPos:', textPos);
+    console.log('[STORY] Published story with metadata:', metadata);
     router.back();
-  }, [text, selectedBg, selectedFont, imageUri, createStory, router, mode]);
+  }, [text, selectedBg, selectedFont, imageUri, createStory, router, pollData, mentions, locationName, weatherData, showClock, clockTime, showAlert]);
 
   const handleClose = useCallback(() => {
     router.back();
   }, [router]);
 
-  const toggleFontPicker = useCallback(() => {
-    Keyboard.dismiss();
-    setIsEditing(false);
-    setShowFontPicker((prev) => !prev);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, []);
-
-  const handleTextFocus = useCallback(() => {
-    setIsEditing(true);
-  }, []);
-
   const handleBackgroundPress = useCallback(() => {
     Keyboard.dismiss();
     setIsEditing(false);
+    setShowColorPicker(false);
+    setShowFontPicker(false);
   }, []);
 
-  const currentFont = FONT_OPTIONS[selectedFont];
+  const toggleClock = useCallback(() => {
+    setShowClock((prev) => !prev);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
 
+  const handleAddMention = useCallback((user: SocialUser) => {
+    if (!mentions.find((m) => m.id === user.id)) {
+      setMentions((prev) => [...prev, user]);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setShowMentionPicker(false);
+    setMentionSearch('');
+  }, [mentions]);
+
+  const handleRemoveMention = useCallback((userId: string) => {
+    setMentions((prev) => prev.filter((m) => m.id !== userId));
+  }, []);
+
+  const filteredUsers = useMemo(() => {
+    if (!mentionSearch.trim()) return allUsersState.slice(0, 20);
+    const q = mentionSearch.toLowerCase();
+    return allUsersState.filter((u) =>
+      u.displayName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)
+    ).slice(0, 20);
+  }, [allUsersState, mentionSearch]);
+
+  const currentFont = FONT_OPTIONS[selectedFont];
   const textStyle = {
     fontFamily: currentFont.family,
     fontWeight: currentFont.weight as 'normal' | 'bold' | '300' | '600' | '700' | '900',
     fontStyle: currentFont.style as 'normal' | 'italic',
   };
 
-  const canPublish = text.trim().length > 0 || !!imageUri;
+  const canPublish = text.trim().length > 0 || !!imageUri || !!pollData || showClock || !!locationName || !!weatherData;
+
+  const hasStickers = !!pollData || showClock || mentions.length > 0 || !!locationName || !!weatherData;
 
   return (
     <View style={styles.container}>
@@ -317,10 +599,9 @@ export default function CreateStoryScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Pressable
+        <View
           style={[styles.preview, !imageUri && { backgroundColor: selectedBg }]}
-          onPress={handleBackgroundPress}
-          {...cleanPanHandlers(imagePanResponder.panHandlers)}
+          {...cleanPanHandlers(imagePanResponder.panHandlers as unknown as Record<string, unknown>)}
         >
           {imageUri && (
             <Animated.Image
@@ -338,197 +619,350 @@ export default function CreateStoryScreen() {
               resizeMode="cover"
             />
           )}
-
           {imageUri && <View style={styles.imageOverlay} />}
 
-          <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-            <Pressable onPress={handleClose} hitSlop={16} testID="close-story-create">
-              <X size={28} color="#fff" />
-            </Pressable>
+          <View style={[styles.topBar, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
+            <View style={styles.topBarRow} pointerEvents="box-none">
+              <Pressable onPress={handleClose} hitSlop={16} testID="close-story-create" style={styles.circleBtn}>
+                <X size={22} color="#fff" />
+              </Pressable>
 
-            <View style={styles.topActions}>
-              {imageUri && (
+              <View style={styles.topCenter} pointerEvents="box-none">
+                {!imageUri && (
+                  <Pressable
+                    onPress={() => { setShowColorPicker((p) => !p); setShowFontPicker(false); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                    style={[styles.circleBtn, { backgroundColor: selectedBg, borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' }]}
+                    testID="toggle-colors"
+                  >
+                    <Palette size={16} color="#fff" />
+                  </Pressable>
+                )}
                 <Pressable
-                  onPress={removeImage}
-                  style={styles.topActionBtn}
-                  hitSlop={8}
-                  testID="remove-image"
+                  onPress={() => { setShowFontPicker((p) => !p); setShowColorPicker(false); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                  style={[styles.circleBtn, showFontPicker && styles.circleBtnActive]}
+                  testID="toggle-font"
                 >
-                  <Trash2 size={20} color="#fff" />
+                  <Type size={18} color="#fff" />
                 </Pressable>
-              )}
-              <Pressable
-                onPress={toggleFontPicker}
-                style={[
-                  styles.topActionBtn,
-                  showFontPicker && styles.topActionBtnActive,
-                ]}
-                hitSlop={8}
-                testID="toggle-font"
-              >
-                <Type size={20} color="#fff" />
-              </Pressable>
-              <Pressable
-                onPress={pickImage}
-                style={styles.topActionBtn}
-                hitSlop={8}
-                testID="pick-image"
-              >
-                <ImagePlus size={20} color="#fff" />
-              </Pressable>
+              </View>
+
               <Pressable
                 onPress={handlePublish}
-                style={[
-                  styles.publishBtn,
-                  { opacity: canPublish ? 1 : 0.4 },
-                ]}
+                style={[styles.publishBtn, { opacity: canPublish ? 1 : 0.4 }]}
                 testID="publish-story"
               >
-                <Send size={18} color="#fff" />
+                <Send size={16} color="#fff" />
                 <Text style={styles.publishText}>Teilen</Text>
               </Pressable>
             </View>
-          </View>
 
-          {isEditing ? (
-            <View style={styles.textArea} pointerEvents="box-none">
-              <TextInput
-                style={[styles.storyInput, textStyle]}
-                placeholder="Schreibe etwas..."
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                value={text}
-                onChangeText={setText}
-                onFocus={handleTextFocus}
-                multiline
-                maxLength={200}
-                textAlignVertical="center"
-                textAlign="center"
-                autoFocus
-                testID="story-text-input"
-              />
-            </View>
-          ) : text.trim().length > 0 ? (
-            <Animated.View
-              style={[
-                styles.draggableTextWrap,
-                {
-                  transform: [
-                    { translateX: textPanX },
-                    { translateY: textPanY },
-                    { scale: textScaleVal },
-                  ],
-                },
-              ]}
-              {...cleanPanHandlers(textPanResponder.panHandlers)}
-            >
-              <Pressable
-                onPress={() => {
-                  setIsEditing(true);
-                }}
-                onLongPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                }}
-              >
-                <Text style={[styles.draggableText, textStyle]}>{text}</Text>
-              </Pressable>
-            </Animated.View>
-          ) : (
-            <View style={styles.textArea} pointerEvents="box-none">
-              <Pressable onPress={() => setIsEditing(true)}>
-                <Text style={[styles.placeholderText, textStyle]}>Tippe zum Schreiben...</Text>
-              </Pressable>
-            </View>
-          )}
+            {showColorPicker && !imageUri && (
+              <View style={styles.colorPickerRow}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorListInline}>
+                  {BG_COLORS.map((c) => (
+                    <Pressable
+                      key={c}
+                      onPress={() => { setSelectedBg(c); Haptics.selectionAsync(); }}
+                      style={[styles.colorDot, { backgroundColor: c }, selectedBg === c && styles.colorDotSelected]}
+                      testID={`color-${c}`}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
-          {imageUri && !isEditing && (
-            <View style={styles.pinchHint}>
-              <Text style={styles.pinchHintText}>Zwei Finger zum Zoomen</Text>
-            </View>
-          )}
-
-          {text.trim().length > 0 && !isEditing && (
-            <View style={styles.dragHint}>
-              <Text style={styles.pinchHintText}>Text halten & verschieben</Text>
-            </View>
-          )}
-
-          <Text style={styles.charCount}>{text.length}/200</Text>
-        </Pressable>
-
-        {showFontPicker && (
-          <View style={[styles.fontPicker, { backgroundColor: colors.surface, paddingBottom: Math.max(insets.bottom, 8) }]}>
-            <Text style={[styles.pickerLabel, { color: colors.secondaryText }]}>Schriftart</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.fontList}
-            >
-              {FONT_OPTIONS.map((font, i) => (
-                <Pressable
-                  key={i}
-                  onPress={() => {
-                    setSelectedFont(i);
-                    Haptics.selectionAsync();
-                  }}
-                  style={[
-                    styles.fontOption,
-                    { backgroundColor: i === selectedFont ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)' },
-                    i === selectedFont && styles.fontOptionActive,
-                  ]}
-                  testID={`font-${i}`}
-                >
-                  <Text
-                    style={[
-                      styles.fontPreview,
-                      {
+            {showFontPicker && (
+              <View style={styles.fontPickerRow}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fontListInline}>
+                  {FONT_OPTIONS.map((font, i) => (
+                    <Pressable
+                      key={i}
+                      onPress={() => { setSelectedFont(i); Haptics.selectionAsync(); }}
+                      style={[styles.fontChip, i === selectedFont && styles.fontChipActive]}
+                      testID={`font-${i}`}
+                    >
+                      <Text style={[styles.fontChipText, {
                         fontFamily: font.family,
                         fontWeight: font.weight as 'normal' | 'bold' | '300' | '600' | '700' | '900',
                         fontStyle: font.style as 'normal' | 'italic',
-                      },
-                    ]}
-                  >
-                    Aa
-                  </Text>
-                  <Text style={[styles.fontLabel, i === selectedFont && styles.fontLabelActive]}>
-                    {font.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+                      }, i === selectedFont && styles.fontChipTextActive]}>
+                        {font.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
           </View>
-        )}
 
-        {!showFontPicker && !imageUri && (
-          <View style={[styles.colorPicker, { backgroundColor: colors.surface, paddingBottom: Math.max(insets.bottom, 12) }]}>
-            <Text style={[styles.pickerLabel, { color: colors.secondaryText }]}>Hintergrundfarbe</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.colorList}
-            >
-              {BG_COLORS.map((c) => (
-                <Pressable
-                  key={c}
-                  onPress={() => {
-                    setSelectedBg(c);
-                    Haptics.selectionAsync();
-                  }}
-                  style={[
-                    styles.colorOption,
-                    { backgroundColor: c },
-                    selectedBg === c && styles.colorSelected,
-                  ]}
-                  testID={`color-${c}`}
+          <Pressable style={styles.canvasCenter} onPress={handleBackgroundPress} pointerEvents="box-none">
+            {isEditing ? (
+              <View style={styles.textArea} pointerEvents="box-none">
+                <TextInput
+                  style={[styles.storyInput, textStyle]}
+                  placeholder="Schreibe etwas..."
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  value={text}
+                  onChangeText={setText}
+                  onFocus={() => setIsEditing(true)}
+                  multiline
+                  maxLength={200}
+                  textAlignVertical="center"
+                  textAlign="center"
+                  autoFocus
+                  testID="story-text-input"
                 />
-              ))}
-            </ScrollView>
-          </View>
-        )}
+              </View>
+            ) : text.trim().length > 0 ? (
+              <Animated.View
+                style={[
+                  styles.draggableTextWrap,
+                  {
+                    transform: [
+                      { translateX: textPanX },
+                      { translateY: textPanY },
+                      { scale: textScaleVal },
+                    ],
+                  },
+                ]}
+                {...cleanPanHandlers(textPanResponder.panHandlers as unknown as Record<string, unknown>)}
+              >
+                <Pressable onPress={() => setIsEditing(true)} onLongPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}>
+                  <Text style={[styles.draggableText, textStyle]}>{text}</Text>
+                </Pressable>
+              </Animated.View>
+            ) : !hasStickers && !imageUri ? (
+              <Pressable onPress={() => setIsEditing(true)} style={styles.textArea}>
+                <Text style={[styles.placeholderText, textStyle]}>Tippe zum Schreiben...</Text>
+              </Pressable>
+            ) : null}
+          </Pressable>
 
-        {!showFontPicker && imageUri && (
-          <View style={[styles.bottomSpacer, { paddingBottom: insets.bottom }]} />
-        )}
+          <View style={styles.stickerOverlays} pointerEvents="box-none">
+            {showClock && clockTime && (
+              <View style={styles.stickerClock}>
+                <FlipClockDisplay time={clockTime} />
+              </View>
+            )}
+
+            {weatherData && (
+              <View style={styles.stickerWeather}>
+                <CloudSun size={20} color="#e0d5b0" />
+                <Text style={styles.stickerWeatherTemp}>{weatherData.temp}°C</Text>
+                <Text style={styles.stickerWeatherCond}>{weatherData.condition}</Text>
+              </View>
+            )}
+
+            {locationName && (
+              <View style={styles.stickerLocation}>
+                <MapPin size={14} color="#e0d5b0" />
+                <Text style={styles.stickerLocationText}>{locationName}</Text>
+              </View>
+            )}
+
+            {mentions.length > 0 && (
+              <View style={styles.stickerMentions}>
+                {mentions.map((m) => (
+                  <Pressable key={m.id} onPress={() => handleRemoveMention(m.id)} style={styles.mentionTag}>
+                    <AtSign size={12} color="#e0d5b0" />
+                    <Text style={styles.mentionTagText}>{m.displayName}</Text>
+                    <X size={10} color="rgba(224,213,176,0.6)" />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {pollData && (
+              <View style={styles.stickerPoll}>
+                <Text style={styles.pollQuestion}>{pollData.question}</Text>
+                {pollData.options.map((opt) => (
+                  <View key={opt.id} style={styles.pollOptionPreview}>
+                    <Text style={styles.pollOptionText}>{opt.text}</Text>
+                  </View>
+                ))}
+                <Pressable onPress={() => { setPollData(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.removeStickerBtn}>
+                  <X size={14} color="#fff" />
+                </Pressable>
+              </View>
+            )}
+          </View>
+
+          {imageUri && (
+            <Pressable onPress={removeImage} style={[styles.removeImageBtn, { top: insets.top + 56 }]} hitSlop={8} testID="remove-image">
+              <Trash2 size={18} color="#fff" />
+            </Pressable>
+          )}
+
+          {text.trim().length > 0 && (
+            <Text style={styles.charCount}>{text.length}/200</Text>
+          )}
+        </View>
+
+        <View style={[styles.toolbar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.toolbarContent}>
+            <Pressable onPress={pickImage} style={styles.toolItem} testID="pick-image">
+              <View style={[styles.toolIcon, imageUri && styles.toolIconActive]}>
+                <ImagePlus size={20} color={imageUri ? '#1c1c1e' : '#e0d5b0'} />
+              </View>
+              <Text style={styles.toolLabel}>Foto</Text>
+            </Pressable>
+
+            <Pressable onPress={() => { setIsEditing(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.toolItem} testID="add-text">
+              <View style={[styles.toolIcon, text.trim().length > 0 && styles.toolIconActive]}>
+                <Type size={20} color={text.trim().length > 0 ? '#1c1c1e' : '#e0d5b0'} />
+              </View>
+              <Text style={styles.toolLabel}>Text</Text>
+            </Pressable>
+
+            <Pressable onPress={() => { setShowPollCreator(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.toolItem} testID="add-poll">
+              <View style={[styles.toolIcon, !!pollData && styles.toolIconActive]}>
+                <BarChart3 size={20} color={pollData ? '#1c1c1e' : '#e0d5b0'} />
+              </View>
+              <Text style={styles.toolLabel}>Umfrage</Text>
+            </Pressable>
+
+            <Pressable onPress={toggleClock} style={styles.toolItem} testID="add-clock">
+              <View style={[styles.toolIcon, showClock && styles.toolIconActive]}>
+                <Clock size={20} color={showClock ? '#1c1c1e' : '#e0d5b0'} />
+              </View>
+              <Text style={styles.toolLabel}>Uhrzeit</Text>
+            </Pressable>
+
+            <Pressable onPress={() => { setShowMentionPicker(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.toolItem} testID="add-mention">
+              <View style={[styles.toolIcon, mentions.length > 0 && styles.toolIconActive]}>
+                <AtSign size={20} color={mentions.length > 0 ? '#1c1c1e' : '#e0d5b0'} />
+              </View>
+              <Text style={styles.toolLabel}>Erwähnen</Text>
+            </Pressable>
+
+            <Pressable onPress={fetchLocation} style={styles.toolItem} testID="add-location">
+              <View style={[styles.toolIcon, !!locationName && styles.toolIconActive]}>
+                {loadingLocation ? <ActivityIndicator size="small" color="#e0d5b0" /> : <MapPin size={20} color={locationName ? '#1c1c1e' : '#e0d5b0'} />}
+              </View>
+              <Text style={styles.toolLabel}>Ort</Text>
+            </Pressable>
+
+            <Pressable onPress={fetchWeather} style={styles.toolItem} testID="add-weather">
+              <View style={[styles.toolIcon, !!weatherData && styles.toolIconActive]}>
+                {loadingWeather ? <ActivityIndicator size="small" color="#e0d5b0" /> : <CloudSun size={20} color={weatherData ? '#1c1c1e' : '#e0d5b0'} />}
+              </View>
+              <Text style={styles.toolLabel}>Wetter</Text>
+            </Pressable>
+          </ScrollView>
+        </View>
       </KeyboardAvoidingView>
+
+      <Modal visible={showPollCreator} animationType="slide" transparent testID="poll-modal">
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setShowPollCreator(false)} />
+          <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Umfrage erstellen</Text>
+
+            <TextInput
+              style={styles.pollInput}
+              placeholder="Deine Frage..."
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              value={pollQuestion}
+              onChangeText={setPollQuestion}
+              maxLength={100}
+              testID="poll-question-input"
+            />
+
+            {pollOptions.map((opt, i) => (
+              <View key={i} style={styles.pollOptionRow}>
+                <TextInput
+                  style={styles.pollOptionInput}
+                  placeholder={`Antwort ${i + 1}`}
+                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  value={opt}
+                  onChangeText={(val) => {
+                    const updated = [...pollOptions];
+                    updated[i] = val;
+                    setPollOptions(updated);
+                  }}
+                  maxLength={50}
+                  testID={`poll-option-${i}`}
+                />
+                {pollOptions.length > 2 && (
+                  <Pressable onPress={() => setPollOptions((prev) => prev.filter((_, idx) => idx !== i))} hitSlop={8}>
+                    <X size={16} color="rgba(255,255,255,0.4)" />
+                  </Pressable>
+                )}
+              </View>
+            ))}
+
+            {pollOptions.length < 4 && (
+              <Pressable
+                onPress={() => setPollOptions((prev) => [...prev, ''])}
+                style={styles.addOptionBtn}
+              >
+                <Plus size={16} color="#e0d5b0" />
+                <Text style={styles.addOptionText}>Antwort hinzufügen</Text>
+              </Pressable>
+            )}
+
+            <Pressable onPress={handleAddPoll} style={styles.modalDoneBtn} testID="poll-done">
+              <Check size={18} color="#fff" />
+              <Text style={styles.modalDoneText}>Fertig</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showMentionPicker} animationType="slide" transparent testID="mention-modal">
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => { setShowMentionPicker(false); setMentionSearch(''); }} />
+          <View style={[styles.modalSheet, styles.mentionSheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Person erwähnen</Text>
+
+            <View style={styles.searchRow}>
+              <Search size={16} color="rgba(255,255,255,0.4)" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Suchen..."
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                value={mentionSearch}
+                onChangeText={setMentionSearch}
+                autoFocus
+                testID="mention-search"
+              />
+            </View>
+
+            <FlatList
+              data={filteredUsers}
+              keyExtractor={(item) => item.id}
+              style={styles.mentionList}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => {
+                const alreadyMentioned = mentions.find((m) => m.id === item.id);
+                return (
+                  <Pressable
+                    onPress={() => handleAddMention(item)}
+                    style={[styles.mentionRow, alreadyMentioned && styles.mentionRowActive]}
+                    testID={`mention-user-${item.id}`}
+                  >
+                    {item.avatarUrl ? (
+                      <Image source={{ uri: item.avatarUrl }} style={styles.mentionAvatar} />
+                    ) : (
+                      <View style={styles.mentionAvatarPlaceholder}>
+                        <Text style={styles.mentionAvatarText}>{item.displayName.charAt(0).toUpperCase()}</Text>
+                      </View>
+                    )}
+                    <View style={styles.mentionInfo}>
+                      <Text style={styles.mentionName}>{item.displayName}</Text>
+                      {item.username ? <Text style={styles.mentionUsername}>@{item.username}</Text> : null}
+                    </View>
+                    {alreadyMentioned && <Check size={16} color="#e0d5b0" />}
+                  </Pressable>
+                );
+              }}
+              ListEmptyComponent={<Text style={styles.emptyText}>Keine Nutzer gefunden</Text>}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -552,30 +986,35 @@ const styles = StyleSheet.create({
   },
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    backgroundColor: 'rgba(0,0,0,0.1)',
   },
   topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    zIndex: 10,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    paddingHorizontal: 14,
   },
-  topActions: {
+  topBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  topCenter: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  topActionBtn: {
+  circleBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topActionBtnActive: {
+  circleBtnActive: {
     backgroundColor: 'rgba(255,255,255,0.25)',
   },
   publishBtn: {
@@ -584,20 +1023,73 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: 'rgba(191,163,93,0.85)',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: 20,
-    marginLeft: 4,
   },
   publishText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700' as const,
   },
-  textArea: {
+  colorPickerRow: {
+    marginTop: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  colorListInline: {
+    gap: 8,
+    paddingHorizontal: 8,
+  },
+  colorDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorDotSelected: {
+    borderColor: '#fff',
+    borderWidth: 2.5,
+  },
+  fontPickerRow: {
+    marginTop: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  fontListInline: {
+    gap: 8,
+    paddingHorizontal: 8,
+  },
+  fontChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  fontChipActive: {
+    backgroundColor: 'rgba(191,163,93,0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.5)',
+  },
+  fontChipText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+  },
+  fontChipTextActive: {
+    color: '#e0d5b0',
+  },
+  canvasCenter: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 28,
     zIndex: 5,
+  },
+  textArea: {
+    justifyContent: 'center',
+    paddingHorizontal: 28,
   },
   storyInput: {
     color: '#fff',
@@ -631,101 +1123,336 @@ const styles = StyleSheet.create({
     maxWidth: SCREEN_WIDTH - 40,
   },
   placeholderText: {
-    color: 'rgba(255,255,255,0.4)',
+    color: 'rgba(255,255,255,0.35)',
     fontSize: 26,
     textAlign: 'center',
     lineHeight: 36,
   },
   charCount: {
-    color: 'rgba(255,255,255,0.35)',
-    fontSize: 12,
-    textAlign: 'center',
-    paddingBottom: 12,
-    zIndex: 5,
-  },
-  pinchHint: {
     position: 'absolute',
-    bottom: 40,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
+    bottom: 8,
+    right: 16,
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 11,
     zIndex: 5,
   },
-  dragHint: {
-    position: 'absolute',
-    bottom: 40,
-    left: 0,
-    right: 0,
+  stickerOverlays: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
+    justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 5,
+    paddingTop: 120,
+    paddingBottom: 80,
+    paddingHorizontal: 20,
   },
-  pinchHintText: {
-    color: 'rgba(255,255,255,0.45)',
-    fontSize: 12,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 10,
-    overflow: 'hidden',
+  stickerClock: {
+    marginBottom: 16,
   },
-  fontPicker: {
-    paddingTop: 14,
+  stickerWeather: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     paddingHorizontal: 16,
-  },
-  colorPicker: {
-    paddingTop: 14,
-    paddingHorizontal: 16,
-  },
-  pickerLabel: {
-    fontSize: 12,
-    fontWeight: '600' as const,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.15)',
     marginBottom: 10,
   },
-  fontList: {
-    gap: 10,
-    paddingBottom: 4,
+  stickerWeatherTemp: {
+    color: '#e0d5b0',
+    fontSize: 20,
+    fontWeight: '800' as const,
   },
-  fontOption: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 64,
-  },
-  fontOptionActive: {
-    borderWidth: 1.5,
-    borderColor: 'rgba(191,163,93,0.6)',
-  },
-  fontPreview: {
-    color: '#fff',
-    fontSize: 22,
-    marginBottom: 2,
-  },
-  fontLabel: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 10,
+  stickerWeatherCond: {
+    color: 'rgba(224,213,176,0.7)',
+    fontSize: 14,
     fontWeight: '500' as const,
   },
-  fontLabelActive: {
-    color: '#BFA35D',
+  stickerLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.12)',
+    marginBottom: 10,
   },
-  colorList: {
-    gap: 10,
+  stickerLocationText: {
+    color: '#e0d5b0',
+    fontSize: 13,
+    fontWeight: '600' as const,
   },
-  colorOption: {
+  stickerMentions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  mentionTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.15)',
+  },
+  mentionTagText: {
+    color: '#e0d5b0',
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  stickerPoll: {
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 16,
+    padding: 16,
+    width: SCREEN_WIDTH - 80,
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.15)',
+    marginBottom: 10,
+  },
+  pollQuestion: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700' as const,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  pollOptionPreview: {
+    backgroundColor: 'rgba(224,213,176,0.12)',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.1)',
+  },
+  pollOptionText: {
+    color: '#e0d5b0',
+    fontSize: 14,
+    fontWeight: '500' as const,
+    textAlign: 'center',
+  },
+  removeStickerBtn: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(200,50,50,0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeImageBtn: {
+    position: 'absolute',
+    left: 14,
     width: 36,
     height: 36,
     borderRadius: 18,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    backgroundColor: 'rgba(200,50,50,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
   },
-  colorSelected: {
-    borderColor: '#fff',
-    borderWidth: 3,
+  toolbar: {
+    backgroundColor: '#111',
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(224,213,176,0.1)',
   },
-  bottomSpacer: {
+  toolbarContent: {
+    paddingHorizontal: 12,
+    gap: 4,
+  },
+  toolItem: {
+    alignItems: 'center',
+    width: 62,
+    gap: 4,
+  },
+  toolIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(224,213,176,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.1)',
+  },
+  toolIconActive: {
+    backgroundColor: '#e0d5b0',
+    borderColor: '#e0d5b0',
+  },
+  toolLabel: {
+    color: 'rgba(224,213,176,0.6)',
+    fontSize: 10,
+    fontWeight: '500' as const,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    height: 20,
+  },
+  modalSheet: {
+    backgroundColor: '#1a1a1c',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 8,
+    paddingHorizontal: 20,
+    maxHeight: SCREEN_HEIGHT * 0.6,
+  },
+  mentionSheet: {
+    maxHeight: SCREEN_HEIGHT * 0.7,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    color: '#e0d5b0',
+    fontSize: 18,
+    fontWeight: '700' as const,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  pollInput: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600' as const,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.1)',
+  },
+  pollOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  pollOptionInput: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#fff',
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.08)',
+  },
+  addOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    justifyContent: 'center',
+  },
+  addOptionText: {
+    color: 'rgba(224,213,176,0.6)',
+    fontSize: 14,
+    fontWeight: '500' as const,
+  },
+  modalDoneBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(191,163,93,0.8)',
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+  modalDoneText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700' as const,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.08)',
+  },
+  searchInput: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 15,
+  },
+  mentionList: {
+    flex: 1,
+  },
+  mentionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+  },
+  mentionRowActive: {
+    backgroundColor: 'rgba(191,163,93,0.08)',
+  },
+  mentionAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+  },
+  mentionAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: 'rgba(224,213,176,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mentionAvatarText: {
+    color: '#e0d5b0',
+    fontSize: 17,
+    fontWeight: '700' as const,
+  },
+  mentionInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  mentionName: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600' as const,
+  },
+  mentionUsername: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 12,
+  },
+  emptyText: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: 32,
   },
 });

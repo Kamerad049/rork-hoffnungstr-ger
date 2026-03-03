@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,12 @@ import {
   Animated,
   Dimensions,
   Image,
-  Platform,
   StatusBar,
   ScrollView,
   PanResponder,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Stack } from 'expo-router';
-import { X, Trash2, Flag, Eye, ChevronUp, ChevronRight } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { X, Trash2, Flag, Eye, ChevronUp, ChevronRight, MapPin, CloudSun, AtSign, BarChart3 } from 'lucide-react-native';
 import ReportModal from '@/components/ReportModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -22,14 +20,57 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { useStories, STORY_DURATION_SECONDS } from '@/providers/StoriesProvider';
 import { useSocial } from '@/providers/SocialProvider';
 import { getUserById, formatTimeAgo, cleanPanHandlers } from '@/lib/utils';
-import type { StoryItem, StoryGroup, SocialUser } from '@/constants/types';
+import type { StoryItem, StoryGroup, SocialUser, StoryMetadata } from '@/constants/types';
 import { useAuth } from '@/providers/AuthProvider';
 import { useAlert } from '@/providers/AlertProvider';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+function FlipClockViewer({ time }: { time: string }) {
+  const parts = time.split(':');
+  const h = parts[0] ?? '00';
+  const m = parts[1] ?? '00';
+
+  const renderDigit = (digit: string) => (
+    <View style={fStyles.digitBox}>
+      <View style={fStyles.digitTop}>
+        <Text style={fStyles.digitText}>{digit}</Text>
+      </View>
+      <View style={fStyles.digitLine} />
+      <View style={fStyles.digitBottom}>
+        <Text style={fStyles.digitText}>{digit}</Text>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={fStyles.container}>
+      <View style={fStyles.group}>
+        {renderDigit(h[0] ?? '0')}
+        {renderDigit(h[1] ?? '0')}
+      </View>
+      <Text style={fStyles.colon}>:</Text>
+      <View style={fStyles.group}>
+        {renderDigit(m[0] ?? '0')}
+        {renderDigit(m[1] ?? '0')}
+      </View>
+    </View>
+  );
+}
+
+const fStyles = StyleSheet.create({
+  container: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  group: { flexDirection: 'row', gap: 2 },
+  digitBox: { width: 28, height: 38, borderRadius: 5, backgroundColor: '#111', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' },
+  digitTop: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', backgroundColor: '#1a1a1a', width: '100%' },
+  digitLine: { height: 1, width: '100%', backgroundColor: 'rgba(0,0,0,0.8)' },
+  digitBottom: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', backgroundColor: '#141414', width: '100%' },
+  digitText: { fontSize: 22, fontWeight: '800' as const, color: '#e0d5b0', fontVariant: ['tabular-nums'] },
+  colon: { fontSize: 24, fontWeight: '800' as const, color: '#e0d5b0', marginHorizontal: 1, marginTop: -3 },
+});
+
 export default function StoryViewerScreen() {
-  const { colors } = useTheme();
+  useTheme();
   const { showAlert } = useAlert();
   const { user } = useAuth();
   const { stories, markStoryViewed, deleteStory, getStoryViewers } = useStories();
@@ -175,6 +216,7 @@ export default function StoryViewerScreen() {
   const handlePress = useCallback(
     (evt: { nativeEvent: { locationX: number } }) => {
       if (isLongPress.current) return;
+      if (showViewers) return;
       const x = evt.nativeEvent.locationX;
       if (x < SCREEN_WIDTH * 0.35) {
         goPrev();
@@ -182,7 +224,7 @@ export default function StoryViewerScreen() {
         goNext();
       }
     },
-    [goPrev, goNext]
+    [goPrev, goNext, showViewers]
   );
 
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -252,30 +294,37 @@ export default function StoryViewerScreen() {
     load();
   }, [currentStory?.id, isOwnStory, getStoryViewers]);
 
+  const closeViewers = useCallback(() => {
+    Animated.timing(viewersPanelAnim, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowViewers(false);
+      isPaused.current = false;
+      startProgress();
+    });
+  }, [viewersPanelAnim, startProgress]);
+
+  const openViewers = useCallback(() => {
+    animRef.current?.stop();
+    isPaused.current = true;
+    setShowViewers(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Animated.timing(viewersPanelAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [viewersPanelAnim]);
+
   const handleToggleViewers = useCallback(() => {
     if (showViewers) {
-      animRef.current?.stop();
-      Animated.timing(viewersPanelAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start(() => {
-        setShowViewers(false);
-        isPaused.current = false;
-        startProgress();
-      });
+      closeViewers();
     } else {
-      animRef.current?.stop();
-      isPaused.current = true;
-      setShowViewers(true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      Animated.timing(viewersPanelAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      openViewers();
     }
-  }, [showViewers, viewersPanelAnim, startProgress]);
+  }, [showViewers, closeViewers, openViewers]);
 
   const handleViewerPress = useCallback((viewerId: string) => {
     console.log('[STORY] Viewer pressed, navigating to user:', viewerId);
@@ -285,13 +334,13 @@ export default function StoryViewerScreen() {
     setShowViewers(false);
     viewersPanelAnim.setValue(0);
     setTimeout(() => {
-      console.log('[STORY] Now navigating to user-profile:', viewerId);
       router.push({ pathname: '/user-profile', params: { userId: viewerId } } as any);
     }, 100);
   }, [router, viewersPanelAnim]);
 
   const handleDeleteStory = useCallback(() => {
     if (!currentStory || !isOwnStory) return;
+    console.log('[STORY] Delete pressed for story:', currentStory.id);
 
     animRef.current?.stop();
     isPaused.current = true;
@@ -334,7 +383,7 @@ export default function StoryViewerScreen() {
         },
       ]
     );
-  }, [currentStory, isOwnStory, currentGroup, currentGroupIdx, currentStoryIdx, stories.length, deleteStory, router, startProgress]);
+  }, [currentStory, isOwnStory, currentGroup, currentGroupIdx, currentStoryIdx, stories.length, deleteStory, router, startProgress, showAlert]);
 
   if (!currentGroup || !currentStory || !storyUser) {
     return (
@@ -348,8 +397,9 @@ export default function StoryViewerScreen() {
   const initial = storyUser.displayName.charAt(0).toUpperCase();
   const hasImage = !!currentStory.mediaUrl && currentStory.mediaUrl.length > 0;
   const bgColor = currentStory.bgColor || '#1c1c1e';
+  const meta: StoryMetadata | undefined = currentStory.metadata;
 
-  const parsedFont = useMemo(() => {
+  const parsedFont = (() => {
     if (!currentStory.fontFamily) return null;
     const parts = currentStory.fontFamily.split('|');
     if (parts.length !== 3) return null;
@@ -358,20 +408,7 @@ export default function StoryViewerScreen() {
       fontWeight: parts[1] as 'normal' | 'bold' | '300' | '600' | '700' | '900',
       fontStyle: parts[2] as 'normal' | 'italic',
     };
-  }, [currentStory.fontFamily]);
-
-  const textTransform = useMemo(() => {
-    const tx = (currentStory.textX ?? 0) * SCREEN_WIDTH;
-    const ty = (currentStory.textY ?? 0) * SCREEN_HEIGHT;
-    const sc = currentStory.textScale ?? 1;
-    return {
-      transform: [
-        { translateX: tx },
-        { translateY: ty },
-        { scale: sc },
-      ] as { translateX: number }[] | { translateY: number }[] | { scale: number }[],
-    };
-  }, [currentStory.textX, currentStory.textY, currentStory.textScale]);
+  })();
 
   const hasCustomPos = currentStory.textX !== undefined || currentStory.textY !== undefined;
 
@@ -382,87 +419,87 @@ export default function StoryViewerScreen() {
 
       <Animated.View
         style={[styles.dismissWrap, { transform: dismissAnim.getTranslateTransform(), opacity: dismissOpacity }]}
-        {...cleanPanHandlers(panResponder.panHandlers)}
+        {...cleanPanHandlers(panResponder.panHandlers as unknown as Record<string, unknown>)}
       >
-      <Pressable
-        style={styles.touchArea}
-        onPress={handlePress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        testID="story-touch-area"
-        pointerEvents={showViewers ? 'none' : 'auto'}
-      >
-        {hasImage ? (
-          <Image
-            source={{ uri: currentStory.mediaUrl }}
-            style={styles.storyImage}
-            resizeMode="cover"
-          />
-        ) : !hasCustomPos ? (
-          <View style={[styles.storyTextBg, { backgroundColor: bgColor }]}>
-            <Text style={[
-              styles.storyTextContent,
-              parsedFont && {
-                fontFamily: parsedFont.fontFamily,
-                fontWeight: parsedFont.fontWeight,
-                fontStyle: parsedFont.fontStyle,
-              },
-            ]}>{currentStory.caption}</Text>
-          </View>
-        ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: bgColor }]} />
-        )}
+        <Pressable
+          style={styles.touchArea}
+          onPress={handlePress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          testID="story-touch-area"
+        >
+          {hasImage ? (
+            <Image
+              source={{ uri: currentStory.mediaUrl }}
+              style={styles.storyImage}
+              resizeMode="cover"
+            />
+          ) : !hasCustomPos ? (
+            <View style={[styles.storyTextBg, { backgroundColor: bgColor }]}>
+              <Text style={[
+                styles.storyTextContent,
+                parsedFont && {
+                  fontFamily: parsedFont.fontFamily,
+                  fontWeight: parsedFont.fontWeight,
+                  fontStyle: parsedFont.fontStyle,
+                },
+              ]}>{currentStory.caption}</Text>
+            </View>
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: bgColor }]} />
+          )}
 
-        {hasImage && currentStory.caption && hasCustomPos ? (
-          <View
-            style={[
-              styles.positionedTextWrap,
-              {
-                transform: [
-                  { translateX: (currentStory.textX ?? 0) * SCREEN_WIDTH },
-                  { translateY: (currentStory.textY ?? 0) * SCREEN_HEIGHT },
-                  { scale: currentStory.textScale ?? 1 },
-                ],
-              },
-            ]}
-          >
-            <Text style={[
-              styles.positionedText,
-              parsedFont && {
-                fontFamily: parsedFont.fontFamily,
-                fontWeight: parsedFont.fontWeight,
-                fontStyle: parsedFont.fontStyle,
-              },
-            ]}>{currentStory.caption}</Text>
-          </View>
-        ) : null}
+          {hasImage && currentStory.caption && hasCustomPos ? (
+            <View
+              style={[
+                styles.positionedTextWrap,
+                {
+                  transform: [
+                    { translateX: (currentStory.textX ?? 0) * SCREEN_WIDTH },
+                    { translateY: (currentStory.textY ?? 0) * SCREEN_HEIGHT },
+                    { scale: currentStory.textScale ?? 1 },
+                  ],
+                },
+              ]}
+            >
+              <Text style={[
+                styles.positionedText,
+                parsedFont && {
+                  fontFamily: parsedFont.fontFamily,
+                  fontWeight: parsedFont.fontWeight,
+                  fontStyle: parsedFont.fontStyle,
+                },
+              ]}>{currentStory.caption}</Text>
+            </View>
+          ) : null}
 
-        {!hasImage && hasCustomPos && currentStory.caption ? (
-          <View
-            style={[
-              styles.positionedTextWrap,
-              {
-                transform: [
-                  { translateX: (currentStory.textX ?? 0) * SCREEN_WIDTH },
-                  { translateY: (currentStory.textY ?? 0) * SCREEN_HEIGHT },
-                  { scale: currentStory.textScale ?? 1 },
-                ],
-              },
-            ]}
-          >
-            <Text style={[
-              styles.positionedText,
-              parsedFont && {
-                fontFamily: parsedFont.fontFamily,
-                fontWeight: parsedFont.fontWeight,
-                fontStyle: parsedFont.fontStyle,
-              },
-            ]}>{currentStory.caption}</Text>
-          </View>
-        ) : null}
+          {!hasImage && hasCustomPos && currentStory.caption ? (
+            <View
+              style={[
+                styles.positionedTextWrap,
+                {
+                  transform: [
+                    { translateX: (currentStory.textX ?? 0) * SCREEN_WIDTH },
+                    { translateY: (currentStory.textY ?? 0) * SCREEN_HEIGHT },
+                    { scale: currentStory.textScale ?? 1 },
+                  ],
+                },
+              ]}
+            >
+              <Text style={[
+                styles.positionedText,
+                parsedFont && {
+                  fontFamily: parsedFont.fontFamily,
+                  fontWeight: parsedFont.fontWeight,
+                  fontStyle: parsedFont.fontStyle,
+                },
+              ]}>{currentStory.caption}</Text>
+            </View>
+          ) : null}
+        </Pressable>
 
-        <View style={[styles.overlay, { paddingTop: insets.top + 8 }]}>
-          <View style={styles.progressContainer}>
+        <View style={[styles.overlay, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
+          <View style={styles.progressContainer} pointerEvents="none">
             {currentGroup.stories.map((s, i) => {
               const isCompleted = i < currentStoryIdx;
               const isCurrent = i === currentStoryIdx;
@@ -518,10 +555,10 @@ export default function StoryViewerScreen() {
                 <Pressable
                   onPress={handleDeleteStory}
                   hitSlop={16}
-                  style={styles.actionPill}
+                  style={({ pressed }) => [styles.actionPill, pressed && { backgroundColor: 'rgba(200,50,50,0.3)' }]}
                   testID="story-delete"
                 >
-                  <Trash2 size={18} color="#BFA35D" style={styles.actionIconShadow} />
+                  <Trash2 size={18} color="#BFA35D" />
                 </Pressable>
               )}
               {!isOwnStory && (
@@ -531,7 +568,7 @@ export default function StoryViewerScreen() {
                   style={styles.actionPill}
                   testID="story-report"
                 >
-                  <Flag size={18} color="#BFA35D" style={styles.actionIconShadow} />
+                  <Flag size={18} color="#BFA35D" />
                 </Pressable>
               )}
               <Pressable
@@ -540,13 +577,13 @@ export default function StoryViewerScreen() {
                 style={styles.actionPill}
                 testID="story-close"
               >
-                <X size={20} color="#BFA35D" style={styles.actionIconShadow} />
+                <X size={20} color="#BFA35D" />
               </Pressable>
             </View>
           </View>
 
           {hasImage && currentStory.caption && !hasCustomPos ? (
-            <View style={styles.captionContainer}>
+            <View style={styles.captionContainer} pointerEvents="none">
               <Text style={[
                 styles.captionText,
                 parsedFont && {
@@ -558,20 +595,74 @@ export default function StoryViewerScreen() {
             </View>
           ) : null}
         </View>
-      </Pressable>
 
+        {meta && (
+          <View style={styles.metaOverlay} pointerEvents="none">
+            {meta.showClock && meta.clockTime && (
+              <View style={styles.metaClock}>
+                <FlipClockViewer time={meta.clockTime} />
+              </View>
+            )}
+
+            {meta.weather && (
+              <View style={styles.metaWeather}>
+                <CloudSun size={18} color="#e0d5b0" />
+                <Text style={styles.metaWeatherTemp}>{meta.weather.temp}°C</Text>
+                <Text style={styles.metaWeatherCond}>{meta.weather.condition}</Text>
+              </View>
+            )}
+
+            {meta.location && (
+              <View style={styles.metaLocation}>
+                <MapPin size={13} color="#e0d5b0" />
+                <Text style={styles.metaLocationText}>{meta.location}</Text>
+              </View>
+            )}
+
+            {meta.poll && (
+              <View style={styles.metaPoll}>
+                <View style={styles.metaPollHeader}>
+                  <BarChart3 size={14} color="#e0d5b0" />
+                  <Text style={styles.metaPollQuestion}>{meta.poll.question}</Text>
+                </View>
+                {meta.poll.options.map((opt) => (
+                  <View key={opt.id} style={styles.metaPollOption}>
+                    <Text style={styles.metaPollOptionText}>{opt.text}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {meta.mentions && meta.mentions.length > 0 && (
+              <View style={styles.metaMentions}>
+                <AtSign size={12} color="#e0d5b0" />
+                <Text style={styles.metaMentionText}>
+                  {meta.mentions.length} {meta.mentions.length === 1 ? 'Person' : 'Personen'} erwähnt
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
       </Animated.View>
 
       {isOwnStory && (
         <Pressable
           onPress={handleToggleViewers}
-          style={styles.viewersButton}
+          style={[styles.viewersButton, { bottom: insets.bottom + 20 }]}
           hitSlop={12}
           testID="story-viewers-btn"
         >
           <Eye size={18} color="#fff" />
           <Text style={styles.viewersButtonText}>{storyViewers.length}</Text>
         </Pressable>
+      )}
+
+      {showViewers && (
+        <Pressable
+          style={styles.viewersBackdrop}
+          onPress={closeViewers}
+          testID="viewers-backdrop"
+        />
       )}
 
       {showViewers && (
@@ -589,7 +680,7 @@ export default function StoryViewerScreen() {
             },
           ]}
         >
-          <Pressable onPress={handleToggleViewers} style={styles.viewersPanelHandle}>
+          <Pressable onPress={closeViewers} style={styles.viewersPanelHandle}>
             <View style={styles.handleBar} />
             <ChevronUp size={18} color="rgba(255,255,255,0.5)" />
           </Pressable>
@@ -610,7 +701,7 @@ export default function StoryViewerScreen() {
                   key={viewer.id}
                   style={({ pressed }) => [
                     styles.viewerRow,
-                    pressed && { opacity: 0.7, backgroundColor: 'rgba(191,163,93,0.08)', borderColor: 'rgba(191,163,93,0.15)' },
+                    pressed && { opacity: 0.7, backgroundColor: 'rgba(191,163,93,0.08)' },
                   ]}
                   onPress={() => handleViewerPress(viewer.id)}
                   testID={`viewer-${viewer.id}`}
@@ -701,6 +792,7 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-start',
+    zIndex: 10,
   },
   progressContainer: {
     flexDirection: 'row',
@@ -786,11 +878,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionIconShadow: {
-    textShadowColor: 'rgba(0,0,0,0.9)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  } as any,
   captionContainer: {
     position: 'absolute',
     bottom: 60,
@@ -808,9 +895,109 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
   },
+  metaOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 80,
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    zIndex: 5,
+  },
+  metaClock: {
+    marginBottom: 4,
+  },
+  metaWeather: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.12)',
+  },
+  metaWeatherTemp: {
+    color: '#e0d5b0',
+    fontSize: 18,
+    fontWeight: '800' as const,
+  },
+  metaWeatherCond: {
+    color: 'rgba(224,213,176,0.7)',
+    fontSize: 13,
+    fontWeight: '500' as const,
+  },
+  metaLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.1)',
+  },
+  metaLocationText: {
+    color: '#e0d5b0',
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  metaPoll: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 14,
+    padding: 14,
+    width: SCREEN_WIDTH - 80,
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.12)',
+  },
+  metaPollHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  metaPollQuestion: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700' as const,
+    flex: 1,
+  },
+  metaPollOption: {
+    backgroundColor: 'rgba(224,213,176,0.1)',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.08)',
+  },
+  metaPollOptionText: {
+    color: '#e0d5b0',
+    fontSize: 14,
+    fontWeight: '500' as const,
+    textAlign: 'center',
+  },
+  metaMentions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(224,213,176,0.1)',
+  },
+  metaMentionText: {
+    color: 'rgba(224,213,176,0.7)',
+    fontSize: 12,
+    fontWeight: '500' as const,
+  },
   viewersButton: {
     position: 'absolute',
-    bottom: 28,
     left: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -825,6 +1012,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600' as const,
+  },
+  viewersBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+    zIndex: 15,
   },
   viewersPanel: {
     position: 'absolute',
