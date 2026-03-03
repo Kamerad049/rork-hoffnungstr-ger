@@ -646,22 +646,31 @@ export default function ProfileScreen() {
                 ]}
               />
             ))}
-            <View
+            <LinearGradient
+              colors={['transparent', 'rgba(10,10,10,0.85)']}
+              start={{ x: 0.3, y: 0.5 }}
+              end={{ x: 0.85, y: 0.5 }}
               style={[
                 styles.heroFlagBand,
-                { top: 14 + 1 + 1, backgroundColor: 'rgba(10,10,10,0.8)' },
+                { top: 14 + 5 * 22 + 1 + 1 },
               ]}
             />
-            <View
+            <LinearGradient
+              colors={['transparent', 'rgba(180,30,30,0.65)']}
+              start={{ x: 0.35, y: 0.5 }}
+              end={{ x: 0.9, y: 0.5 }}
               style={[
                 styles.heroFlagBand,
-                { top: 14 + 22 + 1 + 1, backgroundColor: 'rgba(180,30,30,0.6)' },
+                { top: 14 + 6 * 22 + 1 + 1 },
               ]}
             />
-            <View
+            <LinearGradient
+              colors={['transparent', 'rgba(212,175,55,0.55)']}
+              start={{ x: 0.4, y: 0.5 }}
+              end={{ x: 0.95, y: 0.5 }}
               style={[
                 styles.heroFlagBand,
-                { top: 14 + 44 + 1 + 1, backgroundColor: 'rgba(212,175,55,0.5)' },
+                { top: 14 + 7 * 22 + 1 + 1 },
               ]}
             />
           </View>
