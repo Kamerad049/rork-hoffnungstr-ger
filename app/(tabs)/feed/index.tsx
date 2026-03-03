@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 
 import { useQueryClient } from '@tanstack/react-query';
+import { Rss } from 'lucide-react-native';
 import { usePosts } from '@/providers/PostsProvider';
 import FeedCardComponent from '@/components/FeedCard';
 import type { PostReactionType } from '@/components/FeedCard';
@@ -251,15 +252,49 @@ export default function FeedScreen() {
     </View>
   ), [handleCreatePost]);
 
+  const heroLineOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(heroLineOpacity, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, [heroLineOpacity]);
+
   return (
     <View style={styles.container}>
       <LinearGradient
         colors={['#1e1d1a', '#1a1918', '#171618', '#151416', '#141416']}
         locations={[0, 0.25, 0.5, 0.75, 1]}
         style={styles.heroGradient}
-      />
+      >
+        <Animated.View style={[styles.heroPattern, { opacity: heroLineOpacity }]}>
+          {[...Array(10)].map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.heroLine,
+                {
+                  top: 20 + i * 28,
+                  opacity: 0.03 + i * 0.005,
+                  transform: [{ rotate: '-12deg' }],
+                },
+              ]}
+            />
+          ))}
+        </Animated.View>
+      </LinearGradient>
 
-      <View style={{ paddingTop: insets.top }} />
+      <View style={[styles.heroHeader, { paddingTop: insets.top + 12 }]}>
+        <View>
+          <Text style={styles.heroLabel}>Entdecken</Text>
+          <Text style={styles.heroTitle}>Feed</Text>
+        </View>
+        <View style={styles.heroIconWrap}>
+          <Rss size={20} color="#BFA35D" />
+        </View>
+      </View>
 
       {!ready ? (
         <View style={styles.loadingPlaceholder}>
@@ -318,8 +353,46 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
+    height: Dimensions.get('window').height * 0.45,
     zIndex: 0,
+  },
+  heroPattern: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroLine: {
+    position: 'absolute',
+    left: -40,
+    right: -40,
+    height: 1,
+    backgroundColor: '#BFA35D',
+  },
+  heroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  heroLabel: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    color: 'rgba(191,163,93,0.5)',
+    marginBottom: 2,
+  },
+  heroTitle: {
+    fontSize: 26,
+    fontWeight: '800' as const,
+    color: '#E8DCC8',
+  },
+  heroIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerSection: {
     borderBottomWidth: 0,
