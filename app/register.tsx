@@ -7,7 +7,6 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ScrollView,
   Modal,
   Animated,
@@ -21,11 +20,13 @@ import { GENDER_OPTIONS, RELIGION_OPTIONS, type Gender, type Religion } from '@/
 import LatinCrossIcon from '@/components/LatinCrossIcon';
 import GenderIcon from '@/components/GenderIcon';
 import * as Haptics from 'expo-haptics';
+import { useAlert } from '@/providers/AlertProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function RegisterScreen() {
   const { register } = useAuth();
+  const { showAlert } = useAlert();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState<string>('');
@@ -82,24 +83,24 @@ export default function RegisterScreen() {
 
   const handleRegister = useCallback(async () => {
     if (!name.trim()) {
-      Alert.alert('Fehler', 'Bitte gib deinen Namen ein.');
+      showAlert('Fehler', 'Bitte gib deinen Namen ein.');
       return;
     }
     if (!email.trim()) {
-      Alert.alert('Fehler', 'Bitte gib deine E-Mail Adresse ein.');
+      showAlert('Fehler', 'Bitte gib deine E-Mail Adresse ein.');
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      Alert.alert('Fehler', 'Bitte gib eine gültige E-Mail Adresse ein.');
+      showAlert('Fehler', 'Bitte gib eine gültige E-Mail Adresse ein.');
       return;
     }
     if (!password.trim()) {
-      Alert.alert('Fehler', 'Bitte gib ein Passwort ein.');
+      showAlert('Fehler', 'Bitte gib ein Passwort ein.');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Fehler', 'Das Passwort muss mindestens 6 Zeichen haben.');
+      showAlert('Fehler', 'Das Passwort muss mindestens 6 Zeichen haben.');
       return;
     }
 
@@ -112,7 +113,7 @@ export default function RegisterScreen() {
       console.log('Register error:', err);
       const message = err?.message || 'Registrierung fehlgeschlagen. Bitte versuche es erneut.';
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Fehler', message);
+      showAlert('Fehler', message);
     } finally {
       setIsLoading(false);
     }

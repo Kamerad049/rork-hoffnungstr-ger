@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, Image } from 'react-native';
 import { Trash2, FileText, ArrowLeft } from 'lucide-react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,15 +9,17 @@ import { useAdmin } from '@/providers/AdminProvider';
 import { getUserById, formatTimeAgo } from '@/lib/utils';
 import type { FeedPost } from '@/constants/types';
 import * as Haptics from 'expo-haptics';
+import { useAlert } from '@/providers/AlertProvider';
 
 export default function AdminPostsScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { posts, deletePost, deleteAllPosts } = useAdmin();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const handleDelete = useCallback((id: string) => {
-    Alert.alert('Löschen', 'Beitrag wirklich löschen?', [
+    showAlert('Löschen', 'Beitrag wirklich löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Löschen',
@@ -31,7 +33,7 @@ export default function AdminPostsScreen() {
   }, [deletePost]);
 
   const handleDeleteAll = useCallback(() => {
-    Alert.alert('Alle löschen', 'Wirklich ALLE Beiträge löschen?', [
+    showAlert('Alle löschen', 'Wirklich ALLE Beiträge löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Alle löschen',

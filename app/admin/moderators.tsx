@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  Alert,
   Modal,
   ScrollView,
   Switch,
@@ -38,9 +37,11 @@ import { useAuth } from '@/providers/AuthProvider';
 import { getUserById } from '@/lib/utils';
 import type { SocialUser } from '@/constants/types';
 import * as Haptics from 'expo-haptics';
+import { useAlert } from '@/providers/AlertProvider';
 
 export default function AdminModeratorsScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user: authUser } = useAuth();
@@ -79,16 +80,16 @@ export default function AdminModeratorsScreen() {
 
   const handleRemoveModerator = useCallback((userId: string) => {
     if (isHauptadmin(userId)) {
-      Alert.alert('Nicht möglich', 'Der Hauptadmin kann nicht entfernt werden.');
+      showAlert('Nicht möglich', 'Der Hauptadmin kann nicht entfernt werden.');
       return;
     }
     const targetMod = moderators.find((m) => m.userId === userId);
     if (!isCurrentUserHauptadmin && targetMod?.role === 'admin') {
-      Alert.alert('Nicht möglich', 'Du kannst keine anderen Admins entfernen. Nur der Hauptadmin hat diese Berechtigung.');
+      showAlert('Nicht möglich', 'Du kannst keine anderen Admins entfernen. Nur der Hauptadmin hat diese Berechtigung.');
       return;
     }
     const user = getUserById(userId);
-    Alert.alert(
+    showAlert(
       'Moderator entfernen',
       `Möchtest du ${user?.displayName ?? 'diesen Nutzer'} als Moderator entfernen?`,
       [
@@ -117,15 +118,15 @@ export default function AdminModeratorsScreen() {
 
   const handleChangeRole = useCallback((mod: Moderator, newRole: ModeratorRole) => {
     if (isHauptadmin(mod.userId)) {
-      Alert.alert('Nicht möglich', 'Die Rolle des Hauptadmins kann nicht geändert werden.');
+      showAlert('Nicht möglich', 'Die Rolle des Hauptadmins kann nicht geändert werden.');
       return;
     }
     if (!isCurrentUserHauptadmin && newRole === 'admin') {
-      Alert.alert('Nicht möglich', 'Nur der Hauptadmin kann jemanden zum Admin ernennen.');
+      showAlert('Nicht möglich', 'Nur der Hauptadmin kann jemanden zum Admin ernennen.');
       return;
     }
     if (!isCurrentUserHauptadmin && mod.role === 'admin') {
-      Alert.alert('Nicht möglich', 'Du kannst die Rolle eines Admins nicht ändern.');
+      showAlert('Nicht möglich', 'Du kannst die Rolle eines Admins nicht ändern.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  Alert,
   Modal,
   TextInput,
   ScrollView,
@@ -50,6 +49,7 @@ import {
 import { getUserById, formatTimeAgo } from '@/lib/utils';
 import * as Haptics from 'expo-haptics';
 import ThreatGauge from '@/components/ThreatGauge';
+import { useAlert } from '@/providers/AlertProvider';
 
 type FilterTab = 'pending' | 'resolved' | 'all' | 'users' | 'restrictions';
 
@@ -81,6 +81,7 @@ function formatDuration(expiresAt: string): string {
 
 export default function AdminReportsScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const {
@@ -166,7 +167,7 @@ export default function AdminReportsScreen() {
   }, [updateReportStatus, resolutionNote]);
 
   const handleDelete = useCallback((reportId: string) => {
-    Alert.alert('Meldung löschen', 'Möchtest du diese Meldung endgültig löschen?', [
+    showAlert('Meldung löschen', 'Möchtest du diese Meldung endgültig löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
       { text: 'Löschen', style: 'destructive', onPress: () => deleteReport(reportId) },
     ]);
@@ -177,7 +178,7 @@ export default function AdminReportsScreen() {
   }, [updateReportStatus]);
 
   const handleDeleteContent = useCallback((report: Report) => {
-    Alert.alert(
+    showAlert(
       'Inhalt löschen',
       `Möchtest du diesen ${CONTENT_TYPE_LABELS[report.contentType]} wirklich löschen?`,
       [
@@ -198,7 +199,7 @@ export default function AdminReportsScreen() {
 
   const handleBanUser = useCallback((report: Report) => {
     const reported = getUserById(report.reportedUserId)?.displayName ?? 'Unbekannt';
-    Alert.alert(
+    showAlert(
       'Nutzer sperren',
       `Möchtest du "${reported}" wirklich sperren?`,
       [
@@ -221,7 +222,7 @@ export default function AdminReportsScreen() {
     if (!banModalUserId) return;
     const mins = parseInt(banDuration, 10);
     if (isNaN(mins) || mins <= 0) {
-      Alert.alert('Fehler', 'Bitte gib eine gültige Dauer ein.');
+      showAlert('Fehler', 'Bitte gib eine gültige Dauer ein.');
       return;
     }
     const user = getUserById(banModalUserId);
@@ -234,7 +235,7 @@ export default function AdminReportsScreen() {
       violationCount: getUserViolationStats(banModalUserId).resolved,
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert('Sperre verhängt', `${user?.displayName ?? 'Nutzer'} wurde für ${mins} Minuten eingeschränkt.`);
+    showAlert('Sperre verhängt', `${user?.displayName ?? 'Nutzer'} wurde für ${mins} Minuten eingeschränkt.`);
     setBanModalUserId(null);
     setBanDuration('30');
     setBanReason('');
@@ -451,7 +452,7 @@ export default function AdminReportsScreen() {
             <Pressable
               style={[styles.liftBanBtn, { borderColor: colors.border }]}
               onPress={() => {
-                Alert.alert('Sperre aufheben', `Möchtest du die Sperre von "${displayName}" aufheben?`, [
+                showAlert('Sperre aufheben', `Möchtest du die Sperre von "${displayName}" aufheben?`, [
                   { text: 'Abbrechen', style: 'cancel' },
                   { text: 'Aufheben', onPress: () => removeRestriction(item.userId, item.type) },
                 ]);
@@ -979,7 +980,7 @@ export default function AdminReportsScreen() {
                     <Pressable
                       style={[styles.actionButton, { backgroundColor: '#8B0000' }]}
                       onPress={() => {
-                        Alert.alert(
+                        showAlert(
                           'Nutzer sperren',
                           `Möchtest du "${displayName}" wirklich sperren?`,
                           [

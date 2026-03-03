@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   TextInput,
-  Alert,
   Modal,
   ScrollView,
   Image,
@@ -21,9 +20,11 @@ import type { Place, PlaceCategory } from '@/constants/types';
 import { PLACE_CATEGORIES } from '@/constants/types';
 import { AdminImagePicker } from '@/components/AdminImagePicker';
 import * as Haptics from 'expo-haptics';
+import { useAlert } from '@/providers/AlertProvider';
 
 export default function AdminPlacesScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { places, addPlace, updatePlace, deletePlace, deleteAllPlaces } = useAdmin();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -64,7 +65,7 @@ export default function AdminPlacesScreen() {
 
   const handleSave = useCallback(() => {
     if (!title.trim() || !city.trim()) {
-      Alert.alert('Fehler', 'Titel und Stadt sind erforderlich.');
+      showAlert('Fehler', 'Titel und Stadt sind erforderlich.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -96,7 +97,7 @@ export default function AdminPlacesScreen() {
   }, [editingId, title, description, city, bundesland, imageUrls, category, addPlace, updatePlace, resetForm]);
 
   const handleDelete = useCallback((id: string, itemTitle: string) => {
-    Alert.alert('Löschen', `"${itemTitle}" wirklich löschen?`, [
+    showAlert('Löschen', `"${itemTitle}" wirklich löschen?`, [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Löschen',
@@ -110,7 +111,7 @@ export default function AdminPlacesScreen() {
   }, [deletePlace]);
 
   const handleDeleteAll = useCallback(() => {
-    Alert.alert('Alle löschen', 'Wirklich ALLE Orte löschen?', [
+    showAlert('Alle löschen', 'Wirklich ALLE Orte löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Alle löschen',

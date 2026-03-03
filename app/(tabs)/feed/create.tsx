@@ -7,7 +7,6 @@ import {
   Pressable,
   ScrollView,
   Platform,
-  Alert,
   Image,
   Dimensions,
   Animated,
@@ -49,6 +48,7 @@ import { usePosts } from '@/providers/PostsProvider';
 import { useFriends } from '@/providers/FriendsProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import type { SocialUser } from '@/constants/types';
+import { useAlert } from '@/providers/AlertProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MAX_LENGTH = 2000;
@@ -328,6 +328,7 @@ const LOCATION_SUGGESTIONS = [
 
 export default function CreatePostScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { createPost } = usePosts();
 
   const { friendUsers } = useFriends();
@@ -630,7 +631,7 @@ export default function CreatePostScreen() {
       }
     } catch (err) {
       console.log('[CREATE] Gallery error:', err);
-      Alert.alert('Fehler', 'Bild konnte nicht geladen werden.');
+      showAlert('Fehler', 'Bild konnte nicht geladen werden.');
     }
   }, [onImageSelected]);
 
@@ -638,7 +639,7 @@ export default function CreatePostScreen() {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Berechtigung', 'Kamerazugriff wird benötigt.');
+        showAlert('Berechtigung', 'Kamerazugriff wird benötigt.');
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
@@ -651,7 +652,7 @@ export default function CreatePostScreen() {
       }
     } catch (err) {
       console.log('[CREATE] Camera error:', err);
-      Alert.alert('Fehler', 'Foto konnte nicht aufgenommen werden.');
+      showAlert('Fehler', 'Foto konnte nicht aufgenommen werden.');
     }
   }, [onImageSelected]);
 
@@ -696,14 +697,14 @@ export default function CreatePostScreen() {
       router.back();
     } catch (err) {
       console.log('[CREATE] Post error:', err);
-      Alert.alert('Fehler', 'Beitrag konnte nicht erstellt werden.');
+      showAlert('Fehler', 'Beitrag konnte nicht erstellt werden.');
       setIsPublishing(false);
     }
   }, [canPost, isPublishing, content, imageUri, taggedUsers, createPost, router]);
 
   const handleClose = useCallback(() => {
     if (content.trim().length > 0 || imageUri) {
-      Alert.alert('Verwerfen?', 'Dein Beitrag geht verloren.', [
+      showAlert('Verwerfen?', 'Dein Beitrag geht verloren.', [
         { text: 'Abbrechen', style: 'cancel' },
         { text: 'Verwerfen', style: 'destructive', onPress: () => router.back() },
       ]);
@@ -984,7 +985,7 @@ export default function CreatePostScreen() {
                 </Pressable>
                 <Pressable
                   style={styles.editToolBtn}
-                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Alert.alert('Hintergrundmusik', 'Der Musikkatalog wird bald verfügbar sein.'); }}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); showAlert('Hintergrundmusik', 'Der Musikkatalog wird bald verfügbar sein.'); }}
                 >
                   <Music size={13} color="#BFA35D" />
                   <Text style={styles.editToolLabel}>Musik</Text>

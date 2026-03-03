@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Animated, Dimensions, Platform } from 'react-native';
+import { useAlert } from '@/providers/AlertProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { UserPlus, UserCheck, UserX, MessageCircle, Award, FileText, Users, ChevronLeft, ChevronRight, Ban, ShieldOff, MapPin, Home, Heart, ChevronDown, ChevronUp, UserMinus, Trophy, ShieldHalf, Mountain, Flame, Scale, Flag, Swords, Crown, Anchor, Church, HandHeart, TreePine, Handshake, Eye, Shield, Radio, Grid3x3, AtSign, Film, ImageIcon } from 'lucide-react-native';
@@ -27,7 +28,7 @@ import NowPlayingWidget from '@/components/NowPlayingWidget';
 import { useSpotify } from '@/providers/SpotifyProvider';
 import { useUserOrdenQuery } from '@/hooks/useOrden';
 import * as Haptics from 'expo-haptics';
-import { Alert } from 'react-native';
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_PADDING = 16;
@@ -149,6 +150,7 @@ function ReelGridItem({ reel, onPress }: { reel: Reel; onPress: () => void }) {
 
 export default function UserProfileScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const { isFriend, hasSentRequest, hasReceivedRequest, sendFriendRequest, cancelFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend, friends, leaderboard, blockUser, unblockUser, isBlocked } = useFriends();
   const { profile: socialProfile, isUserFlagActive, isFlagActive: isOwnFlagActive, privacy, canViewContent } = useSocial();
@@ -391,7 +393,7 @@ export default function UserProfileScreen() {
 
   const handleRemoveFriend = useCallback(() => {
     if (!userId) return;
-    Alert.alert(
+    showAlert(
       'Person entfolgen',
       `Wenn du ${profile?.displayName ?? 'dieser Person'} entfolgst, siehst du keine Beiträge und Storys mehr von ihr.`,
       [
@@ -443,7 +445,7 @@ export default function UserProfileScreen() {
 
   const handleBlock = useCallback(() => {
     if (!userId) return;
-    Alert.alert(
+    showAlert(
       'Person sperren',
       `${profile?.displayName ?? 'Diese Person'} wird gesperrt und komplett unsichtbar für dich.`,
       [
@@ -462,7 +464,7 @@ export default function UserProfileScreen() {
 
   const handleUnblock = useCallback(() => {
     if (!userId) return;
-    Alert.alert(
+    showAlert(
       'Sperre aufheben',
       `${profile?.displayName ?? 'Diese Person'} kann dich wieder finden und deine Inhalte sehen.`,
       [

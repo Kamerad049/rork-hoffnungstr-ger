@@ -7,7 +7,6 @@ import {
   Pressable,
   Animated,
   Dimensions,
-  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -25,6 +24,7 @@ import {
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import type { ChatInputAreaProps, InputMode } from './types';
+import { useAlert } from '@/providers/AlertProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const WAVE_COUNT = 12;
@@ -73,6 +73,7 @@ function ChatInputAreaInner({
   recordWaveAnims,
   partnerName,
 }: ChatInputAreaProps) {
+  const { showAlert } = useAlert();
   const wheelWidth = SCREEN_WIDTH - 32;
   const segmentWidth = (wheelWidth - 8) / 3;
   const wheelIndicatorLeft = wheelSlideAnim.interpolate({
@@ -368,7 +369,7 @@ function ChatInputAreaInner({
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              Alert.alert('Bild', 'Bildversand kommt bald!');
+              showAlert('Bild', 'Bildversand kommt bald!');
             }}
             style={({ pressed }) => [
               styles.imagePickBtn,

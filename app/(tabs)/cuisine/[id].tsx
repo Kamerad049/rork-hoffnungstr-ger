@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, TextInput } from 'react-native';
+import { useAlert } from '@/providers/AlertProvider';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
 import { MapPin, Heart, ArrowLeft, Navigation, Pencil, X } from 'lucide-react-native';
@@ -17,6 +18,7 @@ import * as Haptics from 'expo-haptics';
 export default function RestaurantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { isFavorite, toggleFavorite } = useFavorites();
   const router = useRouter();
 
@@ -63,7 +65,7 @@ export default function RestaurantDetailScreen() {
   const handleSaveEdit = useCallback(() => {
     if (!restaurant) return;
     if (!editName.trim() || !editCity.trim()) {
-      Alert.alert('Fehler', 'Name und Stadt sind erforderlich.');
+      showAlert('Fehler', 'Name und Stadt sind erforderlich.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

@@ -9,7 +9,6 @@ import {
   Platform,
   Image,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +37,7 @@ import {
 import { useKaderschmiede } from '@/providers/KaderschmiedeProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import type { CheckInEntry } from '@/constants/kaderschmiede';
+import { useAlert } from '@/providers/AlertProvider';
 import {
   CHECKIN_PROXIMITY_RADIUS_M,
   CHECKIN_TOKEN_ROTATION_S,
@@ -486,6 +486,7 @@ export default function CheckInScreen() {
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { showAlert } = useAlert();
   const { user } = useAuth();
   const {
     activeCheckIn,
@@ -592,7 +593,7 @@ export default function CheckInScreen() {
     if (isStarting || !hostLocation) return;
 
     if (gpsStatus !== 'locked') {
-      Alert.alert('GPS benötigt', 'Bitte warte bis das GPS-Signal verfügbar ist.');
+      showAlert('GPS benötigt', 'Bitte warte bis das GPS-Signal verfügbar ist.');
       return;
     }
 

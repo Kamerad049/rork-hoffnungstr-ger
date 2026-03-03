@@ -9,7 +9,6 @@ import {
   Image,
   Platform,
   StatusBar,
-  Alert,
   ScrollView,
   PanResponder,
 } from 'react-native';
@@ -25,11 +24,13 @@ import { useSocial } from '@/providers/SocialProvider';
 import { getUserById, formatTimeAgo, cleanPanHandlers } from '@/lib/utils';
 import type { StoryItem, StoryGroup, SocialUser } from '@/constants/types';
 import { useAuth } from '@/providers/AuthProvider';
+import { useAlert } from '@/providers/AlertProvider';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function StoryViewerScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { user } = useAuth();
   const { stories, markStoryViewed, deleteStory, getStoryViewers } = useStories();
   const { profile } = useSocial();
@@ -295,7 +296,7 @@ export default function StoryViewerScreen() {
     animRef.current?.stop();
     isPaused.current = true;
 
-    Alert.alert(
+    showAlert(
       'Story löschen',
       'Möchtest du diese Story wirklich löschen?',
       [

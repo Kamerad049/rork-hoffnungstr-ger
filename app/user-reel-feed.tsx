@@ -8,8 +8,8 @@ import {
   Animated,
   Dimensions,
   Platform,
-  Alert,
 } from 'react-native';
+import { useAlert } from '@/providers/AlertProvider';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
 import { Heart, MessageCircle, Share2, MapPin, ChevronLeft, Play, Users, MoreHorizontal, Pencil, Archive, MessageCircleOff, X, ChevronRight, Bookmark, Trash2 } from 'lucide-react-native';
@@ -46,6 +46,7 @@ const PostFeedItem = React.memo(function PostFeedItem({
   menuResetKey,
 }: PostFeedItemProps) {
   const { toggleLike, isLiked, isPostSaved, savePost, isCommentsDisabled, archivePost, toggleCommentsDisabled, deletePost } = usePosts();
+  const { showAlert } = useAlert();
   const router = useRouter();
   const { profile: socialProfile } = useSocial();
   const { user } = useAuth();
@@ -293,7 +294,7 @@ const PostFeedItem = React.memo(function PostFeedItem({
             onPress={() => {
               setShowMenu(false);
               menuAnim.setValue(0);
-              Alert.alert(
+              showAlert(
                 'Beitrag löschen?',
                 'Dieser Beitrag wird endgültig und unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
                 [
@@ -307,6 +308,7 @@ const PostFeedItem = React.memo(function PostFeedItem({
                     },
                   },
                 ],
+                'warning',
               );
             }}
           >

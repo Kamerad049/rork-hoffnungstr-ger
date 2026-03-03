@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, TextInput, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { useAlert } from '@/providers/AlertProvider';
 import { useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { Calendar, User, Pencil, X, ImageOff } from 'lucide-react-native';
@@ -12,6 +13,7 @@ import * as Haptics from 'expo-haptics';
 export default function ArticleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
 
   const { news: adminNews, updateNews } = useContent();
   const canEdit = useCanEditContent();
@@ -36,7 +38,7 @@ export default function ArticleScreen() {
   const handleSaveEdit = useCallback(() => {
     if (!article) return;
     if (!editTitle.trim() || !editText.trim()) {
-      Alert.alert('Fehler', 'Titel und Text sind erforderlich.');
+      showAlert('Fehler', 'Titel und Text sind erforderlich.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

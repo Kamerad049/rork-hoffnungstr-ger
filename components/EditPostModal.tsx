@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  Alert,
   ScrollView,
   Image,
 } from 'react-native';
@@ -20,6 +19,7 @@ import { useFriends } from '@/providers/FriendsProvider';
 import { getUserById } from '@/lib/utils';
 import type { FeedPost, SocialUser } from '@/constants/types';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAlert } from '@/providers/AlertProvider';
 
 const GOLD = '#BFA35D';
 const MAX_LENGTH = 2000;
@@ -35,6 +35,7 @@ type EditTab = 'text' | 'location' | 'people' | 'tags';
 export default function EditPostModal({ visible, post, onClose }: EditPostModalProps) {
   const { editPost } = usePosts();
   const { friendUsers } = useFriends();
+  const { showAlert } = useAlert();
   const [content, setContent] = useState<string>('');
   const [location, setLocation] = useState<string>('');
   const [taggedUserIds, setTaggedUserIds] = useState<string[]>([]);
@@ -84,7 +85,7 @@ export default function EditPostModal({ visible, post, onClose }: EditPostModalP
     if (!post || saving) return;
     const trimmed = content.trim();
     if (trimmed.length === 0) {
-      Alert.alert('Fehler', 'Der Beitrag darf nicht leer sein.');
+      showAlert('Fehler', 'Der Beitrag darf nicht leer sein.');
       return;
     }
     setSaving(true);
@@ -102,7 +103,7 @@ export default function EditPostModal({ visible, post, onClose }: EditPostModalP
       onClose();
     } catch (err) {
       console.log('[EDIT] Error:', err);
-      Alert.alert('Fehler', 'Beitrag konnte nicht gespeichert werden.');
+      showAlert('Fehler', 'Beitrag konnte nicht gespeichert werden.');
     } finally {
       setSaving(false);
     }
@@ -118,7 +119,7 @@ export default function EditPostModal({ visible, post, onClose }: EditPostModalP
     const tagsChanged = JSON.stringify(tags) !== JSON.stringify(post.tags ?? []);
     const taggedChanged = JSON.stringify(taggedUserIds) !== JSON.stringify(post.taggedUserIds ?? []);
     if (contentChanged || locationChanged || tagsChanged || taggedChanged) {
-      Alert.alert('Verwerfen?', 'Deine Änderungen gehen verloren.', [
+      showAlert('Verwerfen?', 'Deine Änderungen gehen verloren.', [
         { text: 'Abbrechen', style: 'cancel' },
         { text: 'Verwerfen', style: 'destructive', onPress: onClose },
       ]);

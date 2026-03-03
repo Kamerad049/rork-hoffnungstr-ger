@@ -9,10 +9,10 @@ import {
   Platform,
   ActivityIndicator,
   Dimensions,
-  Alert,
   FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAlert } from '@/providers/AlertProvider';
 import {
   LogOut,
   Award,
@@ -221,6 +221,7 @@ export default function ProfileScreen() {
   measureSinceBoot('ProfileScreen_render');
   const { colors } = useTheme();
   const router = useRouter();
+  const { showAlert } = useAlert();
   const { user, isLoggedIn, isLoading: authLoading, logout } = useAuth();
   const { stamps, rank, nextRank, progress } = useStampPass();
   const { profile, hoistFlag, isFlagActive, flagCount } = useSocial();
@@ -375,7 +376,7 @@ export default function ProfileScreen() {
   const handlePostLongPress = useCallback((post: FeedPost) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (activeTab === 'archive') {
-      Alert.alert(
+      showAlert(
         'Archivierter Beitrag',
         'Was möchtest du tun?',
         [
@@ -390,7 +391,7 @@ export default function ProfileScreen() {
             text: 'Endgültig löschen',
             style: 'destructive',
             onPress: () => {
-              Alert.alert('Löschen?', 'Beitrag kann nicht wiederhergestellt werden.', [
+              showAlert('Löschen?', 'Beitrag kann nicht wiederhergestellt werden.', [
                 { text: 'Abbrechen', style: 'cancel' },
                 {
                   text: 'Löschen',
@@ -407,7 +408,7 @@ export default function ProfileScreen() {
         ],
       );
     } else if (activeTab === 'posts') {
-      Alert.alert(
+      showAlert(
         'Beitrag',
         'Was möchtest du tun?',
         [
@@ -422,7 +423,7 @@ export default function ProfileScreen() {
             text: 'Endgültig löschen',
             style: 'destructive',
             onPress: () => {
-              Alert.alert('Löschen?', 'Beitrag kann nicht wiederhergestellt werden.', [
+              showAlert('Löschen?', 'Beitrag kann nicht wiederhergestellt werden.', [
                 { text: 'Abbrechen', style: 'cancel' },
                 {
                   text: 'Löschen',
@@ -444,7 +445,7 @@ export default function ProfileScreen() {
   const handleReelLongPress = useCallback((reel: Reel) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (activeTab === 'archive') {
-      Alert.alert(
+      showAlert(
         'Archivierter Beitrag',
         'Was möchtest du tun?',
         [
@@ -467,7 +468,7 @@ export default function ProfileScreen() {
         ],
       );
     } else if (activeTab === 'posts') {
-      Alert.alert(
+      showAlert(
         'Beitrag',
         'Was möchtest du tun?',
         [
@@ -482,7 +483,7 @@ export default function ProfileScreen() {
             text: 'Endgültig löschen',
             style: 'destructive',
             onPress: () => {
-              Alert.alert('Löschen?', 'Beitrag kann nicht wiederhergestellt werden.', [
+              showAlert('Löschen?', 'Beitrag kann nicht wiederhergestellt werden.', [
                 { text: 'Abbrechen', style: 'cancel' },
                 {
                   text: 'Löschen',

@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   TextInput,
-  Alert,
   Modal,
   ScrollView,
   Image,
@@ -20,9 +19,11 @@ import { useAdmin } from '@/providers/AdminProvider';
 import type { Restaurant } from '@/constants/types';
 import { AdminImagePicker } from '@/components/AdminImagePicker';
 import * as Haptics from 'expo-haptics';
+import { useAlert } from '@/providers/AlertProvider';
 
 export default function AdminRestaurantsScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { restaurants, addRestaurant, updateRestaurant, deleteRestaurant, deleteAllRestaurants } = useAdmin();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -63,7 +64,7 @@ export default function AdminRestaurantsScreen() {
 
   const handleSave = useCallback(() => {
     if (!name.trim() || !city.trim()) {
-      Alert.alert('Fehler', 'Name und Stadt sind erforderlich.');
+      showAlert('Fehler', 'Name und Stadt sind erforderlich.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -97,7 +98,7 @@ export default function AdminRestaurantsScreen() {
   }, [editingId, name, description, city, imageUrls, cuisineText, priceRange, addRestaurant, updateRestaurant, resetForm]);
 
   const handleDelete = useCallback((id: string, itemName: string) => {
-    Alert.alert('Löschen', `"${itemName}" wirklich löschen?`, [
+    showAlert('Löschen', `"${itemName}" wirklich löschen?`, [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Löschen',
@@ -111,7 +112,7 @@ export default function AdminRestaurantsScreen() {
   }, [deleteRestaurant]);
 
   const handleDeleteAll = useCallback(() => {
-    Alert.alert('Alle löschen', 'Wirklich ALLE Restaurants löschen?', [
+    showAlert('Alle löschen', 'Wirklich ALLE Restaurants löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Alle löschen',

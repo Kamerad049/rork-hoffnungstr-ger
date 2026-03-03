@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   Pressable,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Animated,
@@ -30,6 +29,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { BUNDESLAENDER, PLACE_CATEGORIES } from '@/constants/types';
 import type { SubmissionCategory, PlaceCategory } from '@/constants/types';
+import { useAlert } from '@/providers/AlertProvider';
 
 const CUISINE_HINT =
   'Bitte beachte: Es muss sich um ein Restaurant oder Gasthaus handeln, dessen Schwerpunkt ganz klar auf traditionell deutscher Küche / deutscher Hausmannskost liegt. Es reicht nicht aus, ein Restaurant zu empfehlen, nur weil es als Beiwerk vielleicht ein Schnitzel auf der Karte hat.';
@@ -42,6 +42,7 @@ const PRICE_OPTIONS: { label: string; value: 1 | 2 | 3 }[] = [
 
 export default function SubmitSuggestionScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -114,7 +115,7 @@ export default function SubmitSuggestionScreen() {
       }).start();
     },
     onError: (err: Error) => {
-      Alert.alert('Fehler', err.message);
+      showAlert('Fehler', err.message);
     },
   });
 

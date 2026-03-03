@@ -6,7 +6,6 @@ import {
   TextInput,
   Pressable,
   ScrollView,
-  Alert,
   ActionSheetIOS,
   Animated,
   Platform,
@@ -19,6 +18,7 @@ import { Camera, Check, ImageIcon, Trash2, MapPin, Home, Sparkles, ChevronLeft, 
 import { useTheme } from '@/providers/ThemeProvider';
 import { useSocial } from '@/providers/SocialProvider';
 import { useAuth } from '@/providers/AuthProvider';
+import { useAlert } from '@/providers/AlertProvider';
 
 import { PERSONAL_VALUES, GENDER_OPTIONS, RELIGION_OPTIONS, CROSS_STYLE_OPTIONS, BUNDESLAENDER } from '@/constants/types';
 import type { Gender, Religion, CrossStyle } from '@/constants/types';
@@ -86,6 +86,7 @@ export default function EditProfileScreen() {
   const { colors } = useTheme();
   const { profile, updateProfile } = useSocial();
   const { user } = useAuth();
+  const { showAlert } = useAlert();
 
 
   const router = useRouter();
@@ -165,7 +166,7 @@ export default function EditProfileScreen() {
       }
     } catch (e) {
       console.log('[EDIT] Image picker error:', e);
-      Alert.alert('Fehler', 'Bild konnte nicht geladen werden.');
+      showAlert('Fehler', 'Bild konnte nicht geladen werden.', undefined, 'error');
     }
   }, [saveImagePermanently]);
 
@@ -173,7 +174,7 @@ export default function EditProfileScreen() {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Berechtigung benötigt', 'Bitte erlaube den Kamerazugriff in den Einstellungen.');
+        showAlert('Berechtigung benötigt', 'Bitte erlaube den Kamerazugriff in den Einstellungen.', undefined, 'warning');
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
@@ -189,7 +190,7 @@ export default function EditProfileScreen() {
       }
     } catch (e) {
       console.log('[EDIT] Camera error:', e);
-      Alert.alert('Fehler', 'Foto konnte nicht aufgenommen werden.');
+      showAlert('Fehler', 'Foto konnte nicht aufgenommen werden.', undefined, 'error');
     }
   }, [saveImagePermanently]);
 
@@ -216,7 +217,7 @@ export default function EditProfileScreen() {
         },
       );
     } else {
-      Alert.alert('Profilbild ändern', undefined, [
+      showAlert('Profilbild ändern', undefined, [
         { text: 'Foto aufnehmen', onPress: takePhoto },
         { text: 'Aus Galerie wählen', onPress: pickImageFromLibrary },
         ...(avatarUrl ? [{ text: 'Profilbild entfernen', onPress: () => setAvatarUrl(''), style: 'destructive' as const }] : []),
@@ -227,7 +228,7 @@ export default function EditProfileScreen() {
 
   const handleSave = useCallback(() => {
     if (!displayName.trim()) {
-      Alert.alert('Fehler', 'Der Anzeigename darf nicht leer sein.');
+      showAlert('Fehler', 'Der Anzeigename darf nicht leer sein.', undefined, 'error');
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

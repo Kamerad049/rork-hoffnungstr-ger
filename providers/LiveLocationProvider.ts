@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import createContextHook from '@nkzw/create-context-hook';
 import * as Location from 'expo-location';
 import { useAuth } from '@/providers/AuthProvider';
 import { useFriends } from '@/providers/FriendsProvider';
+import { useAlert } from '@/providers/AlertProvider';
 import { supabase } from '@/lib/supabase';
 import type { SocialUser } from '@/constants/types';
 
@@ -93,6 +94,7 @@ export function formatDistance(km: number): string {
 export const [LiveLocationProvider, useLiveLocation] = createContextHook(() => {
   const { user } = useAuth();
   const { friends, friendUsers, blockedUsers } = useFriends();
+  const { showAlert } = useAlert();
   const userId = user?.id ?? '';
 
   const [isSharing, setIsSharing] = useState<boolean>(false);
@@ -121,7 +123,7 @@ export const [LiveLocationProvider, useLiveLocation] = createContextHook(() => {
         console.log('[LIVE-LOC] Web geolocation not available');
         setPermissionStatus('unavailable');
         setIsAcquiringLocation(false);
-        Alert.alert(
+        showAlert(
           'Standort nicht verfügbar',
           'Dein Browser unterstützt keine Ortungsdienste. Bitte verwende einen modernen Browser oder die mobile App.',
         );
@@ -162,18 +164,18 @@ export const [LiveLocationProvider, useLiveLocation] = createContextHook(() => {
 
             if (err.code === 1) {
               setPermissionStatus('denied');
-              Alert.alert(
+              showAlert(
                 'Standortzugriff verweigert',
                 'Bitte erlaube den Zugriff auf deinen Standort in den Browser-Einstellungen und versuche es erneut.',
               );
             } else if (err.code === 2) {
               setPermissionStatus('unavailable');
-              Alert.alert(
+              showAlert(
                 'Standort nicht verfügbar',
                 'Die Ortungsdienste sind deaktiviert. Bitte aktiviere GPS/Ortungsdienste in deinen Geräteeinstellungen.',
               );
             } else {
-              Alert.alert(
+              showAlert(
                 'Standortfehler',
                 'Dein Standort konnte nicht ermittelt werden. Bitte überprüfe deine Verbindung und versuche es erneut.',
               );
@@ -197,7 +199,7 @@ export const [LiveLocationProvider, useLiveLocation] = createContextHook(() => {
           console.log('[LIVE-LOC] Location services disabled');
           setPermissionStatus('unavailable');
           setIsAcquiringLocation(false);
-          Alert.alert(
+          showAlert(
             'Ortungsdienste deaktiviert',
             'Bitte aktiviere die Ortungsdienste in deinen Geräteeinstellungen, damit wir deinen Standort ermitteln können.',
           );
@@ -224,7 +226,7 @@ export const [LiveLocationProvider, useLiveLocation] = createContextHook(() => {
           console.log('[LIVE-LOC] Location permission denied');
           setPermissionStatus('denied');
           setIsAcquiringLocation(false);
-          Alert.alert(
+          showAlert(
             'Standortzugriff verweigert',
             'Bitte erlaube den Zugriff auf deinen Standort in den App-Einstellungen, damit du deinen Live-Standort teilen kannst.',
           );
@@ -284,7 +286,7 @@ export const [LiveLocationProvider, useLiveLocation] = createContextHook(() => {
         if (!initialLoc) {
           console.log('[LIVE-LOC] Could not get any position after all attempts');
           setIsAcquiringLocation(false);
-          Alert.alert(
+          showAlert(
             'Standort nicht gefunden',
             'Dein Standort konnte nicht ermittelt werden. Bitte stelle sicher, dass GPS aktiviert ist und du dich an einem Ort mit gutem Empfang befindest. Tipp: Öffne kurz Apple Karten oder Google Maps, damit das GPS aktiviert wird, und versuche es dann erneut.',
           );
@@ -326,18 +328,18 @@ export const [LiveLocationProvider, useLiveLocation] = createContextHook(() => {
         const errorMsg = e?.message ?? String(e);
         if (errorMsg.includes('denied') || errorMsg.includes('permission')) {
           setPermissionStatus('denied');
-          Alert.alert(
+          showAlert(
             'Standortzugriff verweigert',
             'Bitte erlaube den Zugriff auf deinen Standort in den App-Einstellungen und versuche es erneut.',
           );
         } else if (errorMsg.includes('unavailable') || errorMsg.includes('disabled') || errorMsg.includes('service')) {
           setPermissionStatus('unavailable');
-          Alert.alert(
+          showAlert(
             'Ortungsdienste deaktiviert',
             'Bitte aktiviere die Ortungsdienste in deinen Geräteeinstellungen und versuche es erneut.',
           );
         } else {
-          Alert.alert(
+          showAlert(
             'Standortfehler',
             'Ein Fehler ist beim Ermitteln deines Standorts aufgetreten. Tipp: Öffne kurz Apple Karten oder Google Maps, um GPS zu aktivieren, und versuche es dann erneut.',
           );

@@ -6,10 +6,10 @@ import {
   ScrollView,
   Pressable,
   Animated,
-  Alert,
   Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useAlert } from '@/providers/AlertProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -193,6 +193,7 @@ export default function TruppDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { showAlert } = useAlert();
   const { user } = useAuth();
   const { getTruppById, joinTrupp, leaveTrupp, attendMeeting, leaveMeeting } = useKaderschmiede();
 
@@ -226,7 +227,7 @@ export default function TruppDetailScreen() {
   const handleJoin = useCallback(() => {
     if (!trupp) return;
     if (!trupp.isOpen) {
-      Alert.alert('Geschlossen', 'Dieser Trupp nimmt aktuell keine neuen Mitglieder auf.');
+      showAlert('Geschlossen', 'Dieser Trupp nimmt aktuell keine neuen Mitglieder auf.');
       return;
     }
     joinTrupp(trupp.id);
@@ -234,10 +235,10 @@ export default function TruppDetailScreen() {
 
   const handleLeave = useCallback(() => {
     if (!trupp || isLeader) {
-      Alert.alert('Hinweis', 'Als Anführer kannst du den Trupp nicht verlassen.');
+      showAlert('Hinweis', 'Als Anführer kannst du den Trupp nicht verlassen.');
       return;
     }
-    Alert.alert('Trupp verlassen', `Möchtest du "${trupp.name}" wirklich verlassen?`, [
+    showAlert('Trupp verlassen', `Möchtest du "${trupp.name}" wirklich verlassen?`, [
       { text: 'Abbrechen', style: 'cancel' },
       { text: 'Verlassen', style: 'destructive', onPress: () => leaveTrupp(trupp.id) },
     ]);

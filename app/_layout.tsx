@@ -7,6 +7,8 @@ import { trpc, trpcClient } from '@/lib/trpc';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import OfflineBanner from '@/components/OfflineBanner';
 import { ThemeProvider } from '@/providers/ThemeProvider';
+import { AlertProvider } from '@/providers/AlertProvider';
+import AlertRoot from '@/components/AlertRoot';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { DeferredProviders } from '@/providers/DeferredProviders';
 import * as SplashScreen from 'expo-splash-screen';
@@ -214,11 +216,14 @@ export default function RootLayout() {
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
-            <AuthProvider>
-              <AuthGate>
-                <RootLayoutNav />
-              </AuthGate>
-            </AuthProvider>
+            <AlertProvider>
+              <AuthProvider>
+                <AuthGate>
+                  <RootLayoutNav />
+                  <AlertRoot />
+                </AuthGate>
+              </AuthProvider>
+            </AlertProvider>
           </ThemeProvider>
         </QueryClientProvider>
       </trpc.Provider>

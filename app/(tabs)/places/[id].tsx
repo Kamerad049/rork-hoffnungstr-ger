@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Linking, Platform, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Linking, Platform, Modal, TextInput } from 'react-native';
+import { useAlert } from '@/providers/AlertProvider';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
 import { MapPin, Heart, Navigation, ArrowLeft, Route, Stamp, Pencil, X } from 'lucide-react-native';
@@ -19,6 +20,7 @@ import * as Haptics from 'expo-haptics';
 export default function PlaceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { hasStamp } = useStampPass();
   const router = useRouter();
@@ -54,7 +56,7 @@ export default function PlaceDetailScreen() {
   const handleSaveEdit = useCallback(() => {
     if (!place) return;
     if (!editTitle.trim() || !editCity.trim()) {
-      Alert.alert('Fehler', 'Titel und Stadt sind erforderlich.');
+      showAlert('Fehler', 'Titel und Stadt sind erforderlich.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

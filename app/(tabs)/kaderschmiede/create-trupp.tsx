@@ -6,7 +6,6 @@ import {
   ScrollView,
   Pressable,
   TextInput,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Image,
@@ -37,6 +36,7 @@ import { useKaderschmiede } from '@/providers/KaderschmiedeProvider';
 import { SPORT_CATEGORIES, BUNDESLAND_COORDS } from '@/constants/kaderschmiede';
 import { supabase } from '@/lib/supabase';
 import type { SportCategory } from '@/constants/kaderschmiede';
+import { useAlert } from '@/providers/AlertProvider';
 
 const SPORT_ICON_MAP: Record<SportCategory, React.ComponentType<any>> = {
   Calisthenics: Dumbbell,
@@ -55,6 +55,7 @@ const BUNDESLAENDER = Object.keys(BUNDESLAND_COORDS);
 export default function CreateTruppScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { showAlert } = useAlert();
   const { createTrupp } = useKaderschmiede();
 
   const [name, setName] = useState('');
@@ -75,7 +76,7 @@ export default function CreateTruppScreen() {
   const pickLogo = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Berechtigung erforderlich', 'Bitte erlaube den Zugriff auf deine Fotos.');
+      showAlert('Berechtigung erforderlich', 'Bitte erlaube den Zugriff auf deine Fotos.');
       return;
     }
     try {
@@ -94,11 +95,11 @@ export default function CreateTruppScreen() {
         setLogoUrl(url);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        Alert.alert('Upload fehlgeschlagen', 'Logo konnte nicht hochgeladen werden.');
+        showAlert('Upload fehlgeschlagen', 'Logo konnte nicht hochgeladen werden.');
       }
     } catch (err) {
       console.log('[CREATE-TRUPP] Logo pick error:', err);
-      Alert.alert('Fehler', 'Logo konnte nicht ausgewählt werden.');
+      showAlert('Fehler', 'Logo konnte nicht ausgewählt werden.');
     } finally {
       setUploadingLogo(false);
     }
@@ -107,7 +108,7 @@ export default function CreateTruppScreen() {
   const takeLogo = useCallback(async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Berechtigung erforderlich', 'Bitte erlaube den Zugriff auf deine Kamera.');
+      showAlert('Berechtigung erforderlich', 'Bitte erlaube den Zugriff auf deine Kamera.');
       return;
     }
     try {
@@ -125,7 +126,7 @@ export default function CreateTruppScreen() {
         setLogoUrl(url);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        Alert.alert('Upload fehlgeschlagen', 'Logo konnte nicht hochgeladen werden.');
+        showAlert('Upload fehlgeschlagen', 'Logo konnte nicht hochgeladen werden.');
       }
     } catch (err) {
       console.log('[CREATE-TRUPP] Logo camera error:', err);
@@ -150,12 +151,12 @@ export default function CreateTruppScreen() {
         weeklyGoal: weeklyGoal.trim(),
         logoUrl,
       });
-      Alert.alert('Trupp erstellt!', `"${name}" wurde erfolgreich gegründet.`, [
+      showAlert('Trupp erstellt!', `"${name}" wurde erfolgreich gegründet.`, [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (e) {
       console.log('[CREATE-TRUPP] Error:', e);
-      Alert.alert('Fehler', 'Trupp konnte nicht erstellt werden. Bitte versuche es erneut.');
+      showAlert('Fehler', 'Trupp konnte nicht erstellt werden. Bitte versuche es erneut.');
     } finally {
       setIsSubmitting(false);
     }

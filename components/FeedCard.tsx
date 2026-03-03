@@ -6,13 +6,14 @@ import {
   Pressable,
   Animated,
   Platform,
-  Alert,
 } from 'react-native';
+import { useAlert } from '@/providers/AlertProvider';
 import OptimizedImage, { OptimizedAvatar } from '@/components/OptimizedImage';
 import { Shield, Star, Heart, Users, MessageCircle, Share2, MoreHorizontal, MapPin, X, ChevronRight, Pencil, MessageCircleOff, Archive, Bookmark, Trash2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import RankIcon from '@/components/RankIcon';
+
 
 import { usePosts } from '@/providers/PostsProvider';
 import { useSocial } from '@/providers/SocialProvider';
@@ -72,6 +73,7 @@ function FeedCardInner({
   const { toggleLike, isLiked, isCommentsDisabled } = usePosts();
   const { isUserFlagActive, profile: socialProfile } = useSocial();
   const { user } = useAuth();
+  const { showAlert } = useAlert();
 
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   const [showReport, setShowReport] = useState<boolean>(false);
@@ -476,7 +478,7 @@ function FeedCardInner({
                 onPress={() => {
                   setShowOwnMenu(false);
                   ownMenuAnim.setValue(0);
-                  Alert.alert(
+                  showAlert(
                     'Beitrag löschen?',
                     'Dieser Beitrag wird endgültig und unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
                     [
@@ -487,6 +489,7 @@ function FeedCardInner({
                         onPress: () => onDeletePress?.(post.id),
                       },
                     ],
+                    'warning',
                   );
                 }}
               >

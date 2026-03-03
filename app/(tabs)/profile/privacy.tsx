@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Shield, FileText, Users, Award, Rss, Camera, MapPin, Home, Map, Sparkles, ShieldOff, Ban, UserX, Clock, ChevronLeft, AtSign, Music, Eye, EyeOff, UserCheck } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,6 +11,7 @@ import { useFriends } from '@/providers/FriendsProvider';
 import { useSpotify, type MusicVisibility } from '@/providers/SpotifyProvider';
 import type { SocialUser } from '@/constants/types';
 import * as Haptics from 'expo-haptics';
+import { useAlert } from '@/providers/AlertProvider';
 
 const PRIVACY_OPTIONS: { value: PrivacyLevel; label: string; description: string }[] = [
   { value: 'everyone', label: 'Alle', description: 'Jeder kann es sehen' },
@@ -82,6 +83,7 @@ const MUSIC_VISIBILITY_OPTIONS: { value: MusicVisibility; label: string; icon: R
 
 export default function PrivacyScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { privacy, updatePrivacy } = useSocial();
   const { blockedUsers, blockedAt, unblockUser } = useFriends();
   const { settings: spotifySettings, toggleEnabled: toggleSpotify, setVisibility: setMusicVisibility } = useSpotify();
@@ -104,7 +106,7 @@ export default function PrivacyScreen() {
   }, [blockedUsers]);
 
   const handleUnblock = useCallback((user: SocialUser) => {
-    Alert.alert(
+    showAlert(
       'Sperre aufheben',
       `Möchtest du ${user.displayName} wirklich entsperren? Die Person kann dir dann wieder folgen und Nachrichten senden.`,
       [

@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   TextInput,
-  Alert,
   Modal,
   ScrollView,
   Image,
@@ -23,9 +22,11 @@ import { useAdmin } from '@/providers/AdminProvider';
 import type { NewsArticle } from '@/constants/types';
 import { AdminImagePicker } from '@/components/AdminImagePicker';
 import * as Haptics from 'expo-haptics';
+import { useAlert } from '@/providers/AlertProvider';
 
 export default function AdminNewsScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { news, addNews, updateNews, deleteNews, deleteAllNews } = useAdmin();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -60,7 +61,7 @@ export default function AdminNewsScreen() {
 
   const handleSave = useCallback(() => {
     if (!title.trim() || !text.trim()) {
-      Alert.alert('Fehler', 'Titel und Text sind erforderlich.');
+      showAlert('Fehler', 'Titel und Text sind erforderlich.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -85,7 +86,7 @@ export default function AdminNewsScreen() {
   }, [editingId, title, text, imageUrls, author, addNews, updateNews, resetForm]);
 
   const handleDelete = useCallback((id: string, itemTitle: string) => {
-    Alert.alert('Löschen', `"${itemTitle}" wirklich löschen?`, [
+    showAlert('Löschen', `"${itemTitle}" wirklich löschen?`, [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Löschen',
@@ -99,7 +100,7 @@ export default function AdminNewsScreen() {
   }, [deleteNews]);
 
   const handleDeleteAll = useCallback(() => {
-    Alert.alert('Alle löschen', 'Wirklich ALLE News löschen?', [
+    showAlert('Alle löschen', 'Wirklich ALLE News löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Alle löschen',

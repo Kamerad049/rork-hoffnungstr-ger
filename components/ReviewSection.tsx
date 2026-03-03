@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput, Alert, Animated, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput, Animated, Image } from 'react-native';
+import { useAlert } from '@/providers/AlertProvider';
 import { ThumbsUp, ThumbsDown, Send, MessageSquare, LogIn } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -178,6 +179,7 @@ function ReviewItem({ review, colors, userId }: { review: Review; colors: any; u
 
 export default React.memo(function ReviewSection({ targetId, targetType, variant = 'brezel', renderAboveForm }: ReviewSectionProps) {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { user } = useAuth();
   const router = useRouter();
   const { addReview, hasUserReviewed } = useReviews();
@@ -191,7 +193,7 @@ export default React.memo(function ReviewSection({ targetId, targetType, variant
 
   const handleSubmit = useCallback(() => {
     if (selectedRating === 0) {
-      Alert.alert('Bewertung fehlt', 'Bitte wähle eine Bewertung aus.');
+      showAlert('Bewertung fehlt', 'Bitte wähle eine Bewertung aus.');
       return;
     }
     addReview(targetId, targetType, selectedRating, comment.trim());
@@ -199,7 +201,7 @@ export default React.memo(function ReviewSection({ targetId, targetType, variant
     setComment('');
     setShowForm(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Danke!', 'Deine Bewertung wurde gespeichert.');
+    showAlert('Danke!', 'Deine Bewertung wurde gespeichert.');
   }, [selectedRating, comment, targetId, targetType, addReview]);
 
   return (

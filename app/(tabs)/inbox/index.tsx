@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   Animated,
-  Alert,
   RefreshControl,
   Platform,
 } from 'react-native';
@@ -24,6 +23,7 @@ import {
 import { useTheme } from '@/providers/ThemeProvider';
 import { useNotifications, type InboxNotification } from '@/hooks/useNotifications';
 import * as Haptics from 'expo-haptics';
+import { useAlert } from '@/providers/AlertProvider';
 
 
 function formatTimeAgo(dateStr: string): string {
@@ -155,6 +155,7 @@ function NotificationItem({
   onRead: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
+  const { showAlert } = useAlert();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -170,7 +171,7 @@ function NotificationItem({
 
   const handleDelete = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Löschen', 'Nachricht wirklich löschen?', [
+    showAlert('Löschen', 'Nachricht wirklich löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
       { text: 'Löschen', style: 'destructive', onPress: () => onDelete(item.id) },
     ]);
@@ -245,6 +246,7 @@ function NotificationItem({
 
 export default function InboxScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearAll } = useNotifications();
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
@@ -261,7 +263,7 @@ export default function InboxScreen() {
 
   const handleClearAll = useCallback(() => {
     if (notifications.length === 0) return;
-    Alert.alert('Alle löschen', 'Alle Nachrichten wirklich löschen?', [
+    showAlert('Alle löschen', 'Alle Nachrichten wirklich löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Löschen',

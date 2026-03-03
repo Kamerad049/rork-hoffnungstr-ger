@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   Animated,
-  Alert,
   RefreshControl,
   PanResponder,
   Dimensions,
@@ -43,6 +42,7 @@ import { useFriends } from '@/providers/FriendsProvider';
 import { getUserById, formatTimeAgo, cleanPanHandlers } from '@/lib/utils';
 import type { Conversation } from '@/constants/types';
 import * as Haptics from 'expo-haptics';
+import { useAlert } from '@/providers/AlertProvider';
 
 
 type TabKey = 'chats' | 'anfragen' | 'heldentum';
@@ -172,6 +172,7 @@ function NotificationItem({
   onRead: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
+  const { showAlert } = useAlert();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -187,7 +188,7 @@ function NotificationItem({
 
   const handleDelete = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Löschen', 'Nachricht wirklich löschen?', [
+    showAlert('Löschen', 'Nachricht wirklich löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
       { text: 'Löschen', style: 'destructive', onPress: () => onDelete(item.id) },
     ]);
@@ -590,6 +591,7 @@ function SwipeableChatItem({
 
 export default function MessagesScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabKey>('chats');
@@ -639,7 +641,7 @@ export default function MessagesScreen() {
   }, [acceptMessageRequest]);
 
   const handleDeclineRequest = useCallback((userId: string) => {
-    Alert.alert('Anfrage ablehnen', 'Nachrichtenanfrage wirklich ablehnen?', [
+    showAlert('Anfrage ablehnen', 'Nachrichtenanfrage wirklich ablehnen?', [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Ablehnen',
@@ -654,7 +656,7 @@ export default function MessagesScreen() {
 
   const handleBlockFromRequest = useCallback((userId: string) => {
     const partner = getUserById(userId);
-    Alert.alert(
+    showAlert(
       'Person sperren',
       `${partner?.displayName ?? 'Diese Person'} wird dich nicht mehr finden, deine Storys, Beiträge und Bewertungen nicht sehen können – komplett unsichtbar.`,
       [
@@ -679,7 +681,7 @@ export default function MessagesScreen() {
 
   const handleClearAll = useCallback(() => {
     if (notifications.length === 0) return;
-    Alert.alert('Alle löschen', 'Alle HELDENTUM Nachrichten löschen?', [
+    showAlert('Alle löschen', 'Alle HELDENTUM Nachrichten löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Löschen',

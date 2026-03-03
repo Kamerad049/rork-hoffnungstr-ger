@@ -6,7 +6,6 @@ import {
   ScrollView,
   Pressable,
   TextInput,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -28,6 +27,7 @@ import {
 import { useKaderschmiede } from '@/providers/KaderschmiedeProvider';
 import { SPORT_CATEGORIES, SKILL_LEVELS, BUNDESLAND_COORDS } from '@/constants/kaderschmiede';
 import type { SportCategory, SkillLevel } from '@/constants/kaderschmiede';
+import { useAlert } from '@/providers/AlertProvider';
 
 const SPORT_ICON_MAP: Record<SportCategory, React.ComponentType<any>> = {
   Calisthenics: Dumbbell,
@@ -46,6 +46,7 @@ const BUNDESLAENDER = Object.keys(BUNDESLAND_COORDS);
 export default function CreateActivityScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { showAlert } = useAlert();
   const { createActivity } = useKaderschmiede();
 
   const [title, setTitle] = useState('');
@@ -69,7 +70,7 @@ export default function CreateActivityScreen() {
     const dateTime = new Date(year || 2026, (month || 1) - 1, day || 1, hours || 12, minutes || 0);
 
     if (isNaN(dateTime.getTime())) {
-      Alert.alert('Fehler', 'Bitte gib ein gültiges Datum und Uhrzeit ein.');
+      showAlert('Fehler', 'Bitte gib ein gültiges Datum und Uhrzeit ein.');
       return;
     }
 
@@ -90,7 +91,7 @@ export default function CreateActivityScreen() {
       isRecurring,
     });
 
-    Alert.alert('Aktivität erstellt!', `"${title}" wurde erfolgreich erstellt.`, [
+    showAlert('Aktivität erstellt!', `"${title}" wurde erfolgreich erstellt.`, [
       { text: 'OK', onPress: () => router.back() },
     ]);
   }, [canSubmit, title, description, sport, level, city, bundesland, maxParticipants, isRecurring, dateStr, timeStr, createActivity, router]);

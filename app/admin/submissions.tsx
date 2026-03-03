@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  Alert,
   TextInput,
   ActivityIndicator,
   Modal,
@@ -32,6 +31,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useAdmin } from '@/providers/AdminProvider';
 import { queryKeys } from '@/constants/queryKeys';
 import type { Submission, SubmissionStatus, SubmissionCategory } from '@/constants/types';
+import { useAlert } from '@/providers/AlertProvider';
 
 function mapDbSubmission(s: any): Submission {
   return {
@@ -70,6 +70,7 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
 
 export default function SubmissionsScreen() {
   const { user } = useAuth();
+  const { showAlert } = useAlert();
   const { addPlace, addRestaurant } = useAdmin();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -166,10 +167,10 @@ export default function SubmissionsScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.submissions() });
       setSelectedSubmission(null);
-      Alert.alert('Genehmigt', 'Die Empfehlung wurde genehmigt und veröffentlicht.');
+      showAlert('Genehmigt', 'Die Empfehlung wurde genehmigt und veröffentlicht.');
     },
     onError: (err: Error) => {
-      Alert.alert('Fehler', err.message);
+      showAlert('Fehler', err.message);
     },
   });
 
@@ -192,10 +193,10 @@ export default function SubmissionsScreen() {
       setSelectedSubmission(null);
       setShowRejectModal(false);
       setRejectionReason('');
-      Alert.alert('Abgelehnt', 'Die Empfehlung wurde abgelehnt.');
+      showAlert('Abgelehnt', 'Die Empfehlung wurde abgelehnt.');
     },
     onError: (err: Error) => {
-      Alert.alert('Fehler', err.message);
+      showAlert('Fehler', err.message);
     },
   });
 
@@ -215,7 +216,7 @@ export default function SubmissionsScreen() {
   const { mutate: deleteSubmission } = deleteMutation;
 
   const handleApprove = useCallback((submission: Submission) => {
-    Alert.alert(
+    showAlert(
       'Empfehlung genehmigen?',
       `"${submission.name}" wird als ${submission.category === 'place' ? 'Ort' : 'Restaurant'} veröffentlicht.`,
       [
@@ -232,7 +233,7 @@ export default function SubmissionsScreen() {
   }, []);
 
   const handleDelete = useCallback((id: string) => {
-    Alert.alert('Löschen?', 'Diese Einsendung wird endgültig gelöscht.', [
+    showAlert('Löschen?', 'Diese Einsendung wird endgültig gelöscht.', [
       { text: 'Abbrechen', style: 'cancel' },
       { text: 'Löschen', style: 'destructive', onPress: () => deleteSubmission(id) },
     ]);

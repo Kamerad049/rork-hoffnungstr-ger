@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   TextInput,
-  Alert,
   Animated,
   Platform,
 } from 'react-native';
@@ -32,6 +31,7 @@ import RankIcon from '@/components/RankIcon';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useAdmin } from '@/providers/AdminProvider';
 import type { SocialUser } from '@/constants/types';
+import { useAlert } from '@/providers/AlertProvider';
 
 type SortKey = 'name' | 'ep' | 'rank' | 'posts' | 'stamps';
 type SortDir = 'asc' | 'desc';
@@ -46,6 +46,7 @@ const SORT_OPTIONS: { key: SortKey; label: string; icon: React.ReactNode }[] = [
 
 export default function AdminUsersScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { allUsers, deleteUser, banUser } = useAdmin();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -120,7 +121,7 @@ export default function AdminUsersScreen() {
 
   const confirmDeleteUser = useCallback(
     (user: SocialUser) => {
-      Alert.alert(
+      showAlert(
         'Nutzer löschen',
         `Möchtest du "${user.displayName}" (@${user.username}) wirklich unwiderruflich löschen?`,
         [
@@ -134,7 +135,7 @@ export default function AdminUsersScreen() {
                 setSelectedUserId(null);
                 console.log('[ADMIN] User deleted successfully:', user.id);
               } else {
-                Alert.alert('Fehler', 'Nutzer konnte nicht gelöscht werden.');
+                showAlert('Fehler', 'Nutzer konnte nicht gelöscht werden.');
               }
             },
           },
@@ -146,7 +147,7 @@ export default function AdminUsersScreen() {
 
   const confirmBanUser = useCallback(
     (user: SocialUser) => {
-      Alert.alert(
+      showAlert(
         'Nutzer sperren',
         `Möchtest du "${user.displayName}" (@${user.username}) sperren? Der Nutzer kann sich nicht mehr anmelden.`,
         [
@@ -158,10 +159,10 @@ export default function AdminUsersScreen() {
               const ok = await banUser(user.id);
               if (ok) {
                 setSelectedUserId(null);
-                Alert.alert('Gesperrt', `${user.displayName} wurde gesperrt.`);
+                showAlert('Gesperrt', `${user.displayName} wurde gesperrt.`);
                 console.log('[ADMIN] User banned successfully:', user.id);
               } else {
-                Alert.alert('Fehler', 'Nutzer konnte nicht gesperrt werden.');
+                showAlert('Fehler', 'Nutzer konnte nicht gesperrt werden.');
               }
             },
           },

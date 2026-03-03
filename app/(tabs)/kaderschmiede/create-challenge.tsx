@@ -6,7 +6,6 @@ import {
   ScrollView,
   Pressable,
   TextInput,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -27,6 +26,7 @@ import {
 import { useKaderschmiede } from '@/providers/KaderschmiedeProvider';
 import { SPORT_CATEGORIES } from '@/constants/kaderschmiede';
 import type { SportCategory, ChallengeType } from '@/constants/kaderschmiede';
+import { useAlert } from '@/providers/AlertProvider';
 
 const SPORT_ICON_MAP: Record<SportCategory, React.ComponentType<any>> = {
   Calisthenics: Dumbbell,
@@ -50,6 +50,7 @@ const CHALLENGE_TYPES: { value: ChallengeType; label: string }[] = [
 export default function CreateChallengeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { showAlert } = useAlert();
   const { createChallenge } = useKaderschmiede();
 
   const [title, setTitle] = useState('');
@@ -81,7 +82,7 @@ export default function CreateChallengeScreen() {
       unit: unit.trim(),
     });
 
-    Alert.alert('Challenge erstellt!', `"${title}" wurde erfolgreich erstellt.`, [
+    showAlert('Challenge erstellt!', `"${title}" wurde erfolgreich erstellt.`, [
       { text: 'OK', onPress: () => router.back() },
     ]);
   }, [canSubmit, title, description, sport, type, goal, unit, durationDays, createChallenge, router]);

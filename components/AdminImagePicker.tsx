@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Pressable,
   Image,
-  Alert,
   ActivityIndicator,
   ScrollView,
   Platform,
@@ -15,6 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/providers/ThemeProvider';
+import { useAlert } from '@/providers/AlertProvider';
 
 interface AdminImagePickerProps {
   images: string[];
@@ -34,18 +34,19 @@ function AdminImagePickerComponent({
   label = 'Bilder',
 }: AdminImagePickerProps) {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const [uploading, setUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<string>('');
 
   const pickImages = useCallback(async () => {
     if (images.length >= maxImages) {
-      Alert.alert('Maximum erreicht', `Du kannst maximal ${maxImages} Bilder hochladen.`);
+      showAlert('Maximum erreicht', `Du kannst maximal ${maxImages} Bilder hochladen.`);
       return;
     }
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Berechtigung erforderlich', 'Bitte erlaube den Zugriff auf deine Fotos in den Einstellungen.');
+      showAlert('Berechtigung erforderlich', 'Bitte erlaube den Zugriff auf deine Fotos in den Einstellungen.');
       return;
     }
 
@@ -84,11 +85,11 @@ function AdminImagePickerComponent({
         onImagesChange([...images, ...newUrls]);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        Alert.alert('Upload fehlgeschlagen', 'Bilder konnten nicht hochgeladen werden. Prüfe deine Verbindung.');
+        showAlert('Upload fehlgeschlagen', 'Bilder konnten nicht hochgeladen werden. Prüfe deine Verbindung.');
       }
     } catch (err) {
       console.log('[IMAGE_PICKER] Pick error:', err);
-      Alert.alert('Fehler', 'Bilder konnten nicht ausgewählt werden.');
+      showAlert('Fehler', 'Bilder konnten nicht ausgewählt werden.');
     } finally {
       setUploading(false);
       setUploadProgress('');
@@ -97,13 +98,13 @@ function AdminImagePickerComponent({
 
   const takePhoto = useCallback(async () => {
     if (images.length >= maxImages) {
-      Alert.alert('Maximum erreicht', `Du kannst maximal ${maxImages} Bilder hochladen.`);
+      showAlert('Maximum erreicht', `Du kannst maximal ${maxImages} Bilder hochladen.`);
       return;
     }
 
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Berechtigung erforderlich', 'Bitte erlaube den Zugriff auf deine Kamera in den Einstellungen.');
+      showAlert('Berechtigung erforderlich', 'Bitte erlaube den Zugriff auf deine Kamera in den Einstellungen.');
       return;
     }
 
@@ -126,11 +127,11 @@ function AdminImagePickerComponent({
         onImagesChange([...images, url]);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        Alert.alert('Upload fehlgeschlagen', 'Foto konnte nicht hochgeladen werden.');
+        showAlert('Upload fehlgeschlagen', 'Foto konnte nicht hochgeladen werden.');
       }
     } catch (err) {
       console.log('[IMAGE_PICKER] Camera error:', err);
-      Alert.alert('Fehler', 'Foto konnte nicht aufgenommen werden.');
+      showAlert('Fehler', 'Foto konnte nicht aufgenommen werden.');
     } finally {
       setUploading(false);
       setUploadProgress('');

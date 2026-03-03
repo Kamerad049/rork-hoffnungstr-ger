@@ -6,7 +6,6 @@ import {
   ScrollView,
   Pressable,
   TextInput,
-  Alert,
   Platform,
   Animated,
   KeyboardAvoidingView,
@@ -33,10 +32,12 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { useAdmin } from '@/providers/AdminProvider';
 import type { SocialUser } from '@/constants/types';
 import * as Haptics from 'expo-haptics';
+import { useAlert } from '@/providers/AlertProvider';
 
 
 export default function AdminPushScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { allUsers, addPushNotification } = useAdmin();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -100,7 +101,7 @@ export default function AdminPushScreen() {
 
   const startRecording = useCallback(async () => {
     if (Platform.OS === 'web') {
-      Alert.alert('Nicht verfügbar', 'Audio-Aufnahme ist nur in der mobilen App verfügbar.');
+      showAlert('Nicht verfügbar', 'Audio-Aufnahme ist nur in der mobilen App verfügbar.');
       return;
     }
     try {
@@ -122,7 +123,7 @@ export default function AdminPushScreen() {
     } catch (error) {
       console.log('[ADMIN PUSH] Recording error:', error);
       setIsRecording(false);
-      Alert.alert('Fehler', 'Aufnahme konnte nicht gestartet werden. Bitte Mikrofon-Berechtigung prüfen.');
+      showAlert('Fehler', 'Aufnahme konnte nicht gestartet werden. Bitte Mikrofon-Berechtigung prüfen.');
     }
   }, []);
 
@@ -192,7 +193,7 @@ export default function AdminPushScreen() {
   }, []);
 
   const deleteRecording = useCallback(() => {
-    Alert.alert('Aufnahme löschen', 'Aufnahme wirklich löschen?', [
+    showAlert('Aufnahme löschen', 'Aufnahme wirklich löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Löschen',
@@ -244,26 +245,26 @@ export default function AdminPushScreen() {
 
   const handleSend = useCallback(() => {
     if (!title.trim()) {
-      Alert.alert('Fehler', 'Bitte gib einen Titel ein.');
+      showAlert('Fehler', 'Bitte gib einen Titel ein.');
       return;
     }
     if (!message.trim() && !hasRecording) {
-      Alert.alert('Fehler', 'Bitte gib eine Nachricht ein oder nimm eine Audio-Nachricht auf.');
+      showAlert('Fehler', 'Bitte gib eine Nachricht ein oder nimm eine Audio-Nachricht auf.');
       return;
     }
     if (isRecording) {
-      Alert.alert('Fehler', 'Bitte stoppe zuerst die Aufnahme.');
+      showAlert('Fehler', 'Bitte stoppe zuerst die Aufnahme.');
       return;
     }
     if (recipientMode === 'select' && selectedUsers.length === 0) {
-      Alert.alert('Fehler', 'Bitte wähle mindestens einen Empfänger aus.');
+      showAlert('Fehler', 'Bitte wähle mindestens einen Empfänger aus.');
       return;
     }
 
     const recipientCount = recipientMode === 'all' ? allUsers.length : selectedUsers.length;
     const recipientLabel = recipientMode === 'all' ? 'ALLE Nutzer' : `${selectedUsers.length} Nutzer`;
 
-    Alert.alert(
+    showAlert(
       'Push senden',
       `Push-Nachricht an ${recipientLabel} senden?${hasRecording ? '\n\nMit Audio-Nachricht' : ''}`,
       [
@@ -279,7 +280,7 @@ export default function AdminPushScreen() {
               audioDuration: hasRecording ? recordingDuration : 0,
               recipients: recipientMode === 'all' ? 'all' : [...selectedUsers],
             });
-            Alert.alert('Gesendet!', `Push-Nachricht wurde an ${recipientLabel} gesendet.`);
+            showAlert('Gesendet!', `Push-Nachricht wurde an ${recipientLabel} gesendet.`);
             setTitle('');
             setMessage('');
             setHasRecording(false);

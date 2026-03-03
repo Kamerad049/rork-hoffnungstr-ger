@@ -5,7 +5,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Animated,
   Easing,
   Text,
@@ -26,6 +25,7 @@ import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageItem from '@/components/chat/ChatMessageItem';
 import ChatInputArea from '@/components/chat/ChatInputArea';
 import type { InputMode } from '@/components/chat/types';
+import { useAlert } from '@/providers/AlertProvider';
 
 let ScreenCapture: any = null;
 try {
@@ -51,6 +51,7 @@ export default function DirectChatScreen() {
   trackRender('DirectChatScreen');
   measureSinceBoot('DirectChatScreen_render');
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { partnerId } = useLocalSearchParams<{ partnerId: string }>();
@@ -384,20 +385,20 @@ export default function DirectChatScreen() {
           console.log('[CHAT] Web recording started');
         } catch (e) {
           console.log('[CHAT] Web recording permission denied:', e);
-          Alert.alert('Mikrofon', 'Bitte erlaube den Zugriff auf dein Mikrofon.');
+          showAlert('Mikrofon', 'Bitte erlaube den Zugriff auf dein Mikrofon.');
         }
         return;
       }
 
       if (!AudioAV) {
         console.log('[CHAT] Native recorder not available');
-        Alert.alert('Fehler', 'Sprachaufnahme ist nicht verfügbar.');
+        showAlert('Fehler', 'Sprachaufnahme ist nicht verfügbar.');
         return;
       }
 
       const permStatus = await AudioAV.requestPermissionsAsync();
       if (!permStatus.granted) {
-        Alert.alert('Mikrofon', 'Bitte erlaube den Zugriff auf dein Mikrofon in den Einstellungen.');
+        showAlert('Mikrofon', 'Bitte erlaube den Zugriff auf dein Mikrofon in den Einstellungen.');
         return;
       }
 
@@ -424,7 +425,7 @@ export default function DirectChatScreen() {
       console.log('[CHAT] Native recording started');
     } catch (e) {
       console.log('[CHAT] Start recording error:', e);
-      Alert.alert('Fehler', 'Sprachaufnahme konnte nicht gestartet werden.');
+      showAlert('Fehler', 'Sprachaufnahme konnte nicht gestartet werden.');
       setIsRecording(false);
     }
   }, [partnerId, canSend, editingMessage, startRecordingPulse, startRecordingWaves]);
@@ -542,7 +543,7 @@ export default function DirectChatScreen() {
   const handleSend = useCallback(() => {
     if (!input.trim() || !partnerId) return;
     if (!canSend && !editingMessage) {
-      Alert.alert('Nicht möglich', 'Du kannst dieser Person keine weitere Nachricht senden, bis sie deine Anfrage annimmt.');
+      showAlert('Nicht möglich', 'Du kannst dieser Person keine weitere Nachricht senden, bis sie deine Anfrage annimmt.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -571,7 +572,7 @@ export default function DirectChatScreen() {
 
   const handleDeclineRequest = useCallback(() => {
     if (!partnerId) return;
-    Alert.alert('Anfrage ablehnen', 'Nachrichtenanfrage wirklich ablehnen?', [
+    showAlert('Anfrage ablehnen', 'Nachrichtenanfrage wirklich ablehnen?', [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Ablehnen',
@@ -586,7 +587,7 @@ export default function DirectChatScreen() {
 
   const handleBlockUser = useCallback(() => {
     if (!partnerId) return;
-    Alert.alert(
+    showAlert(
       'Person sperren',
       `${partner?.displayName ?? 'Diese Person'} wird dich nicht mehr finden können – komplett unsichtbar.`,
       [
@@ -619,7 +620,7 @@ export default function DirectChatScreen() {
     if (!partnerId) return;
     setActiveMenuId(null);
     setTimeout(() => {
-      Alert.alert(
+      showAlert(
         'Nachricht zurückziehen',
         'Möchtest du diese Nachricht wirklich zurückziehen?',
         [

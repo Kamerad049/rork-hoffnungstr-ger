@@ -7,7 +7,6 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Animated,
   PanResponder,
   Dimensions,
@@ -23,6 +22,7 @@ import { Mail, Lock, ChevronRight, Eye, EyeOff } from 'lucide-react-native';
 import { useAuth } from '@/providers/AuthProvider';
 import { Switch } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { useAlert } from '@/providers/AlertProvider';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SLIDER_TRACK_WIDTH = SCREEN_WIDTH - 80;
@@ -34,6 +34,7 @@ const CARD_MAX_TRANSLATE_Y = -SCREEN_HEIGHT * 0.6;
 
 export default function LoginScreen() {
   const { login, stayLoggedIn, updateStayLoggedIn, resetPassword } = useAuth();
+  const { showAlert } = useAlert();
   const router = useRouter();
   const { direct } = useLocalSearchParams<{ direct?: string }>();
   const insets = useSafeAreaInsets();
@@ -259,7 +260,7 @@ export default function LoginScreen() {
 
   const handleLogin = useCallback(async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Fehler', 'Bitte fülle alle Felder aus.');
+      showAlert('Fehler', 'Bitte fülle alle Felder aus.');
       return;
     }
     setIsLoading(true);
@@ -271,7 +272,7 @@ export default function LoginScreen() {
       console.log('Login error:', err);
       const message = err?.message || 'Anmeldung fehlgeschlagen. Bitte versuche es erneut.';
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Fehler', message);
+      showAlert('Fehler', message);
     } finally {
       setIsLoading(false);
     }
@@ -586,10 +587,10 @@ export default function LoginScreen() {
                 style={styles.forgotLink}
                 onPress={() => {
                   if (!email.trim()) {
-                    Alert.alert('E-Mail eingeben', 'Bitte gib zuerst deine E-Mail-Adresse im Feld oben ein.');
+                    showAlert('E-Mail eingeben', 'Bitte gib zuerst deine E-Mail-Adresse im Feld oben ein.');
                     return;
                   }
-                  Alert.alert(
+                  showAlert(
                     'Passwort zurücksetzen',
                     `Wir senden einen Reset-Link an:\n${email.trim()}`,
                     [
@@ -599,9 +600,9 @@ export default function LoginScreen() {
                         onPress: async () => {
                           try {
                             await resetPassword(email.trim());
-                            Alert.alert('E-Mail gesendet', 'Prüfe dein Postfach (auch Spam) für den Link zum Zurücksetzen.');
+                            showAlert('E-Mail gesendet', 'Prüfe dein Postfach (auch Spam) für den Link zum Zurücksetzen.');
                           } catch (err: any) {
-                            Alert.alert('Fehler', err?.message || 'Konnte keine E-Mail senden.');
+                            showAlert('Fehler', err?.message || 'Konnte keine E-Mail senden.');
                           }
                         },
                       },

@@ -8,7 +8,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Image,
   Dimensions,
   PanResponder,
@@ -24,6 +23,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useStories } from '@/providers/StoriesProvider';
+import { useAlert } from '@/providers/AlertProvider';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -66,6 +66,7 @@ type StoryMode = 'text' | 'photo';
 
 export default function CreateStoryScreen() {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { createStory } = useStories();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -243,7 +244,7 @@ export default function CreateStoryScreen() {
       }
     } catch (err) {
       console.log('[STORY] Image picker error:', err);
-      Alert.alert('Fehler', 'Bild konnte nicht geladen werden.');
+      showAlert('Fehler', 'Bild konnte nicht geladen werden.');
     }
   }, [imgScaleVal, imgTranslateX, imgTranslateY]);
 
@@ -262,7 +263,7 @@ export default function CreateStoryScreen() {
   const handlePublish = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed && !imageUri) {
-      Alert.alert('Hinweis', 'Bitte schreibe etwas oder füge ein Foto hinzu.');
+      showAlert('Hinweis', 'Bitte schreibe etwas oder füge ein Foto hinzu.');
       return;
     }
     const font = FONT_OPTIONS[selectedFont];
