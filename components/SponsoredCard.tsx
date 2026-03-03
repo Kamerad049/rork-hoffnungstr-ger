@@ -173,7 +173,7 @@ function SponsoredCardInner({
           <View style={styles.topRow}>
             <View style={styles.sponsorBadge}>
               <Megaphone size={11} color="#BFA35D" />
-              <Text style={styles.sponsorBadgeText}>Gesponsert</Text>
+              <Text style={styles.sponsorBadgeText}>ANZEIGE</Text>
             </View>
             {sponsor?.logoUrl ? (
               <View style={styles.sponsorLogoWrap}>
@@ -239,15 +239,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: 'rgba(15,14,11,0.75)',
+    backgroundColor: 'rgba(15,14,11,0.85)',
     borderWidth: 0.5,
-    borderColor: 'rgba(191,163,93,0.2)',
+    borderColor: 'rgba(191,163,93,0.3)',
   },
   sponsorBadgeText: {
     color: '#BFA35D',
-    fontSize: 11,
-    fontWeight: '700' as const,
-    letterSpacing: 0.3,
+    fontSize: 10,
+    fontWeight: '800' as const,
+    letterSpacing: 1.2,
   },
   sponsorLogoWrap: {
     width: 36,
