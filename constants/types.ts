@@ -381,6 +381,82 @@ export interface Submission {
   whyRecommend: string;
 }
 
+export type PromotionType = 'sponsor' | 'internal' | 'creator' | 'event';
+export type PromotionStatus = 'active' | 'paused' | 'ended' | 'draft';
+
+export interface Sponsor {
+  id: string;
+  name: string;
+  logoUrl: string;
+  websiteUrl: string;
+  contactEmail: string;
+  createdAt: string;
+}
+
+export interface SponsorContract {
+  id: string;
+  sponsorId: string;
+  startDate: string;
+  endDate: string;
+  pricePerMonth: number;
+  status: 'active' | 'expired' | 'cancelled';
+  createdAt: string;
+}
+
+export interface Promotion {
+  id: string;
+  sponsorId: string | null;
+  promotionType: PromotionType;
+  title: string;
+  content: string;
+  mediaUrl: string;
+  ctaLabel: string;
+  ctaUrl: string;
+  status: PromotionStatus;
+  feedPosition: number;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+}
+
+export interface PromotionImpression {
+  id: string;
+  promotionId: string;
+  userId: string;
+  viewedAt: string;
+  viewDurationMs: number;
+  date: string;
+}
+
+export interface PromotionClick {
+  id: string;
+  promotionId: string;
+  userId: string;
+  clickedAt: string;
+  date: string;
+}
+
+export interface PromotionDailyStats {
+  id: string;
+  promotionId: string;
+  date: string;
+  totalImpressions: number;
+  uniqueImpressions: number;
+  totalClicks: number;
+  uniqueClicks: number;
+}
+
+export interface PromotionAnalytics {
+  promotionId: string;
+  totalImpressions: number;
+  uniqueReach: number;
+  totalClicks: number;
+  uniqueClicks: number;
+  ctr: number;
+  avgFrequency: number;
+  dailyStats: PromotionDailyStats[];
+}
+
 export function getActivityIconColor(type: ActivityType): string {
   switch (type) {
     case 'like_post':

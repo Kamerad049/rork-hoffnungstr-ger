@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   Pressable,
   Animated,
   Dimensions,
@@ -16,10 +15,16 @@ import * as Haptics from 'expo-haptics';
 import { usePosts } from '@/providers/PostsProvider';
 import FeedCardComponent from '@/components/FeedCard';
 import type { PostReactionType } from '@/components/FeedCard';
+import SponsoredCard from '@/components/SponsoredCard';
 import StoryBar from '@/components/StoryBar';
 import EditPostModal from '@/components/EditPostModal';
-import type { FeedPost, StoryGroup } from '@/constants/types';
+import type { FeedPost, StoryGroup, Promotion } from '@/constants/types';
 import { trackRender, measureSinceBoot } from '@/lib/perf';
+import { usePromotions } from '@/providers/PromotionProvider';
+
+type FeedItem = 
+  | { type: 'post'; data: FeedPost }
+  | { type: 'promotion'; data: Promotion };
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_HORIZONTAL_PADDING = 24;
@@ -33,6 +38,7 @@ export default function FeedScreen() {
   trackRender('FeedScreen');
   measureSinceBoot('FeedScreen_render');
   const { allPosts, archivePost, toggleCommentsDisabled } = usePosts();
+  const { activePromotions, trackImpression, trackClick, getSponsorById } = usePromotions();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -51,6 +57,28 @@ export default function FeedScreen() {
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }, [allPosts]);
+
+  const feedItems = useMemo<FeedItem[]>(() => {
+    const items: FeedItem[] = sortedPosts.map((p) => ({ type: 'post' as const, data: p }));
+    if (activePromotions.length === 0) return items;
+    const result: FeedItem[] = [];
+    let promoIdx = 0;
+    for (let i = 0; i < items.length; i++) {
+      if (promoIdx < activePromotions.length) {
+        const promo = activePromotions[promoIdx];
+        if (i > 0 && i === promo.feedPosition) {
+          result.push({ type: 'promotion', data: promo });
+          promoIdx++;
+        }
+      }
+      result.push(items[i]);
+    }
+    while (promoIdx < activePromotions.length) {
+      result.push({ type: 'promotion', data: activePromotions[promoIdx] });
+      promoIdx++;
+    }
+    return result;
+  }, [sortedPosts, activePromotions]);
 
   const handleCommentPress = useCallback(
     (postId: string) => {
@@ -137,16 +165,16 @@ export default function FeedScreen() {
     (e: any) => {
       const offsetX = e.nativeEvent.contentOffset.x;
       const index = Math.round(offsetX / SNAP_INTERVAL);
-      if (index !== activeIndex && index >= 0 && index < sortedPosts.length) {
+      if (index !== activeIndex && index >= 0 && index < feedItems.length) {
         setActiveIndex(index);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     },
-    [activeIndex, sortedPosts.length]
+    [activeIndex, feedItems.length]
   );
 
-  const renderCard = useCallback(
-    ({ item, index }: { item: FeedPost; index: number }) => {
+  const renderFeedItem = useCallback(
+    ({ item, index }: { item: FeedItem; index: number }) => {
       const position = index * SNAP_INTERVAL;
       const inputRange = [
         position - SNAP_INTERVAL,
@@ -174,6 +202,35 @@ export default function FeedScreen() {
         extrapolate: 'clamp',
       });
 
+      if (item.type === 'promotion') {
+        const promo = item.data;
+        const sponsor = promo.sponsorId ? getSponsorById(promo.sponsorId) : undefined;
+        return (
+          <View style={{ width: CARD_WIDTH + CARD_GAP, alignItems: 'center' }}>
+            <Animated.View
+              style={{
+                width: CARD_WIDTH,
+                transform: [{ scale }, { perspective: 1000 }, { rotateY }, { translateY }],
+                opacity: cardOpacity,
+              }}
+            >
+              <View style={styles.cardShadowWrap}>
+                <SponsoredCard
+                  promotion={promo}
+                  sponsor={sponsor}
+                  cardWidth={CARD_WIDTH}
+                  cardHeight={CARD_HEIGHT}
+                  isVisible={index === activeIndex}
+                  onImpression={trackImpression}
+                  onClick={trackClick}
+                />
+              </View>
+            </Animated.View>
+          </View>
+        );
+      }
+
+      const post = item.data;
       return (
         <View style={{ width: CARD_WIDTH + CARD_GAP, alignItems: 'center' }}>
           <Animated.View
@@ -185,7 +242,7 @@ export default function FeedScreen() {
           >
             <View style={styles.cardShadowWrap}>
               <FeedCardComponent
-                post={item}
+                post={post}
                 cardWidth={CARD_WIDTH}
                 cardHeight={CARD_HEIGHT}
                 onCommentPress={handleCommentPress}
@@ -195,7 +252,7 @@ export default function FeedScreen() {
                 onEditPress={handleEditPress}
                 onArchivePress={handleArchivePress}
                 onToggleCommentsPress={handleToggleCommentsPress}
-                reaction={postReactions[item.id] ?? null}
+                reaction={postReactions[post.id] ?? null}
                 onReaction={handleReaction}
                 isActive={index === activeIndex}
               />
@@ -204,15 +261,15 @@ export default function FeedScreen() {
         </View>
       );
     },
-    [scrollX, handleCommentPress, handleUserPress, handleImagePress, handleLocationPress, handleEditPress, handleArchivePress, handleToggleCommentsPress, postReactions, handleReaction, activeIndex]
+    [scrollX, handleCommentPress, handleUserPress, handleImagePress, handleLocationPress, handleEditPress, handleArchivePress, handleToggleCommentsPress, postReactions, handleReaction, activeIndex, getSponsorById, trackImpression, trackClick]
   );
 
   const renderPagination = () => {
-    if (sortedPosts.length <= 1) return null;
-    const maxDots = Math.min(sortedPosts.length, 7);
+    if (feedItems.length <= 1) return null;
+    const maxDots = Math.min(feedItems.length, 7);
     return (
       <View style={styles.pagination}>
-        {sortedPosts.slice(0, maxDots).map((_, i) => {
+        {feedItems.slice(0, maxDots).map((_, i) => {
           const dotScale = scrollX.interpolate({
             inputRange: [
               (i - 1) * SNAP_INTERVAL,
@@ -244,8 +301,8 @@ export default function FeedScreen() {
             />
           );
         })}
-        {sortedPosts.length > maxDots && (
-          <Text style={styles.moreDots}>+{sortedPosts.length - maxDots}</Text>
+        {feedItems.length > maxDots && (
+          <Text style={styles.moreDots}>+{feedItems.length - maxDots}</Text>
         )}
       </View>
     );
@@ -305,11 +362,11 @@ export default function FeedScreen() {
             <View style={[styles.placeholderCard, { width: CARD_WIDTH, height: CARD_HEIGHT }]} />
           </View>
         ) : (
-        sortedPosts.length > 0 ? (
+        feedItems.length > 0 ? (
           <Animated.FlatList
-            data={sortedPosts}
-            renderItem={renderCard}
-            keyExtractor={(item) => item.id}
+            data={feedItems}
+            renderItem={renderFeedItem}
+            keyExtractor={(item) => item.type === 'promotion' ? `promo_${item.data.id}` : item.data.id}
             horizontal
             showsHorizontalScrollIndicator={false}
             snapToInterval={SNAP_INTERVAL}

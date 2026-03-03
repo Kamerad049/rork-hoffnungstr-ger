@@ -19,4 +19,9 @@ export const queryKeys = {
   userValues: (userId: string) => ['user-values', userId] as const,
   submissions: () => ['submissions'] as const,
   socialProfile: (userId: string) => ['social-profile', userId] as const,
+  promotions: () => ['promotions'] as const,
+  sponsors: () => ['sponsors'] as const,
+  promotionAnalytics: (promotionId: string) => ['promotion-analytics', promotionId] as const,
+  promotionDailyStats: (promotionId: string) => ['promotion-daily-stats', promotionId] as const,
+  activePromotions: () => ['active-promotions'] as const,
 } as const;

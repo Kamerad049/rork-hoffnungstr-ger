@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
 import { AdminProvider } from '@/providers/AdminProvider';
 import { ModerationProvider } from '@/providers/ModerationProvider';
+import { PromotionProvider } from '@/providers/PromotionProvider';
 
 export default function AdminLayout() {
   const { colors } = useTheme();
@@ -38,6 +39,7 @@ export default function AdminLayout() {
   return (
     <AdminProvider>
     <ModerationProvider>
+    <PromotionProvider>
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: '#141416' },
@@ -65,7 +67,11 @@ export default function AdminLayout() {
       <Stack.Screen name="reports" options={{ title: '', headerShown: false }} />
       <Stack.Screen name="moderators" options={{ title: '', headerShown: false }} />
       <Stack.Screen name="submissions" options={{ title: '', headerShown: false }} />
+      <Stack.Screen name="promotions" options={{ title: 'Promotions', ...subPageOptions }} />
+      <Stack.Screen name="sponsors" options={{ title: 'Sponsoren', ...subPageOptions }} />
+      <Stack.Screen name="promotion-analytics" options={{ title: 'Analytics', ...subPageOptions }} />
     </Stack>
+    </PromotionProvider>
     </ModerationProvider>
     </AdminProvider>
   );

@@ -15,6 +15,9 @@ import {
   Flag,
   ShieldCheck,
   Inbox,
+  Megaphone,
+  Building2,
+  ArrowLeft,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -23,7 +26,6 @@ import { useModeration } from '@/providers/ModerationProvider';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { queryKeys } from '@/constants/queryKeys';
-import { ArrowLeft } from 'lucide-react-native';
 
 interface AdminMenuItem {
   icon: React.ReactNode;
@@ -310,6 +312,30 @@ export default function AdminDashboard() {
           <History size={18} color="#BFA35D" />
           <Text style={styles.historyText}>Push-Verlauf anzeigen</Text>
           <Text style={styles.historyCount}>{pushHistory.length}</Text>
+          <ChevronRight size={16} color="rgba(191,163,93,0.4)" />
+        </Pressable>
+      </View>
+
+      <Text style={styles.sectionTitle}>Promotion Engine</Text>
+
+      <View style={styles.cardsSection}>
+        <Pressable
+          style={styles.modCard}
+          onPress={() => router.push('/admin/promotions' as any)}
+          testID="admin-promotions-btn"
+        >
+          <Megaphone size={18} color="#BFA35D" />
+          <Text style={styles.modCardText}>Promotions verwalten</Text>
+          <ChevronRight size={16} color="rgba(191,163,93,0.4)" />
+        </Pressable>
+
+        <Pressable
+          style={styles.modCard}
+          onPress={() => router.push('/admin/sponsors' as any)}
+          testID="admin-sponsors-btn"
+        >
+          <Building2 size={18} color="#BFA35D" />
+          <Text style={styles.modCardText}>Sponsoren verwalten</Text>
           <ChevronRight size={16} color="rgba(191,163,93,0.4)" />
         </Pressable>
       </View>
