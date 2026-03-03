@@ -14,6 +14,7 @@ import {
 import { X, Flag, ChevronRight, CheckCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/providers/ThemeProvider';
+import { useAuth } from '@/providers/AuthProvider';
 import { useModeration, REPORT_REASONS, type ReportReason, type ContentType } from '@/providers/ModerationProvider';
 
 interface ReportModalProps {
@@ -29,6 +30,7 @@ type Step = 'reason' | 'details' | 'success';
 
 function ReportModalInner({ visible, onClose, contentType, contentId, contentPreview, reportedUserId }: ReportModalProps) {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const { submitReport } = useModeration();
   const [step, setStep] = useState<Step>('reason');
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
@@ -63,7 +65,7 @@ function ReportModalInner({ visible, onClose, contentType, contentId, contentPre
       contentId,
       contentPreview: contentPreview.slice(0, 120),
       reportedUserId,
-      reporterUserId: 'me',
+      reporterUserId: user?.id ?? 'unknown',
       reason: selectedReason,
       details: details.trim(),
     });

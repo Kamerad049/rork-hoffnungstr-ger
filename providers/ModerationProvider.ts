@@ -249,6 +249,17 @@ export const [ModerationProvider, useModeration] = createContextHook(() => {
     }
   }, [fullDataLoaded]);
 
+  const refreshReports = useCallback(async () => {
+    console.log('[MODERATION] Refreshing reports...');
+    try {
+      const reportsRes = await supabase.from('reports').select('*').order('created_at', { ascending: false });
+      setReports((reportsRes.data ?? []).map(mapDbReport));
+      console.log('[MODERATION] Reports refreshed:', reportsRes.data?.length);
+    } catch (e) {
+      console.log('[MODERATION] Refresh reports error:', e);
+    }
+  }, []);
+
   const checkSpam = useCallback(
     (uid: string, content: string): { isSpam: boolean; reason: string } => {
       const now = Date.now();
@@ -638,8 +649,17 @@ export const [ModerationProvider, useModeration] = createContextHook(() => {
       const action = mapDbModerationAction(data);
       setModerationActions((prev) => [action, ...prev]);
 
+      const targetUserId = post.userId === 'me' ? moderatorId : post.userId;
+
+      const { error: deleteError } = await supabase.from('posts').delete().eq('id', post.id);
+      if (deleteError) {
+        console.log('[MODERATION] Post delete from DB error:', deleteError.message);
+      } else {
+        console.log('[MODERATION] Post deleted from DB:', post.id);
+      }
+
       await supabase.from('inbox_notifications').insert({
-        user_id: post.userId === 'me' ? moderatorId : post.userId,
+        user_id: targetUserId,
         title: 'Beitrag entfernt',
         message: `Dein Beitrag wurde von einem Moderator entfernt. Grund: ${reason}${details ? ' – ' + details : ''}. Du kannst Widerspruch einlegen, wenn du die Entscheidung für ungerechtfertigt hältst.`,
         sent_at: new Date().toISOString(),
@@ -857,6 +877,7 @@ export const [ModerationProvider, useModeration] = createContextHook(() => {
     restrictions,
     isLoading,
     loadFullModerationData,
+    refreshReports,
     submitReport,
     updateReportStatus,
     deleteReport,

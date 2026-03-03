@@ -95,6 +95,9 @@ export default function AdminReportsScreen() {
     getAllRestrictions,
     removeRestriction,
     addRestriction,
+    adminRemovePost,
+    refreshReports,
+    loadFullModerationData,
   } = useModeration();
   const [filter, setFilter] = useState<FilterTab>('pending');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -106,6 +109,11 @@ export default function AdminReportsScreen() {
   const [banReason, setBanReason] = useState<string>('');
 
   const headerFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    loadFullModerationData();
+    refreshReports();
+  }, []);
 
   useEffect(() => {
     Animated.timing(headerFadeAnim, {
@@ -186,8 +194,48 @@ export default function AdminReportsScreen() {
         {
           text: 'Löschen',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            if (report.contentType === 'post') {
+              const fakePost = {
+                id: report.contentId,
+                userId: report.reportedUserId,
+                content: report.contentPreview,
+                mediaUrls: [],
+                mediaType: 'none' as const,
+                likeCount: 0,
+                commentCount: 0,
+                createdAt: report.createdAt,
+              };
+              await adminRemovePost(
+                fakePost,
+                'admin',
+                REPORT_REASONS.find((r) => r.key === report.reason)?.label ?? report.reason,
+                resolutionNote || 'Inhalt nach Meldung gelöscht',
+              );
+              console.log('[ADMIN-REPORTS] Post deleted via adminRemovePost:', report.contentId);
+            } else {
+              const { supabase } = await import('@/lib/supabase');
+              if (report.contentType === 'comment') {
+                await supabase.from('post_comments').delete().eq('id', report.contentId);
+                console.log('[ADMIN-REPORTS] Comment deleted:', report.contentId);
+              } else if (report.contentType === 'story') {
+                await supabase.from('stories').delete().eq('id', report.contentId);
+                console.log('[ADMIN-REPORTS] Story deleted:', report.contentId);
+              } else if (report.contentType === 'reel') {
+                await supabase.from('reels').delete().eq('id', report.contentId);
+                console.log('[ADMIN-REPORTS] Reel deleted:', report.contentId);
+              } else if (report.contentType === 'reel_comment') {
+                await supabase.from('reel_comments').delete().eq('id', report.contentId);
+                console.log('[ADMIN-REPORTS] Reel comment deleted:', report.contentId);
+              }
+              await supabase.from('inbox_notifications').insert({
+                user_id: report.reportedUserId,
+                title: 'Inhalt entfernt',
+                message: `Dein ${CONTENT_TYPE_LABELS[report.contentType]} wurde wegen eines Verstoßes entfernt. Grund: ${REPORT_REASONS.find((r) => r.key === report.reason)?.label ?? report.reason}${resolutionNote ? ' – ' + resolutionNote : ''}.`,
+                sent_at: new Date().toISOString(),
+              });
+            }
             updateReportStatus(report.id, 'resolved', 'admin', resolutionNote || 'Inhalt gelöscht');
             setSelectedReport(null);
             setResolutionNote('');
@@ -195,7 +243,7 @@ export default function AdminReportsScreen() {
         },
       ]
     );
-  }, [updateReportStatus, resolutionNote]);
+  }, [updateReportStatus, resolutionNote, adminRemovePost]);
 
   const handleBanUser = useCallback((report: Report) => {
     const reported = getUserById(report.reportedUserId)?.displayName ?? 'Unbekannt';
