@@ -15,7 +15,7 @@ import { Image } from 'expo-image';
 import { useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, Check, ImageIcon, Trash2, MapPin, Home, Sparkles, ChevronLeft, ChevronDown, User } from 'lucide-react-native';
+import { Camera, Check, ImageIcon, Trash2, MapPin, Home, Sparkles, ChevronLeft, ChevronDown, User, Sun } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useSocial } from '@/providers/SocialProvider';
 import { useAuth } from '@/providers/AuthProvider';
@@ -105,6 +105,7 @@ export default function EditProfileScreen() {
   const [showGenderPicker, setShowGenderPicker] = useState<boolean>(false);
   const [showReligionPicker, setShowReligionPicker] = useState<boolean>(false);
   const [showCrossPicker, setShowCrossPicker] = useState<boolean>(false);
+  const [showSunDial, setShowSunDial] = useState<boolean>(profile.showSunDial ?? true);
 
   const detectedBundesland = useMemo(() => {
     const fromResidence = detectBundesland(residence);
@@ -243,9 +244,10 @@ export default function EditProfileScreen() {
       crossStyle,
       showGender,
       showReligion,
+      showSunDial,
     });
     router.back();
-  }, [displayName, bio, avatarUrl, selectedValues, birthplace, residence, detectedBundesland, gender, religion, crossStyle, showGender, showReligion, updateProfile, router]);
+  }, [displayName, bio, avatarUrl, selectedValues, birthplace, residence, detectedBundesland, gender, religion, crossStyle, showGender, showReligion, showSunDial, updateProfile, router]);
 
   const initial = (displayName || user?.name || 'U').charAt(0).toUpperCase();
 
@@ -544,6 +546,26 @@ export default function EditProfileScreen() {
         )}
       </View>
 
+      <View style={styles.sunDialSection}>
+        <View style={styles.sectionHeader}>
+          <Sun size={18} color="#BFA35D" />
+          <Text style={styles.sectionTitle}>Sonnenuhr</Text>
+        </View>
+        <Text style={styles.faithHint}>
+          Die Sonnenuhr ist nur für dich sichtbar und zeigt Sonnenauf- & -untergang basierend auf deinem Wohnort.
+        </Text>
+        <Pressable
+          style={styles.visibilityToggle}
+          onPress={() => { setShowSunDial(!showSunDial); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          testID="toggle-show-sundial"
+        >
+          <View style={[styles.toggleDot, showSunDial && styles.toggleDotActive]} />
+          <Text style={styles.visibilityToggleText}>
+            {showSunDial ? 'Sonnenuhr anzeigen' : 'Sonnenuhr ausgeblendet'}
+          </Text>
+        </Pressable>
+      </View>
+
       <View style={styles.valuesSection}>
         <View style={styles.sectionHeader}>
           <Sparkles size={18} color="#BFA35D" />
@@ -817,6 +839,10 @@ const styles = StyleSheet.create({
   valueChipText: {
     fontSize: 14,
     fontWeight: '600' as const,
+  },
+  sunDialSection: {
+    marginTop: 24,
+    paddingHorizontal: 20,
   },
   faithGenderSection: {
     marginTop: 24,

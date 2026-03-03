@@ -660,7 +660,28 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.avatarArea}>
-            <SunDial residence={profile.residence}>
+            {profile.showSunDial !== false ? (
+              <SunDial residence={profile.residence}>
+                <View style={styles.avatarWrapper}>
+                  {isFlagActive && (
+                    <Animated.View
+                      style={[
+                        styles.flagBadge,
+                        {
+                          transform: [
+                            { scale: flagScaleAnim },
+                            { rotate: flagRotate },
+                          ],
+                        },
+                      ]}
+                    >
+                      <WavingFlag width={18} height={12} borderRadius={3} />
+                    </Animated.View>
+                  )}
+                  {renderAvatar()}
+                </View>
+              </SunDial>
+            ) : (
               <View style={styles.avatarWrapper}>
                 {isFlagActive && (
                   <Animated.View
@@ -679,7 +700,7 @@ export default function ProfileScreen() {
                 )}
                 {renderAvatar()}
               </View>
-            </SunDial>
+            )}
           </View>
 
           <Text style={styles.heroName}>{displayName}</Text>
