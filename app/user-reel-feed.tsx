@@ -4,27 +4,30 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  TextInput,
   Pressable,
+  KeyboardAvoidingView,
   Animated,
   Dimensions,
   Platform,
+  Image as RNImage,
 } from 'react-native';
 import { useAlert } from '@/providers/AlertProvider';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { Image } from 'expo-image';
-import { Heart, MessageCircle, Share2, MapPin, ChevronLeft, Play, Users, MoreHorizontal, Pencil, Archive, MessageCircleOff, X, ChevronRight, Bookmark, Trash2 } from 'lucide-react-native';
+import { Heart, MessageCircle, Share2, MapPin, ChevronLeft, Play, Users, MoreHorizontal, Pencil, Archive, MessageCircleOff, X, ChevronRight, Bookmark, Trash2, Send, Shield, CornerDownRight, ChevronDown } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePosts } from '@/providers/PostsProvider';
 import { useSocial } from '@/providers/SocialProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { getUserById, formatTimeAgo } from '@/lib/utils';
-import type { FeedPost } from '@/constants/types';
+import type { FeedPost, PostComment } from '@/constants/types';
 import RankIcon from '@/components/RankIcon';
 import OptimizedImage, { OptimizedAvatar } from '@/components/OptimizedImage';
 import EditPostModal from '@/components/EditPostModal';
 import * as Haptics from 'expo-haptics';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const SHEET_HEIGHT = SCREEN_HEIGHT * 0.55;
 
 interface PostFeedItemProps {
   post: FeedPost;
@@ -47,7 +50,6 @@ const PostFeedItem = React.memo(function PostFeedItem({
 }: PostFeedItemProps) {
   const { toggleLike, isLiked, isPostSaved, savePost, isCommentsDisabled, archivePost, toggleCommentsDisabled, deletePost } = usePosts();
   const { showAlert } = useAlert();
-  const router = useRouter();
   const { profile: socialProfile } = useSocial();
   const { user } = useAuth();
   const [expanded, setExpanded] = useState<boolean>(false);
@@ -511,9 +513,12 @@ export default function UserReelFeedScreen() {
     router.push({ pathname: '/user-profile', params: { userId: uid } } as any);
   }, [router]);
 
+  const [commentPostId, setCommentPostId] = useState<string | null>(null);
+
   const handleCommentPress = useCallback((postId: string) => {
-    router.push({ pathname: '/(tabs)/feed/comments', params: { postId } } as any);
-  }, [router]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCommentPostId(postId);
+  }, []);
 
   const handleLocationPress = useCallback((location: string) => {
     router.push({ pathname: '/location-posts', params: { location } } as any);
@@ -601,7 +606,327 @@ export default function UserReelFeedScreen() {
         post={editingPost}
         onClose={() => setEditingPost(null)}
       />
+      {commentPostId !== null && (
+        <InlineCommentSheet
+          postId={commentPostId}
+          onClose={() => setCommentPostId(null)}
+        />
+      )}
     </>
+  );
+}
+
+interface CommentThread {
+  comment: PostComment;
+  replies: PostComment[];
+}
+
+function InlineCommentSheet({ postId, onClose }: { postId: string; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const { getComments, addComment, loadCommentsForPost } = usePosts();
+  const { user } = useAuth();
+  const router = useRouter();
+  const [input, setInput] = useState<string>('');
+  const [replyTo, setReplyTo] = useState<PostComment | null>(null);
+  const [defendedComments, setDefendedComments] = useState<string[]>([]);
+  const [localDefendCounts, setLocalDefendCounts] = useState<Record<string, number>>({});
+  const [collapsedThreads, setCollapsedThreads] = useState<string[]>([]);
+  const inputRef = useRef<TextInput>(null);
+  const defendAnims = useRef<Record<string, Animated.Value>>({}).current;
+  const slideAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+  const backdropAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    loadCommentsForPost(postId);
+    Animated.parallel([
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 65,
+        friction: 11,
+      }),
+      Animated.timing(backdropAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [postId]);
+
+  const handleClose = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: SHEET_HEIGHT,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  }, [onClose, slideAnim, backdropAnim]);
+
+  const comments = useMemo(() => getComments(postId), [getComments, postId]);
+
+  const threads = useMemo((): CommentThread[] => {
+    const topLevel: PostComment[] = [];
+    const replyMap: Record<string, PostComment[]> = {};
+    for (const c of comments) {
+      if (c.replyToId) {
+        if (!replyMap[c.replyToId]) replyMap[c.replyToId] = [];
+        replyMap[c.replyToId].push(c);
+      } else {
+        topLevel.push(c);
+      }
+    }
+    return topLevel.map((c) => {
+      const directReplies = replyMap[c.id] ?? [];
+      const allReplies: PostComment[] = [...directReplies];
+      for (const r of directReplies) {
+        allReplies.push(...(replyMap[r.id] ?? []));
+      }
+      allReplies.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      return { comment: c, replies: allReplies };
+    });
+  }, [comments]);
+
+  const handleSend = useCallback(() => {
+    if (!input.trim()) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    addComment(postId, input.trim());
+    setInput('');
+    setReplyTo(null);
+  }, [input, postId, addComment]);
+
+  const handleReply = useCallback((comment: PostComment) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setReplyTo(comment);
+    const commentUser = comment.userId === 'me' ? null : getUserById(comment.userId);
+    const username = comment.userId === 'me' ? 'ich' : (commentUser?.username ?? 'unknown');
+    setInput(`@${username} `);
+    inputRef.current?.focus();
+  }, []);
+
+  const handleDefend = useCallback((commentId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const alreadyDefended = defendedComments.includes(commentId);
+    if (!defendAnims[commentId]) {
+      defendAnims[commentId] = new Animated.Value(1);
+    }
+    Animated.sequence([
+      Animated.spring(defendAnims[commentId], { toValue: 1.3, useNativeDriver: true, speed: 50 }),
+      Animated.spring(defendAnims[commentId], { toValue: 1, useNativeDriver: true, speed: 50 }),
+    ]).start();
+    if (alreadyDefended) {
+      setDefendedComments((prev) => prev.filter((id) => id !== commentId));
+      setLocalDefendCounts((prev) => ({ ...prev, [commentId]: (prev[commentId] ?? 0) - 1 }));
+    } else {
+      setDefendedComments((prev) => [...prev, commentId]);
+      setLocalDefendCounts((prev) => ({ ...prev, [commentId]: (prev[commentId] ?? 0) + 1 }));
+    }
+  }, [defendedComments, defendAnims]);
+
+  const handleUserPress = useCallback((userId: string) => {
+    if (userId === 'me') return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    handleClose();
+    setTimeout(() => {
+      router.push({ pathname: '/user-profile', params: { userId } } as any);
+    }, 250);
+  }, [router, handleClose]);
+
+  const toggleThread = useCallback((commentId: string) => {
+    setCollapsedThreads((prev) =>
+      prev.includes(commentId) ? prev.filter((id) => id !== commentId) : [...prev, commentId]
+    );
+  }, []);
+
+  const cancelReply = useCallback(() => {
+    setReplyTo(null);
+    setInput('');
+  }, []);
+
+  const getDefendCount = useCallback((comment: PostComment): number => {
+    return (comment.defendCount ?? 0) + (localDefendCounts[comment.id] ?? 0);
+  }, [localDefendCounts]);
+
+  const renderSingleComment = useCallback(
+    (item: PostComment, isReply: boolean) => {
+      const isMe = item.userId === 'me';
+      const commentUser = isMe ? null : getUserById(item.userId);
+      const name = isMe ? (user?.name ?? 'Ich') : (commentUser?.displayName ?? 'Unbekannt');
+      const avatarUrl = isMe ? null : (commentUser?.avatarUrl ?? null);
+      const initial = name.charAt(0).toUpperCase();
+      const isDefended = defendedComments.includes(item.id);
+      const defendCount = getDefendCount(item);
+
+      if (!defendAnims[item.id]) {
+        defendAnims[item.id] = new Animated.Value(1);
+      }
+
+      return (
+        <View key={item.id} style={[sheetStyles.commentRow, isReply && sheetStyles.replyRow]}>
+          {isReply && <View style={sheetStyles.replyLine} />}
+          <Pressable style={sheetStyles.commentAvatar} onPress={() => handleUserPress(item.userId)}>
+            {avatarUrl ? (
+              <RNImage source={{ uri: avatarUrl }} style={sheetStyles.commentAvatarImg} />
+            ) : (
+              <Text style={sheetStyles.commentAvatarText}>{initial}</Text>
+            )}
+          </Pressable>
+          <View style={sheetStyles.commentBody}>
+            <View style={sheetStyles.commentBubble}>
+              <View style={sheetStyles.commentHeader}>
+                <Pressable onPress={() => handleUserPress(item.userId)} hitSlop={6}>
+                  <Text style={sheetStyles.commentName}>{name}</Text>
+                </Pressable>
+                <Text style={sheetStyles.commentTime}>{formatTimeAgo(item.createdAt)}</Text>
+              </View>
+              <Text style={sheetStyles.commentText}>{item.content}</Text>
+            </View>
+            <View style={sheetStyles.commentActions}>
+              <Pressable style={sheetStyles.commentActionBtn} onPress={() => handleReply(item)} hitSlop={8}>
+                <CornerDownRight size={13} color="rgba(191,163,93,0.5)" />
+                <Text style={sheetStyles.commentActionText}>Antworten</Text>
+              </Pressable>
+              <Pressable style={sheetStyles.commentActionBtn} onPress={() => handleDefend(item.id)} hitSlop={8}>
+                <Animated.View style={{ transform: [{ scale: defendAnims[item.id] }] }}>
+                  <Shield
+                    size={13}
+                    color={isDefended ? '#BFA35D' : 'rgba(191,163,93,0.5)'}
+                    fill={isDefended ? 'rgba(191,163,93,0.25)' : 'transparent'}
+                  />
+                </Animated.View>
+                <Text style={[sheetStyles.commentActionText, isDefended && sheetStyles.commentActionTextActive]}>
+                  Verteidigen{defendCount > 0 ? ` · ${defendCount}` : ''}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      );
+    },
+    [user, defendedComments, defendAnims, handleUserPress, handleReply, handleDefend, getDefendCount],
+  );
+
+  const renderThread = useCallback(
+    ({ item }: { item: CommentThread }) => {
+      const isCollapsed = collapsedThreads.includes(item.comment.id);
+      const replyCount = item.replies.length;
+      return (
+        <View style={sheetStyles.threadContainer}>
+          {renderSingleComment(item.comment, false)}
+          {replyCount > 0 && (
+            <>
+              {!isCollapsed ? (
+                <>
+                  {item.replies.map((reply) => renderSingleComment(reply, true))}
+                  {replyCount > 2 && (
+                    <Pressable style={sheetStyles.collapseBtn} onPress={() => toggleThread(item.comment.id)} hitSlop={8}>
+                      <ChevronDown size={12} color="rgba(191,163,93,0.5)" style={{ transform: [{ rotate: '180deg' }] }} />
+                      <Text style={sheetStyles.collapseText}>Antworten ausblenden</Text>
+                    </Pressable>
+                  )}
+                </>
+              ) : (
+                <Pressable style={sheetStyles.collapseBtn} onPress={() => toggleThread(item.comment.id)} hitSlop={8}>
+                  <ChevronDown size={12} color="rgba(191,163,93,0.5)" />
+                  <Text style={sheetStyles.collapseText}>
+                    {replyCount} {replyCount === 1 ? 'Antwort' : 'Antworten'} anzeigen
+                  </Text>
+                </Pressable>
+              )}
+            </>
+          )}
+        </View>
+      );
+    },
+    [renderSingleComment, collapsedThreads, toggleThread],
+  );
+
+  return (
+    <View style={sheetStyles.overlay}>
+      <Animated.View style={[sheetStyles.backdrop, { opacity: backdropAnim }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+      </Animated.View>
+      <Animated.View
+        style={[
+          sheetStyles.sheetContainer,
+          {
+            height: SHEET_HEIGHT,
+            paddingBottom: insets.bottom,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <KeyboardAvoidingView
+          style={sheetStyles.sheetInner}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Dimensions.get('window').height - SHEET_HEIGHT + 20}
+        >
+          <View style={sheetStyles.customHeader}>
+            <View style={sheetStyles.handleBar} />
+            <View style={sheetStyles.headerRow}>
+              <Pressable onPress={handleClose} hitSlop={12} style={sheetStyles.headerCloseBtn}>
+                <X size={22} color="#E8DCC8" />
+              </Pressable>
+              <Text style={sheetStyles.headerTitle}>Kommentare</Text>
+              <View style={{ width: 40 }} />
+            </View>
+          </View>
+          <FlatList
+            data={threads}
+            renderItem={renderThread}
+            keyExtractor={(item) => item.comment.id}
+            ListEmptyComponent={
+              <View style={sheetStyles.emptyContainer}>
+                <Text style={sheetStyles.emptyText}>Noch keine Kommentare. Sei der Erste!</Text>
+              </View>
+            }
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={sheetStyles.listContent}
+            style={sheetStyles.list}
+          />
+          <View style={sheetStyles.inputSection}>
+            {replyTo && (
+              <View style={sheetStyles.replyBanner}>
+                <CornerDownRight size={12} color="#BFA35D" />
+                <Text style={sheetStyles.replyBannerText} numberOfLines={1}>
+                  Antwort an {replyTo.userId === 'me' ? 'dich' : (getUserById(replyTo.userId)?.displayName ?? 'Unbekannt')}
+                </Text>
+                <Pressable onPress={cancelReply} hitSlop={8}>
+                  <Text style={sheetStyles.replyCancel}>Abbrechen</Text>
+                </Pressable>
+              </View>
+            )}
+            <View style={sheetStyles.inputBar}>
+              <TextInput
+                ref={inputRef}
+                style={sheetStyles.textInput}
+                placeholder="Kommentar schreiben..."
+                placeholderTextColor="rgba(191,163,93,0.35)"
+                value={input}
+                onChangeText={setInput}
+                maxLength={1000}
+                testID="comment-input-inline"
+              />
+              <Pressable
+                style={[sheetStyles.sendBtn, input.trim() ? sheetStyles.sendBtnActive : undefined]}
+                onPress={handleSend}
+                disabled={!input.trim()}
+                testID="send-comment-inline-btn"
+              >
+                <Send size={18} color={input.trim() ? '#0f0e0b' : 'rgba(191,163,93,0.3)'} />
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -965,5 +1290,234 @@ const itemStyles = StyleSheet.create({
     color: 'rgba(191,163,93,0.4)',
     fontSize: 11,
     fontWeight: '500' as const,
+  },
+});
+
+const sheetStyles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 999,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  sheetContainer: {
+    backgroundColor: '#141416',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
+  sheetInner: {
+    flex: 1,
+  },
+  customHeader: {
+    backgroundColor: '#141416',
+    paddingTop: 8,
+  },
+  handleBar: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(191,163,93,0.25)',
+    alignSelf: 'center',
+    marginBottom: 10,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(191,163,93,0.1)',
+  },
+  headerCloseBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#1e1e20',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700' as const,
+    color: '#E8DCC8',
+    textAlign: 'center' as const,
+  },
+  list: {
+    flex: 1,
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 8,
+  },
+  threadContainer: {
+    marginBottom: 6,
+  },
+  commentRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+    alignItems: 'flex-start',
+  },
+  replyRow: {
+    paddingLeft: 28,
+    position: 'relative' as const,
+  },
+  replyLine: {
+    position: 'absolute' as const,
+    left: 16,
+    top: 0,
+    bottom: 8,
+    width: 1.5,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    borderRadius: 1,
+  },
+  commentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(191,163,93,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    marginTop: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.2)',
+  },
+  commentAvatarText: {
+    color: '#BFA35D',
+    fontSize: 13,
+    fontWeight: '700' as const,
+  },
+  commentAvatarImg: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+  },
+  commentBody: {
+    flex: 1,
+  },
+  commentBubble: {
+    backgroundColor: 'rgba(42,42,46,0.7)',
+    borderRadius: 14,
+    padding: 12,
+    paddingBottom: 10,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  commentName: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#E8DCC8',
+  },
+  commentTime: {
+    fontSize: 11,
+    color: 'rgba(191,163,93,0.4)',
+  },
+  commentText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: 'rgba(232,220,200,0.8)',
+  },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingLeft: 4,
+    paddingTop: 6,
+    paddingBottom: 6,
+  },
+  commentActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  commentActionText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: 'rgba(191,163,93,0.5)',
+  },
+  commentActionTextActive: {
+    color: '#BFA35D',
+  },
+  collapseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingLeft: 42,
+    paddingVertical: 6,
+  },
+  collapseText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: 'rgba(191,163,93,0.5)',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingTop: 40,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: 'rgba(191,163,93,0.4)',
+  },
+  inputSection: {
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(191,163,93,0.1)',
+    backgroundColor: '#1c1c1e',
+  },
+  replyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  replyBannerText: {
+    flex: 1,
+    fontSize: 12,
+    color: 'rgba(191,163,93,0.6)',
+    fontWeight: '500' as const,
+  },
+  replyCancel: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#BFA35D',
+  },
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 15,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    color: '#E8DCC8',
+    backgroundColor: 'rgba(42,42,46,0.6)',
+  },
+  sendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(191,163,93,0.15)',
+  },
+  sendBtnActive: {
+    backgroundColor: '#BFA35D',
   },
 });
