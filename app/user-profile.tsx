@@ -608,19 +608,24 @@ export default function UserProfileScreen() {
               <ChevronLeft size={20} color="#BFA35D" />
             </Pressable>
             <View style={styles.heroPattern}>
-              {[...Array(6)].map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.heroLine,
-                    {
-                      top: 20 + i * 28,
-                      opacity: 0.03 + i * 0.005,
-                      transform: [{ rotate: '-12deg' }],
-                    },
-                  ]}
-                />
-              ))}
+              <LinearGradient
+                colors={['rgba(10,10,10,0.9)', 'rgba(10,10,10,0.6)', 'rgba(10,10,10,0)']}
+                start={{ x: 1, y: 0 }}
+                end={{ x: 0, y: 0.5 }}
+                style={[styles.heroStripe, styles.heroStripeBlack]}
+              />
+              <LinearGradient
+                colors={['rgba(180,30,30,0.7)', 'rgba(180,30,30,0.45)', 'rgba(180,30,30,0)']}
+                start={{ x: 1, y: 0 }}
+                end={{ x: 0, y: 0.5 }}
+                style={[styles.heroStripe, styles.heroStripeRed]}
+              />
+              <LinearGradient
+                colors={['rgba(212,175,55,0.6)', 'rgba(212,175,55,0.35)', 'rgba(212,175,55,0)']}
+                start={{ x: 1, y: 0 }}
+                end={{ x: 0, y: 0.5 }}
+                style={[styles.heroStripe, styles.heroStripeGold]}
+              />
             </View>
 
             <View style={styles.avatarArea}>
@@ -1071,12 +1076,25 @@ const styles = StyleSheet.create({
   heroPattern: {
     ...StyleSheet.absoluteFillObject,
   },
-  heroLine: {
+  heroStripe: {
     position: 'absolute',
-    left: -40,
-    right: -40,
-    height: 1,
-    backgroundColor: '#BFA35D',
+    height: 14,
+    transform: [{ rotate: '-32deg' }],
+  },
+  heroStripeBlack: {
+    top: 18,
+    right: -60,
+    width: SCREEN_WIDTH * 0.85,
+  },
+  heroStripeRed: {
+    top: 38,
+    right: -60,
+    width: SCREEN_WIDTH * 0.75,
+  },
+  heroStripeGold: {
+    top: 58,
+    right: -60,
+    width: SCREEN_WIDTH * 0.65,
   },
   avatarArea: {
     marginBottom: 16,
