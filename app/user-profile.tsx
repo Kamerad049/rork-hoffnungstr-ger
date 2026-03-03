@@ -608,27 +608,9 @@ export default function UserProfileScreen() {
               <ChevronLeft size={20} color="#BFA35D" />
             </Pressable>
             <View style={styles.heroPattern}>
-              <LinearGradient
-                colors={['rgba(10,10,10,0.85)', 'rgba(10,10,10,0.5)', 'rgba(10,10,10,0)']}
-                start={{ x: 1, y: 0 }}
-                end={{ x: 0, y: 0.6 }}
-                style={[styles.heroColorBand, styles.heroBandBlack]}
-              />
-              <LinearGradient
-                colors={['rgba(180,30,30,0.65)', 'rgba(160,25,25,0.35)', 'rgba(140,20,20,0)']}
-                start={{ x: 1, y: 0 }}
-                end={{ x: 0, y: 0.6 }}
-                style={[styles.heroColorBand, styles.heroBandRed]}
-              />
-              <LinearGradient
-                colors={['rgba(212,175,55,0.55)', 'rgba(191,163,93,0.3)', 'rgba(170,140,50,0)']}
-                start={{ x: 1, y: 0 }}
-                end={{ x: 0, y: 0.6 }}
-                style={[styles.heroColorBand, styles.heroBandGold]}
-              />
               {[...Array(8)].map((_, i) => (
                 <View
-                  key={i}
+                  key={`line-${i}`}
                   style={[
                     styles.heroLine,
                     {
@@ -638,6 +620,33 @@ export default function UserProfileScreen() {
                   ]}
                 />
               ))}
+              <LinearGradient
+                colors={['transparent', 'rgba(10,10,10,0.85)']}
+                start={{ x: 0.3, y: 0.5 }}
+                end={{ x: 0.85, y: 0.5 }}
+                style={[
+                  styles.heroFlagBand,
+                  { top: 14 + 5 * 22 + 1 + 1 },
+                ]}
+              />
+              <LinearGradient
+                colors={['transparent', 'rgba(180,30,30,0.65)']}
+                start={{ x: 0.35, y: 0.5 }}
+                end={{ x: 0.9, y: 0.5 }}
+                style={[
+                  styles.heroFlagBand,
+                  { top: 14 + 6 * 22 + 1 + 1 },
+                ]}
+              />
+              <LinearGradient
+                colors={['transparent', 'rgba(212,175,55,0.55)']}
+                start={{ x: 0.4, y: 0.5 }}
+                end={{ x: 0.95, y: 0.5 }}
+                style={[
+                  styles.heroFlagBand,
+                  { top: 14 + 7 * 22 + 1 + 1 },
+                ]}
+              />
             </View>
 
             <View style={styles.avatarArea}>
@@ -1088,27 +1097,12 @@ const styles = StyleSheet.create({
   heroPattern: {
     ...StyleSheet.absoluteFillObject,
   },
-  heroColorBand: {
+  heroFlagBand: {
     position: 'absolute',
+    left: -40,
+    right: -40,
+    height: 19,
     transform: [{ rotate: '-12deg' }],
-  },
-  heroBandBlack: {
-    top: 10,
-    left: -40,
-    right: -40,
-    height: 18,
-  },
-  heroBandRed: {
-    top: 54,
-    left: -40,
-    right: -40,
-    height: 18,
-  },
-  heroBandGold: {
-    top: 98,
-    left: -40,
-    right: -40,
-    height: 18,
   },
   heroLine: {
     position: 'absolute',
