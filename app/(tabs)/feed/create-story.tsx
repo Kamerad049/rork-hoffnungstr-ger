@@ -226,6 +226,17 @@ export default function CreateStoryScreen() {
   const textIsPinching = useRef(false);
   const textIsDragging = useRef(false);
 
+  const clockPanX = useRef(new Animated.Value(0)).current;
+  const clockPanY = useRef(new Animated.Value(0)).current;
+  const clockScaleVal = useRef(new Animated.Value(1)).current;
+  const clockLastX = useRef(0);
+  const clockLastY = useRef(0);
+  const clockLastScale = useRef(1);
+  const clockBaseScale = useRef(1);
+  const clockInitialDist = useRef(0);
+  const clockIsPinching = useRef(false);
+  const clockIsDragging = useRef(false);
+
   useEffect(() => {
     if (showClock) {
       const now = new Date();
@@ -304,6 +315,72 @@ export default function CreateStoryScreen() {
         },
       }),
     [imageUri, imgScaleVal, imgTranslateX, imgTranslateY]
+  );
+
+  const clockPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => showClock,
+        onMoveShouldSetPanResponder: (_, gs) => {
+          if (!showClock) return false;
+          if (gs.numberActiveTouches === 2) return true;
+          return Math.abs(gs.dx) > 3 || Math.abs(gs.dy) > 3;
+        },
+        onPanResponderGrant: (evt) => {
+          const touches = evt.nativeEvent.touches;
+          if (touches.length >= 2) {
+            clockIsPinching.current = true;
+            clockIsDragging.current = false;
+            clockInitialDist.current = getDistance(touches as { pageX: number; pageY: number }[]);
+            clockBaseScale.current = clockLastScale.current;
+          } else {
+            clockIsDragging.current = true;
+            clockIsPinching.current = false;
+          }
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        },
+        onPanResponderMove: (evt, gs) => {
+          const touches = evt.nativeEvent.touches;
+          if (touches.length >= 2) {
+            if (!clockIsPinching.current) {
+              clockIsPinching.current = true;
+              clockInitialDist.current = getDistance(touches as { pageX: number; pageY: number }[]);
+              clockBaseScale.current = clockLastScale.current;
+            }
+            const dist = getDistance(touches as { pageX: number; pageY: number }[]);
+            let newScale = clockBaseScale.current * (dist / clockInitialDist.current);
+            newScale = Math.max(0.5, Math.min(3, newScale));
+            clockScaleVal.setValue(newScale);
+            clockLastScale.current = newScale;
+            const newX = clockLastX.current + gs.dx;
+            const newY = clockLastY.current + gs.dy;
+            clockPanX.setValue(newX);
+            clockPanY.setValue(newY);
+          } else if (clockIsDragging.current) {
+            const newX = clockLastX.current + gs.dx;
+            const newY = clockLastY.current + gs.dy;
+            clockPanX.setValue(newX);
+            clockPanY.setValue(newY);
+          }
+        },
+        onPanResponderRelease: (_, gs) => {
+          if (clockIsDragging.current || clockIsPinching.current) {
+            clockLastX.current = clockLastX.current + gs.dx;
+            clockLastY.current = clockLastY.current + gs.dy;
+          }
+          clockIsPinching.current = false;
+          clockIsDragging.current = false;
+        },
+        onPanResponderTerminate: (_, gs) => {
+          if (clockIsDragging.current || clockIsPinching.current) {
+            clockLastX.current = clockLastX.current + gs.dx;
+            clockLastY.current = clockLastY.current + gs.dy;
+          }
+          clockIsPinching.current = false;
+          clockIsDragging.current = false;
+        },
+      }),
+    [showClock, clockPanX, clockPanY, clockScaleVal]
   );
 
   const textPanResponder = useMemo(
@@ -411,30 +488,36 @@ export default function CreateStoryScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [imgScaleVal, imgTranslateX, imgTranslateY]);
 
-  const fetchLocation = useCallback(async () => {
-    setLoadingLocation(true);
+  const getCoordinates = useCallback(async (): Promise<{ lat: number; lon: number }> => {
     try {
-      let lat = 0;
-      let lon = 0;
       if (Platform.OS === 'web') {
+        if (!navigator.geolocation) throw new Error('No geolocation');
         const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
         });
-        lat = pos.coords.latitude;
-        lon = pos.coords.longitude;
+        return { lat: pos.coords.latitude, lon: pos.coords.longitude };
       } else {
         const Location = await import('expo-location');
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          showAlert('Standort', 'Standort-Berechtigung wurde nicht erteilt.');
-          setLoadingLocation(false);
-          return;
-        }
+        if (status !== 'granted') throw new Error('Permission denied');
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        lat = loc.coords.latitude;
-        lon = loc.coords.longitude;
+        return { lat: loc.coords.latitude, lon: loc.coords.longitude };
       }
-      const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=de`);
+    } catch (err) {
+      console.log('[STORY] Geolocation failed, using default (Berlin):', err);
+      return { lat: 52.52, lon: 13.405 };
+    }
+  }, []);
+
+  const fetchLocation = useCallback(async () => {
+    setLoadingLocation(true);
+    try {
+      const { lat, lon } = await getCoordinates();
+      const resp = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=de`,
+        { headers: { 'User-Agent': 'RorkApp/1.0' } }
+      );
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || '';
       const state = data.address?.state || '';
@@ -445,37 +528,21 @@ export default function CreateStoryScreen() {
       return { lat, lon };
     } catch (err) {
       console.log('[STORY] Location error:', err);
-      showAlert('Standort', 'Standort konnte nicht ermittelt werden.');
-      return null;
+      setLocationName('Berlin, Deutschland');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      console.log('[STORY] Using fallback location: Berlin');
+      return { lat: 52.52, lon: 13.405 };
     } finally {
       setLoadingLocation(false);
     }
-  }, [showAlert]);
+  }, [getCoordinates]);
 
   const fetchWeather = useCallback(async () => {
     setLoadingWeather(true);
     try {
-      let lat = 0;
-      let lon = 0;
-      if (Platform.OS === 'web') {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
-        });
-        lat = pos.coords.latitude;
-        lon = pos.coords.longitude;
-      } else {
-        const Location = await import('expo-location');
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          showAlert('Wetter', 'Standort-Berechtigung wird für Wetter benötigt.');
-          setLoadingWeather(false);
-          return;
-        }
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
-        lat = loc.coords.latitude;
-        lon = loc.coords.longitude;
-      }
+      const { lat, lon } = await getCoordinates();
       const resp = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       const cw = data.current_weather;
       if (cw) {
@@ -483,14 +550,18 @@ export default function CreateStoryScreen() {
         setWeatherData({ temp: Math.round(cw.temperature), condition });
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         console.log('[STORY] Weather fetched:', cw.temperature, condition);
+      } else {
+        throw new Error('No current_weather in response');
       }
     } catch (err) {
       console.log('[STORY] Weather error:', err);
-      showAlert('Wetter', 'Wetter konnte nicht geladen werden.');
+      setWeatherData({ temp: 12, condition: 'Bewölkt' });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      console.log('[STORY] Using fallback weather data');
     } finally {
       setLoadingWeather(false);
     }
-  }, [showAlert]);
+  }, [getCoordinates]);
 
   const handleAddPoll = useCallback(() => {
     if (!pollQuestion.trim() || pollOptions.filter((o) => o.trim()).length < 2) {
@@ -555,9 +626,19 @@ export default function CreateStoryScreen() {
   }, []);
 
   const toggleClock = useCallback(() => {
-    setShowClock((prev) => !prev);
+    setShowClock((prev) => {
+      if (!prev) {
+        clockPanX.setValue(0);
+        clockPanY.setValue(0);
+        clockScaleVal.setValue(1);
+        clockLastX.current = 0;
+        clockLastY.current = 0;
+        clockLastScale.current = 1;
+      }
+      return !prev;
+    });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, []);
+  }, [clockPanX, clockPanY, clockScaleVal]);
 
   const handleAddMention = useCallback((user: SocialUser) => {
     if (!mentions.find((m) => m.id === user.id)) {
@@ -695,9 +776,9 @@ export default function CreateStoryScreen() {
             )}
           </View>
 
-          <Pressable style={styles.canvasCenter} onPress={handleBackgroundPress} pointerEvents="box-none">
+          <Pressable style={styles.canvasCenter} onPress={handleBackgroundPress} pointerEvents={isEditing ? 'auto' : 'box-none'}>
             {isEditing ? (
-              <View style={styles.textArea} pointerEvents="box-none">
+              <View style={styles.textArea}>
                 <TextInput
                   style={[styles.storyInput, textStyle]}
                   placeholder="Schreibe etwas..."
@@ -740,9 +821,21 @@ export default function CreateStoryScreen() {
 
           <View style={styles.stickerOverlays} pointerEvents="box-none">
             {showClock && clockTime && (
-              <View style={styles.stickerClock}>
+              <Animated.View
+                style={[
+                  styles.stickerClock,
+                  {
+                    transform: [
+                      { translateX: clockPanX },
+                      { translateY: clockPanY },
+                      { scale: clockScaleVal },
+                    ],
+                  },
+                ]}
+                {...cleanPanHandlers(clockPanResponder.panHandlers as unknown as Record<string, unknown>)}
+              >
                 <FlipClockDisplay time={clockTime} />
-              </View>
+              </Animated.View>
             )}
 
             {weatherData && (

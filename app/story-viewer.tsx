@@ -10,6 +10,7 @@ import {
   StatusBar,
   ScrollView,
   PanResponder,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { X, Trash2, Flag, Eye, ChevronUp, ChevronRight, MapPin, CloudSun, AtSign, BarChart3 } from 'lucide-react-native';
@@ -22,7 +23,6 @@ import { useSocial } from '@/providers/SocialProvider';
 import { getUserById, formatTimeAgo, cleanPanHandlers } from '@/lib/utils';
 import type { StoryItem, StoryGroup, SocialUser, StoryMetadata } from '@/constants/types';
 import { useAuth } from '@/providers/AuthProvider';
-import { useAlert } from '@/providers/AlertProvider';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -71,7 +71,6 @@ const fStyles = StyleSheet.create({
 
 export default function StoryViewerScreen() {
   useTheme();
-  const { showAlert } = useAlert();
   const { user } = useAuth();
   const { stories, markStoryViewed, deleteStory, getStoryViewers } = useStories();
   const { profile } = useSocial();
@@ -345,7 +344,7 @@ export default function StoryViewerScreen() {
     animRef.current?.stop();
     isPaused.current = true;
 
-    showAlert(
+    Alert.alert(
       'Story löschen',
       'Möchtest du diese Story wirklich löschen?',
       [
@@ -383,7 +382,7 @@ export default function StoryViewerScreen() {
         },
       ]
     );
-  }, [currentStory, isOwnStory, currentGroup, currentGroupIdx, currentStoryIdx, stories.length, deleteStory, router, startProgress, showAlert]);
+  }, [currentStory, isOwnStory, currentGroup, currentGroupIdx, currentStoryIdx, stories.length, deleteStory, router, startProgress]);
 
   if (!currentGroup || !currentStory || !storyUser) {
     return (
