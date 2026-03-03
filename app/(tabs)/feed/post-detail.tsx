@@ -13,7 +13,7 @@ import {
   Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { ArrowLeft, Send, CornerDownRight, ChevronDown, MapPin, Share2, Bookmark } from 'lucide-react-native';
+import { ArrowLeft, Send, CornerDownRight, ChevronDown, MapPin, Share2, Bookmark, Shield } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import OptimizedImage, { OptimizedAvatar } from '@/components/OptimizedImage';
