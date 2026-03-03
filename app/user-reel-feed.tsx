@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useCallback, useState } from 'react';
+import React, { useMemo, useRef, useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -464,13 +464,24 @@ export default function UserReelFeedScreen() {
     return getPostsForUser(uid);
   }, [userId, getPostsForUser, allPosts, user]);
 
-  const effectiveInitialId = initialPostId;
-
   const initialIndex = useMemo(() => {
-    if (!effectiveInitialId) return 0;
-    const idx = userPosts.findIndex(p => p.id === effectiveInitialId);
+    if (!initialPostId) return 0;
+    const idx = userPosts.findIndex(p => p.id === initialPostId);
     return idx >= 0 ? idx : 0;
-  }, [effectiveInitialId, userPosts]);
+  }, [initialPostId, userPosts]);
+
+  const hasScrolledToInitial = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (hasScrolledToInitial.current) return;
+    if (initialIndex > 0 && userPosts.length > initialIndex && flatListRef.current) {
+      hasScrolledToInitial.current = true;
+      const timer = setTimeout(() => {
+        flatListRef.current?.scrollToIndex({ index: initialIndex, animated: false });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [initialIndex, userPosts.length]);
 
   const author = useMemo(() => {
     if (!userId || userId === 'me') return null;
@@ -549,10 +560,10 @@ export default function UserReelFeedScreen() {
           showsVerticalScrollIndicator={false}
           onScrollBeginDrag={handleScrollBegin}
           contentContainerStyle={styles.listContent}
-          initialScrollIndex={initialIndex > 0 && userPosts.length > initialIndex ? initialIndex : undefined}
-          getItemLayout={undefined}
           onScrollToIndexFailed={(info) => {
             console.log('[POST-FEED] scrollToIndex failed, retrying...', info);
+            const offset = info.averageItemLength * info.index;
+            flatListRef.current?.scrollToOffset({ offset, animated: false });
             setTimeout(() => {
               if (info.index < userPosts.length) {
                 flatListRef.current?.scrollToIndex({ index: info.index, animated: false });
