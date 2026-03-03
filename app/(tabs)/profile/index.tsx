@@ -1239,7 +1239,6 @@ const styles = StyleSheet.create({
   heroUsername: {
     color: 'rgba(191,163,93,0.5)',
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
     marginBottom: 12,
   },
   rankPill: {
