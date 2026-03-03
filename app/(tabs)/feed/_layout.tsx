@@ -46,6 +46,13 @@ export default function FeedLayout() {
           animation: 'slide_from_right',
         }}
       />
+      <Stack.Screen
+        name="activity"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      />
     </Stack>
   );
 }

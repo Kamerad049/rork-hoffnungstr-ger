@@ -341,7 +341,7 @@ export default function FeedScreen() {
           style={styles.heroIconWrap}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push('/(tabs)/(home)/activity' as any);
+            router.push('/(tabs)/feed/activity' as any);
           }}
           testID="feed-activity-btn"
         >
