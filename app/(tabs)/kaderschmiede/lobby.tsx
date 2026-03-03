@@ -29,13 +29,14 @@ import {
   CheckCircle,
   AlertTriangle,
   Flame,
+  Trophy,
 } from 'lucide-react-native';
 import { useKaderschmiede } from '@/providers/KaderschmiedeProvider';
 import { useAuth } from '@/providers/AuthProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type LobbyPhase = 'setup' | 'waiting' | 'countdown' | 'go' | 'racing' | 'finished';
+type LobbyPhase = 'setup' | 'waiting' | 'countdown' | 'go' | 'racing' | 'surrendered' | 'victory_by_surrender' | 'finished';
 type ChallengeMode = '1v1' | 'team';
 type DistanceOption = 1000 | 2000 | 5000;
 
@@ -477,6 +478,235 @@ function EpicCountdown({ count, onFinish }: { count: number; onFinish: () => voi
   );
 }
 
+function SurrenderConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  const bgAnim = useRef(new Animated.Value(0)).current;
+  const cardScale = useRef(new Animated.Value(0.8)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(bgAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+      Animated.spring(cardScale, { toValue: 1, friction: 6, tension: 120, useNativeDriver: true }),
+      Animated.timing(cardOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.05, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  return (
+    <Animated.View style={[styles.surrenderOverlay, { opacity: bgAnim }]}>
+      <Animated.View style={[styles.surrenderCard, { transform: [{ scale: cardScale }], opacity: cardOpacity }]}>
+        <Animated.View style={[styles.surrenderIconWrap, { transform: [{ scale: pulseAnim }] }]}>
+          <View style={styles.surrenderIconInner}>
+            <Flag size={32} color="#FF4444" />
+          </View>
+        </Animated.View>
+
+        <Text style={styles.surrenderTitle}>AUFGEBEN?</Text>
+        <Text style={styles.surrenderDesc}>
+          Wenn du aufgibst, wird die Challenge als{' '}
+          <Text style={styles.surrenderDescBold}>Niederlage durch Abbruch</Text>{' '}
+          gewertet. Dein Gegner gewinnt automatisch.
+        </Text>
+
+        <View style={styles.surrenderBtns}>
+          <Pressable style={styles.surrenderCancelBtn} onPress={onCancel}>
+            <Shield size={16} color="#BFA35D" />
+            <Text style={styles.surrenderCancelText}>WEITERKÄMPFEN</Text>
+          </Pressable>
+
+          <Pressable style={styles.surrenderConfirmBtn} onPress={onConfirm}>
+            <X size={16} color="#fff" />
+            <Text style={styles.surrenderConfirmText}>AUFGEBEN</Text>
+          </Pressable>
+        </View>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+function VictoryBySurrenderScreen({ opponentName, onDismiss }: { opponentName: string; onDismiss: () => void }) {
+  const bgAnim = useRef(new Animated.Value(0)).current;
+  const trophyScale = useRef(new Animated.Value(0)).current;
+  const trophyRotate = useRef(new Animated.Value(-0.1)).current;
+  const textSlide = useRef(new Animated.Value(60)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const sparkle1 = useRef(new Animated.Value(0)).current;
+  const sparkle2 = useRef(new Animated.Value(0)).current;
+  const sparkle3 = useRef(new Animated.Value(0)).current;
+  const btnOpacity = useRef(new Animated.Value(0)).current;
+  const ringScale = useRef(new Animated.Value(0.3)).current;
+  const ringOpacity = useRef(new Animated.Value(0.8)).current;
+  const glowPulse = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+
+    Animated.sequence([
+      Animated.timing(bgAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.spring(trophyScale, { toValue: 1, friction: 3, tension: 150, useNativeDriver: true }),
+        Animated.spring(trophyRotate, { toValue: 0, friction: 4, tension: 100, useNativeDriver: true }),
+        Animated.timing(ringScale, { toValue: 3, duration: 800, useNativeDriver: true }),
+        Animated.timing(ringOpacity, { toValue: 0, duration: 800, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.spring(textSlide, { toValue: 0, friction: 6, tension: 80, useNativeDriver: true }),
+        Animated.timing(textOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ]),
+      Animated.stagger(150, [
+        Animated.timing(sparkle1, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(sparkle2, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(sparkle3, { toValue: 1, duration: 300, useNativeDriver: true }),
+      ]),
+      Animated.timing(btnOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+
+    const glowLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowPulse, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(glowPulse, { toValue: 0.4, duration: 1200, useNativeDriver: true }),
+      ]),
+    );
+    glowLoop.start();
+    return () => glowLoop.stop();
+  }, []);
+
+  return (
+    <Animated.View style={[styles.victoryOverlay, { opacity: bgAnim }]}>
+      <Animated.View style={[styles.victoryRing, { opacity: ringOpacity, transform: [{ scale: ringScale }] }]} />
+
+      <Animated.View style={[styles.victoryGlow, { opacity: glowPulse }]} />
+
+      <Animated.View style={[
+        styles.victoryTrophy,
+        { transform: [{ scale: trophyScale }, { rotate: trophyRotate.interpolate({ inputRange: [-0.1, 0], outputRange: ['-15deg', '0deg'] }) }] },
+      ]}>
+        <View style={styles.victoryTrophyInner}>
+          <Trophy size={56} color="#BFA35D" strokeWidth={2.5} />
+        </View>
+      </Animated.View>
+
+      <View style={styles.victorySparkles}>
+        {[sparkle1, sparkle2, sparkle3].map((anim, i) => (
+          <Animated.View
+            key={i}
+            style={[
+              styles.sparkle,
+              {
+                opacity: anim,
+                transform: [{ scale: anim }, { rotate: `${i * 45 + 15}deg` }],
+                left: i === 0 ? '20%' : i === 1 ? '50%' : '75%',
+                top: i === 0 ? '25%' : i === 1 ? '15%' : '28%',
+              },
+            ]}
+          >
+            <Text style={styles.sparkleText}>{i === 1 ? '⭐' : '✦'}</Text>
+          </Animated.View>
+        ))}
+      </View>
+
+      <Animated.View style={[styles.victoryTextWrap, { transform: [{ translateY: textSlide }], opacity: textOpacity }]}>
+        <Text style={styles.victoryLabel}>SIEG</Text>
+        <Text style={styles.victorySubLabel}>DURCH AUFGABE</Text>
+        <View style={styles.victoryDivider} />
+        <Text style={styles.victoryOpponent}>
+          {opponentName} hat aufgegeben
+        </Text>
+      </Animated.View>
+
+      <Animated.View style={[styles.victoryBtnWrap, { opacity: btnOpacity }]}>
+        <Pressable
+          style={styles.victoryBtn}
+          onPress={() => {
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
+            onDismiss();
+          }}
+        >
+          <LinearGradient
+            colors={['#BFA35D', '#A08A45']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.victoryBtnGradient}
+          >
+            <Text style={styles.victoryBtnText}>WEITER</Text>
+          </LinearGradient>
+        </Pressable>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+function SurrenderDefeatScreen({ onDismiss }: { onDismiss: () => void }) {
+  const bgAnim = useRef(new Animated.Value(0)).current;
+  const iconScale = useRef(new Animated.Value(0)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const textSlide = useRef(new Animated.Value(40)).current;
+  const btnOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+
+    Animated.sequence([
+      Animated.timing(bgAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.spring(iconScale, { toValue: 1, friction: 5, tension: 100, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.spring(textSlide, { toValue: 0, friction: 6, tension: 80, useNativeDriver: true }),
+        Animated.timing(textOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ]),
+      Animated.timing(btnOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={[styles.defeatOverlay, { opacity: bgAnim }]}>
+      <Animated.View style={[styles.defeatIcon, { transform: [{ scale: iconScale }] }]}>
+        <View style={styles.defeatIconInner}>
+          <Flag size={48} color="#C06060" strokeWidth={2} />
+        </View>
+      </Animated.View>
+
+      <Animated.View style={[styles.defeatTextWrap, { transform: [{ translateY: textSlide }], opacity: textOpacity }]}>
+        <Text style={styles.defeatLabel}>NIEDERLAGE</Text>
+        <Text style={styles.defeatSubLabel}>DURCH AUFGABE</Text>
+        <View style={styles.defeatDivider} />
+        <Text style={styles.defeatDesc}>
+          Du hast die Challenge abgebrochen.
+          Das Ergebnis wird in deiner Statistik vermerkt.
+        </Text>
+      </Animated.View>
+
+      <Animated.View style={[styles.defeatBtnWrap, { opacity: btnOpacity }]}>
+        <Pressable
+          style={styles.defeatBtn}
+          onPress={() => {
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
+            onDismiss();
+          }}
+        >
+          <Text style={styles.defeatBtnText}>ZURÜCK ZUR LOBBY</Text>
+        </Pressable>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
 function GoScreen({ distance, onStart }: { distance: DistanceOption; onStart: () => void }) {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const flashAnim = useRef(new Animated.Value(1)).current;
@@ -569,6 +799,7 @@ export default function LobbyScreen() {
   const [isReady, setIsReady] = useState(false);
   const [countdownValue] = useState(10);
   const [showInactivity] = useState(false);
+  const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
 
   const heroAnim = useRef(new Animated.Value(0)).current;
   const readyBtnScale = useRef(new Animated.Value(1)).current;
@@ -670,6 +901,30 @@ export default function LobbyScreen() {
     console.log('[LOBBY] Race started! Distance:', distance);
   }, [distance]);
 
+  const handleSurrender = useCallback(() => {
+    setShowSurrenderConfirm(false);
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+    console.log('[LOBBY] Player surrendered!');
+    setPhase('surrendered');
+
+    setTimeout(() => {
+      const opponent = players.find(p => p.id !== userId);
+      if (opponent) {
+        console.log('[LOBBY] Opponent', opponent.name, 'wins by surrender');
+      }
+    }, 500);
+  }, [players, userId]);
+
+  const handleSurrenderDismiss = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  const handleVictoryDismiss = useCallback(() => {
+    router.back();
+  }, [router]);
+
   const slots = useMemo(() => {
     const result: Array<{ player: LobbyPlayer | null; isEmpty: boolean }> = [];
     for (let i = 0; i < maxPlayers; i++) {
@@ -691,6 +946,23 @@ export default function LobbyScreen() {
     return (
       <View style={styles.fullScreenOverlay}>
         <GoScreen distance={distance} onStart={handleGoStart} />
+      </View>
+    );
+  }
+
+  if (phase === 'surrendered') {
+    return (
+      <View style={styles.fullScreenOverlay}>
+        <SurrenderDefeatScreen onDismiss={handleSurrenderDismiss} />
+      </View>
+    );
+  }
+
+  if (phase === 'victory_by_surrender') {
+    const opponentName = players.find(p => p.id !== userId)?.name ?? 'Gegner';
+    return (
+      <View style={styles.fullScreenOverlay}>
+        <VictoryBySurrenderScreen opponentName={opponentName} onDismiss={handleVictoryDismiss} />
       </View>
     );
   }
@@ -732,7 +1004,28 @@ export default function LobbyScreen() {
             <Text style={styles.racingFooterText}>GPS-Tracking aktiv</Text>
             <MapPin size={14} color="rgba(191,163,93,0.5)" />
           </View>
+
+          <Pressable
+            style={styles.surrenderBtn}
+            onPress={() => {
+              if (Platform.OS !== 'web') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              }
+              setShowSurrenderConfirm(true);
+            }}
+            testID="surrender-button"
+          >
+            <Flag size={16} color="#C06060" />
+            <Text style={styles.surrenderBtnText}>AUFGEBEN</Text>
+          </Pressable>
         </LinearGradient>
+
+        {showSurrenderConfirm && (
+          <SurrenderConfirmModal
+            onConfirm={handleSurrender}
+            onCancel={() => setShowSurrenderConfirm(false)}
+          />
+        )}
       </View>
     );
   }
@@ -1672,5 +1965,284 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600' as const,
     color: 'rgba(191,163,93,0.4)',
+  },
+  surrenderBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 'auto' as any,
+    marginBottom: 20,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(192,96,96,0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(192,96,96,0.2)',
+  },
+  surrenderBtnText: {
+    fontSize: 15,
+    fontWeight: '800' as const,
+    color: '#C06060',
+    letterSpacing: 2,
+  },
+  surrenderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+    padding: 24,
+  },
+  surrenderCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#1e1e20',
+    borderRadius: 24,
+    padding: 28,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(192,96,96,0.2)',
+  },
+  surrenderIconWrap: {
+    marginBottom: 20,
+  },
+  surrenderIconInner: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,68,68,0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,68,68,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  surrenderTitle: {
+    fontSize: 28,
+    fontWeight: '900' as const,
+    color: '#FF4444',
+    letterSpacing: 3,
+    marginBottom: 12,
+  },
+  surrenderDesc: {
+    fontSize: 14,
+    color: 'rgba(232,220,200,0.5)',
+    textAlign: 'center' as const,
+    lineHeight: 21,
+    marginBottom: 24,
+  },
+  surrenderDescBold: {
+    fontWeight: '700' as const,
+    color: '#C06060',
+  },
+  surrenderBtns: {
+    width: '100%',
+    gap: 10,
+  },
+  surrenderCancelBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 14,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(191,163,93,0.25)',
+  },
+  surrenderCancelText: {
+    fontSize: 16,
+    fontWeight: '900' as const,
+    color: '#BFA35D',
+    letterSpacing: 1,
+  },
+  surrenderConfirmBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(192,96,96,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(192,96,96,0.3)',
+  },
+  surrenderConfirmText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#C06060',
+  },
+  victoryOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0a0a0c',
+    padding: 24,
+  },
+  victoryRing: {
+    position: 'absolute' as const,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 3,
+    borderColor: '#BFA35D',
+  },
+  victoryGlow: {
+    position: 'absolute' as const,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+  },
+  victoryTrophy: {
+    marginBottom: 32,
+  },
+  victoryTrophyInner: {
+    width: 110,
+    height: 110,
+    borderRadius: 32,
+    backgroundColor: 'rgba(191,163,93,0.12)',
+    borderWidth: 3,
+    borderColor: 'rgba(191,163,93,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#BFA35D',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  victorySparkles: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: -1,
+  },
+  sparkle: {
+    position: 'absolute' as const,
+  },
+  sparkleText: {
+    fontSize: 24,
+  },
+  victoryTextWrap: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  victoryLabel: {
+    fontSize: 52,
+    fontWeight: '900' as const,
+    color: '#BFA35D',
+    letterSpacing: 8,
+  },
+  victorySubLabel: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: 'rgba(191,163,93,0.6)',
+    letterSpacing: 4,
+    marginTop: 4,
+  },
+  victoryDivider: {
+    width: 60,
+    height: 2,
+    backgroundColor: 'rgba(191,163,93,0.2)',
+    marginVertical: 16,
+    borderRadius: 1,
+  },
+  victoryOpponent: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: 'rgba(232,220,200,0.4)',
+    textAlign: 'center' as const,
+  },
+  victoryBtnWrap: {
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  victoryBtn: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#BFA35D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  victoryBtnGradient: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+  },
+  victoryBtnText: {
+    fontSize: 18,
+    fontWeight: '900' as const,
+    color: '#141416',
+    letterSpacing: 3,
+  },
+  defeatOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0a0a0c',
+    padding: 24,
+  },
+  defeatIcon: {
+    marginBottom: 28,
+  },
+  defeatIconInner: {
+    width: 100,
+    height: 100,
+    borderRadius: 30,
+    backgroundColor: 'rgba(192,96,96,0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(192,96,96,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  defeatTextWrap: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  defeatLabel: {
+    fontSize: 42,
+    fontWeight: '900' as const,
+    color: '#C06060',
+    letterSpacing: 5,
+  },
+  defeatSubLabel: {
+    fontSize: 16,
+    fontWeight: '800' as const,
+    color: 'rgba(192,96,96,0.5)',
+    letterSpacing: 3,
+    marginTop: 4,
+  },
+  defeatDivider: {
+    width: 50,
+    height: 2,
+    backgroundColor: 'rgba(192,96,96,0.15)',
+    marginVertical: 16,
+    borderRadius: 1,
+  },
+  defeatDesc: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+    color: 'rgba(232,220,200,0.35)',
+    textAlign: 'center' as const,
+    lineHeight: 21,
+  },
+  defeatBtnWrap: {
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  defeatBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    borderRadius: 18,
+    backgroundColor: '#1e1e20',
+    borderWidth: 1.5,
+    borderColor: 'rgba(192,96,96,0.15)',
+  },
+  defeatBtnText: {
+    fontSize: 16,
+    fontWeight: '800' as const,
+    color: 'rgba(232,220,200,0.5)',
+    letterSpacing: 2,
   },
 });
