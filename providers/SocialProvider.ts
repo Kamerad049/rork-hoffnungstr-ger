@@ -80,7 +80,7 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
     crossStyle: 'none',
     showGender: false,
     showReligion: false,
-    showSunDial: true,
+    showSunDial: false,
   });
   const [privacy, setPrivacy] = useState<PrivacySettings>({ ...DEFAULT_PRIVACY });
   const [flagHoistedAtState, setFlagHoistedAt] = useState<string | null>(null);
@@ -109,7 +109,7 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
         crossStyle: 'none',
         showGender: false,
         showReligion: false,
-        showSunDial: true,
+        showSunDial: false,
       };
       let loadedPrivacy: PrivacySettings = { ...DEFAULT_PRIVACY };
       let loadedFlag: string | null = null;
@@ -130,7 +130,7 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
           crossStyle: (p.cross_style as CrossStyle) ?? 'none',
           showGender: p.show_gender ?? false,
           showReligion: p.show_religion ?? false,
-          showSunDial: p.show_sundial ?? true,
+          showSunDial: p.show_sundial ?? false,
         };
         loadedFlag = p.flag_hoisted_at ?? null;
         addToUserCache({

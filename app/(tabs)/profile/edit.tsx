@@ -105,7 +105,7 @@ export default function EditProfileScreen() {
   const [showGenderPicker, setShowGenderPicker] = useState<boolean>(false);
   const [showReligionPicker, setShowReligionPicker] = useState<boolean>(false);
   const [showCrossPicker, setShowCrossPicker] = useState<boolean>(false);
-  const [showSunDial, setShowSunDial] = useState<boolean>(profile.showSunDial ?? true);
+  const [showSunDial, setShowSunDial] = useState<boolean>(profile.showSunDial ?? false);
 
   const detectedBundesland = useMemo(() => {
     const fromResidence = detectBundesland(residence);
