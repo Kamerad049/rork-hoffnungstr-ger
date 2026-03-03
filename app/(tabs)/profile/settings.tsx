@@ -17,13 +17,12 @@ import {
   MessageCircle,
   Bookmark,
   Shield,
-  Award,
   LogOut,
 } from 'lucide-react-native';
 import { useFriends } from '@/providers/FriendsProvider';
 import { useChat } from '@/providers/ChatProvider';
 import { useReels } from '@/providers/ReelsProvider';
-import { useStampPass } from '@/hooks/useStampPass';
+
 import { useAuth } from '@/providers/AuthProvider';
 
 import * as Haptics from 'expo-haptics';
@@ -34,7 +33,7 @@ export default function SettingsScreen() {
   const { friendRequestUsers } = useFriends();
   const { conversations } = useChat();
   const { savedReels } = useReels();
-  const { stamps, progress, totalPlaces } = useStampPass();
+
   const { user, logout } = useAuth();
 
   const unreadMessages = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
@@ -195,25 +194,7 @@ export default function SettingsScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.menuSection}>
-        <Text style={styles.sectionLabel}>Fortschritt</Text>
-        <View style={styles.progressCard}>
-          <View style={styles.progressHeader}>
-            <Award size={16} color="#BFA35D" />
-            <Text style={styles.progressCardLabel}>
-              {stamps.length} von {totalPlaces} Orte besucht
-            </Text>
-          </View>
-          <View style={styles.progressCardBar}>
-            <View
-              style={[
-                styles.progressCardFill,
-                { width: `${Math.round(progress * 100)}%` },
-              ]}
-            />
-          </View>
-        </View>
-      </View>
+
     </ScrollView>
   );
 }
@@ -307,33 +288,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700' as const,
   },
-  progressCard: {
-    borderRadius: 14,
-    padding: 14,
-    backgroundColor: '#1e1e20',
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
-  },
-  progressCardLabel: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#E8DCC8',
-  },
-  progressCardBar: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(191,163,93,0.08)',
-  },
-  progressCardFill: {
-    height: '100%',
-    borderRadius: 4,
-    backgroundColor: '#BFA35D',
-  },
+
   adminCard: {
     flexDirection: 'row',
     alignItems: 'center',
