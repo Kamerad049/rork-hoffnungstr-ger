@@ -634,27 +634,9 @@ export default function ProfileScreen() {
           style={styles.heroSection}
         >
           <View style={styles.heroPattern}>
-            <LinearGradient
-              colors={['rgba(10,10,10,0.85)', 'rgba(10,10,10,0.5)', 'rgba(10,10,10,0)']}
-              start={{ x: 1, y: 0 }}
-              end={{ x: 0, y: 0.6 }}
-              style={[styles.heroColorBand, styles.heroBandBlack]}
-            />
-            <LinearGradient
-              colors={['rgba(180,30,30,0.65)', 'rgba(160,25,25,0.35)', 'rgba(140,20,20,0)']}
-              start={{ x: 1, y: 0 }}
-              end={{ x: 0, y: 0.6 }}
-              style={[styles.heroColorBand, styles.heroBandRed]}
-            />
-            <LinearGradient
-              colors={['rgba(212,175,55,0.55)', 'rgba(191,163,93,0.3)', 'rgba(170,140,50,0)']}
-              start={{ x: 1, y: 0 }}
-              end={{ x: 0, y: 0.6 }}
-              style={[styles.heroColorBand, styles.heroBandGold]}
-            />
             {[...Array(8)].map((_, i) => (
               <View
-                key={i}
+                key={`line-${i}`}
                 style={[
                   styles.heroLine,
                   {
@@ -664,6 +646,24 @@ export default function ProfileScreen() {
                 ]}
               />
             ))}
+            <View
+              style={[
+                styles.heroFlagBand,
+                { top: 14 + 1 + 1, backgroundColor: 'rgba(10,10,10,0.8)' },
+              ]}
+            />
+            <View
+              style={[
+                styles.heroFlagBand,
+                { top: 14 + 22 + 1 + 1, backgroundColor: 'rgba(180,30,30,0.6)' },
+              ]}
+            />
+            <View
+              style={[
+                styles.heroFlagBand,
+                { top: 14 + 44 + 1 + 1, backgroundColor: 'rgba(212,175,55,0.5)' },
+              ]}
+            />
           </View>
 
           <View style={styles.headerTopRow}>
@@ -1117,27 +1117,12 @@ const styles = StyleSheet.create({
   heroPattern: {
     ...StyleSheet.absoluteFillObject,
   },
-  heroColorBand: {
+  heroFlagBand: {
     position: 'absolute',
+    left: -40,
+    right: -40,
+    height: 19,
     transform: [{ rotate: '-12deg' }],
-  },
-  heroBandBlack: {
-    top: 10,
-    left: -40,
-    right: -40,
-    height: 18,
-  },
-  heroBandRed: {
-    top: 54,
-    left: -40,
-    right: -40,
-    height: 18,
-  },
-  heroBandGold: {
-    top: 98,
-    left: -40,
-    right: -40,
-    height: 18,
   },
   heroLine: {
     position: 'absolute',
