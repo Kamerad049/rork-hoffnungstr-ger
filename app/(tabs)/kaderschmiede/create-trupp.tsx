@@ -21,10 +21,7 @@ import {
   Swords,
   Timer,
   Snowflake,
-  Waves,
   Mountain,
-  Leaf,
-  Activity,
   Check,
   Lock,
   Unlock,
@@ -44,10 +41,7 @@ const SPORT_ICON_MAP: Record<SportCategory, React.ComponentType<any>> = {
   Ausdauer: Timer,
   Eisbaden: Snowflake,
   Kraftsport: Dumbbell,
-  Schwimmen: Waves,
   Wandern: Mountain,
-  Yoga: Leaf,
-  Sonstiges: Activity,
 };
 
 const BUNDESLAENDER = Object.keys(BUNDESLAND_COORDS);
@@ -271,7 +265,7 @@ export default function CreateTruppScreen() {
             <Text style={styles.label}>SPORTART *</Text>
             <View style={styles.chipGrid}>
               {SPORT_CATEGORIES.map(s => {
-                const Icon = SPORT_ICON_MAP[s] ?? Activity;
+                const Icon = SPORT_ICON_MAP[s] ?? Dumbbell;
                 const selected = sport === s;
                 return (
                   <Pressable

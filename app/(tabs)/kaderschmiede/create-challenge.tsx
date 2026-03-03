@@ -17,10 +17,7 @@ import {
   Swords,
   Timer,
   Snowflake,
-  Waves,
   Mountain,
-  Leaf,
-  Activity,
   Check,
 } from 'lucide-react-native';
 import { useKaderschmiede } from '@/providers/KaderschmiedeProvider';
@@ -34,10 +31,7 @@ const SPORT_ICON_MAP: Record<SportCategory, React.ComponentType<any>> = {
   Ausdauer: Timer,
   Eisbaden: Snowflake,
   Kraftsport: Dumbbell,
-  Schwimmen: Waves,
   Wandern: Mountain,
-  Yoga: Leaf,
-  Sonstiges: Activity,
 };
 
 const CHALLENGE_TYPES: { value: ChallengeType; label: string }[] = [
@@ -156,7 +150,7 @@ export default function CreateChallengeScreen() {
             <Text style={styles.label}>SPORTART *</Text>
             <View style={styles.chipGrid}>
               {SPORT_CATEGORIES.map(s => {
-                const Icon = SPORT_ICON_MAP[s] ?? Activity;
+                const Icon = SPORT_ICON_MAP[s] ?? Dumbbell;
                 const selected = sport === s;
                 return (
                   <Pressable

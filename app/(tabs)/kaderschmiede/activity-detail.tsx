@@ -23,10 +23,7 @@ import {
   Swords,
   Timer,
   Snowflake,
-  Waves,
   Mountain,
-  Leaf,
-  Activity,
   Repeat,
   Zap,
   Shield,
@@ -42,10 +39,7 @@ const SPORT_ICON_MAP: Record<SportCategory, React.ComponentType<any>> = {
   Ausdauer: Timer,
   Eisbaden: Snowflake,
   Kraftsport: Dumbbell,
-  Schwimmen: Waves,
   Wandern: Mountain,
-  Yoga: Leaf,
-  Sonstiges: Activity,
 };
 
 function formatFullDate(iso: string): string {
@@ -90,7 +84,7 @@ export default function ActivityDetailScreen() {
     Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
   }, []);
 
-  const SportIcon = activity ? (SPORT_ICON_MAP[activity.type] ?? Activity) : Activity;
+  const SportIcon = activity ? (SPORT_ICON_MAP[activity.type] ?? Dumbbell) : Dumbbell;
 
   const handleMemberPress = useCallback((memberId: string) => {
     console.log('[ACTIVITY-DETAIL] Navigate to user profile:', memberId);

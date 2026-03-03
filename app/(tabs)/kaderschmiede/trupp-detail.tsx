@@ -30,10 +30,7 @@ import {
   Swords,
   Timer,
   Snowflake,
-  Waves,
   Mountain,
-  Leaf,
-  Activity,
   Check,
   X,
   Scan,
@@ -48,10 +45,7 @@ const SPORT_ICON_MAP: Record<SportCategory, React.ComponentType<any>> = {
   Ausdauer: Timer,
   Eisbaden: Snowflake,
   Kraftsport: Dumbbell,
-  Schwimmen: Waves,
   Wandern: Mountain,
-  Yoga: Leaf,
-  Sonstiges: Activity,
 };
 
 function formatDate(iso: string): string {
@@ -208,7 +202,7 @@ export default function TruppDetailScreen() {
     Animated.timing(heroAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
   }, []);
 
-  const SportIcon = trupp ? (SPORT_ICON_MAP[trupp.sport] ?? Activity) : Activity;
+  const SportIcon = trupp ? (SPORT_ICON_MAP[trupp.sport] ?? Dumbbell) : Dumbbell;
 
   const upcomingMeetings = useMemo(() => {
     if (!trupp) return [];

@@ -20,10 +20,7 @@ import {
   Swords,
   Timer,
   Snowflake,
-  Waves,
   Mountain,
-  Leaf,
-  Activity,
   ChevronDown,
   UserPlus,
   UserMinus,
@@ -44,10 +41,7 @@ const SPORT_ICON_MAP: Record<SportCategory, React.ComponentType<any>> = {
   Ausdauer: Timer,
   Eisbaden: Snowflake,
   Kraftsport: Dumbbell,
-  Schwimmen: Waves,
   Wandern: Mountain,
-  Yoga: Leaf,
-  Sonstiges: Activity,
 };
 
 function formatDateTime(iso: string): string {
@@ -76,7 +70,7 @@ function ActivityListItem({ activity, onJoin, onLeave, isJoined, onPress }: {
   isJoined: boolean;
   onPress: () => void;
 }) {
-  const SportIcon = SPORT_ICON_MAP[activity.type] ?? Activity;
+  const SportIcon = SPORT_ICON_MAP[activity.type] ?? Dumbbell;
   const spotsLeft = activity.maxParticipants - activity.participants.length;
   const isFull = spotsLeft <= 0;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -267,7 +261,7 @@ export default function MapScreen() {
               <View style={styles.filterChips}>
                 {SPORT_CATEGORIES.map(sport => {
                   const isActive = selectedSport === sport;
-                  const Icon = SPORT_ICON_MAP[sport] ?? Activity;
+                  const Icon = SPORT_ICON_MAP[sport] ?? Dumbbell;
                   return (
                     <Pressable
                       key={sport}

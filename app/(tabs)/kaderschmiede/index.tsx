@@ -23,9 +23,6 @@ import {
   Snowflake,
   Timer,
   Mountain,
-  Waves,
-  Leaf,
-  Activity,
   Zap,
   Target,
 } from 'lucide-react-native';
@@ -41,10 +38,7 @@ const SPORT_ICON_MAP: Record<SportCategory, React.ComponentType<any>> = {
   Ausdauer: Timer,
   Eisbaden: Snowflake,
   Kraftsport: Dumbbell,
-  Schwimmen: Waves,
   Wandern: Mountain,
-  Yoga: Leaf,
-  Sonstiges: Activity,
 };
 
 function formatDateTime(iso: string): string {
@@ -84,7 +78,7 @@ function AnimatedStatCard({ label, value, icon: Icon, delay }: { label: string; 
 }
 
 function ActivityCard({ activity, onPress }: { activity: TrainingActivity; onPress: () => void }) {
-  const SportIcon = SPORT_ICON_MAP[activity.type] ?? Activity;
+  const SportIcon = SPORT_ICON_MAP[activity.type] ?? Dumbbell;
   const spotsLeft = activity.maxParticipants - activity.participants.length;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 

@@ -24,10 +24,7 @@ import {
   Dumbbell,
   Timer,
   Snowflake,
-  Waves,
   Mountain,
-  Leaf,
-  Activity,
   Clock,
   Plus,
 } from 'lucide-react-native';
@@ -42,10 +39,7 @@ const SPORT_ICON_MAP: Record<SportCategory, React.ComponentType<any>> = {
   Ausdauer: Timer,
   Eisbaden: Snowflake,
   Kraftsport: Dumbbell,
-  Schwimmen: Waves,
   Wandern: Mountain,
-  Yoga: Leaf,
-  Sonstiges: Activity,
 };
 
 const TYPE_LABELS: Record<ChallengeType, string> = {
@@ -87,7 +81,7 @@ export default function ChallengeDetailScreen() {
     outputRange: ['0%', '100%'],
   });
 
-  const SportIcon = challenge ? (SPORT_ICON_MAP[challenge.sport] ?? Activity) : Activity;
+  const SportIcon = challenge ? (SPORT_ICON_MAP[challenge.sport] ?? Dumbbell) : Dumbbell;
   const sortedResults = challenge ? [...challenge.results].sort((a, b) => b.value - a.value) : [];
 
   const handleMemberPress = useCallback((memberId: string) => {

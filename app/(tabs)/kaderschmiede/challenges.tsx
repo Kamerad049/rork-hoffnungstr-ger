@@ -22,10 +22,7 @@ import {
   Dumbbell,
   Timer,
   Snowflake,
-  Waves,
   Mountain,
-  Leaf,
-  Activity,
   ChevronLeft,
   Plus,
 } from 'lucide-react-native';
@@ -39,10 +36,7 @@ const SPORT_ICON_MAP: Record<SportCategory, React.ComponentType<any>> = {
   Ausdauer: Timer,
   Eisbaden: Snowflake,
   Kraftsport: Dumbbell,
-  Schwimmen: Waves,
   Wandern: Mountain,
-  Yoga: Leaf,
-  Sonstiges: Activity,
 };
 
 const TYPE_LABELS: Record<ChallengeType, string> = {
@@ -57,7 +51,7 @@ function ChallengeDetailCard({ challenge, isParticipant, onJoin }: {
   isParticipant: boolean;
   onJoin: () => void;
 }) {
-  const SportIcon = SPORT_ICON_MAP[challenge.sport] ?? Activity;
+  const SportIcon = SPORT_ICON_MAP[challenge.sport] ?? Dumbbell;
   const totalProgress = challenge.results.reduce((sum, r) => sum + r.value, 0);
   const progressPct = Math.min((totalProgress / challenge.goal) * 100, 100);
   const daysLeft = Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - Date.now()) / 86400000));

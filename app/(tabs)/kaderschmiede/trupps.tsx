@@ -24,10 +24,7 @@ import {
   Swords,
   Timer,
   Snowflake,
-  Waves,
   Mountain,
-  Leaf,
-  Activity,
   ChevronLeft,
   Plus,
 } from 'lucide-react-native';
@@ -41,10 +38,7 @@ const SPORT_ICON_MAP: Record<SportCategory, React.ComponentType<any>> = {
   Ausdauer: Timer,
   Eisbaden: Snowflake,
   Kraftsport: Dumbbell,
-  Schwimmen: Waves,
   Wandern: Mountain,
-  Yoga: Leaf,
-  Sonstiges: Activity,
 };
 
 function TruppCard({ trupp, isMember, onJoin, onLeave, onPress }: {
@@ -54,7 +48,7 @@ function TruppCard({ trupp, isMember, onJoin, onLeave, onPress }: {
   onLeave: () => void;
   onPress: () => void;
 }) {
-  const SportIcon = SPORT_ICON_MAP[trupp.sport] ?? Activity;
+  const SportIcon = SPORT_ICON_MAP[trupp.sport] ?? Dumbbell;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = useCallback(() => {

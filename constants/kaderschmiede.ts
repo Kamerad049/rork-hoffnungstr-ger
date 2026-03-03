@@ -96,10 +96,7 @@ export type SportCategory =
   | 'Ausdauer'
   | 'Eisbaden'
   | 'Kraftsport'
-  | 'Schwimmen'
-  | 'Wandern'
-  | 'Yoga'
-  | 'Sonstiges';
+  | 'Wandern';
 
 export type SkillLevel = 'Anfänger' | 'Fortgeschritten' | 'Profi';
 
@@ -111,10 +108,7 @@ export const SPORT_CATEGORIES: SportCategory[] = [
   'Ausdauer',
   'Eisbaden',
   'Kraftsport',
-  'Schwimmen',
   'Wandern',
-  'Yoga',
-  'Sonstiges',
 ];
 
 export const SPORT_ICONS: Record<SportCategory, string> = {
@@ -123,10 +117,7 @@ export const SPORT_ICONS: Record<SportCategory, string> = {
   Ausdauer: 'Timer',
   Eisbaden: 'Snowflake',
   Kraftsport: 'Dumbbell',
-  Schwimmen: 'Waves',
   Wandern: 'Mountain',
-  Yoga: 'Leaf',
-  Sonstiges: 'Activity',
 };
 
 export const SKILL_LEVELS: SkillLevel[] = ['Anfänger', 'Fortgeschritten', 'Profi'];
