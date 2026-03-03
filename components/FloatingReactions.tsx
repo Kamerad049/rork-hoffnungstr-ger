@@ -1,9 +1,18 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, StyleSheet, Animated, Dimensions } from 'react-native';
+import { RespektIcon, AnerkennungIcon, ZuspruchIcon, VerbundenheitIcon, EhreIcon } from '@/components/ReactionIcons';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const GERMAN_COLORS = ['#000000', '#DD0000', '#FFCC00'] as const;
+
+const EMOJI_TO_ICON: Record<string, React.FC<{ size?: number; color?: string; fill?: string }>> = {
+  '\ud83d\udee1\ufe0f': RespektIcon,
+  '\u2b50': AnerkennungIcon,
+  '\ud83d\udcaa': ZuspruchIcon,
+  '\ud83e\udd1d': VerbundenheitIcon,
+  '\ud83c\udfc6': EhreIcon,
+};
 
 interface FloatingSymbol {
   id: number;
@@ -91,6 +100,7 @@ export default function FloatingReactions({ emoji, trigger, originX, originY }: 
         });
 
         const color = GERMAN_COLORS[s.colorIndex];
+        const IconComponent = EMOJI_TO_ICON[s.emoji];
 
         return (
           <Animated.View
@@ -110,9 +120,11 @@ export default function FloatingReactions({ emoji, trigger, originX, originY }: 
               },
             ]}
           >
-            <Text style={[styles.symbolText, { textShadowColor: color }]}>
-              {s.emoji}
-            </Text>
+            {IconComponent ? (
+              <IconComponent size={32} color={color} fill={`${color}22`} />
+            ) : (
+              <RespektIcon size={32} color={color} fill={`${color}22`} />
+            )}
             <View style={[styles.colorDot, { backgroundColor: color }]} />
           </Animated.View>
         );
@@ -130,16 +142,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
   },
-  symbolText: {
-    fontSize: 32,
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-  },
   colorDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginTop: -2,
+    marginTop: 2,
     opacity: 0.7,
   },
 });

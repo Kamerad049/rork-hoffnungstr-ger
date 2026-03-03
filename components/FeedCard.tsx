@@ -9,11 +9,12 @@ import {
 } from 'react-native';
 import { useAlert } from '@/providers/AlertProvider';
 import OptimizedImage, { OptimizedAvatar } from '@/components/OptimizedImage';
-import { Shield, Star, Heart, Users, MessageCircle, Share2, MoreHorizontal, MapPin, X, ChevronRight, Pencil, MessageCircleOff, Archive, Trash2, Bookmark } from 'lucide-react-native';
+import { Users, MessageCircle, Share2, MoreHorizontal, MapPin, X, ChevronRight, Pencil, MessageCircleOff, Archive, Trash2, Bookmark } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import RankIcon from '@/components/RankIcon';
 import FloatingReactions from '@/components/FloatingReactions';
+import { RespektIcon, AnerkennungIcon, ZuspruchIcon, VerbundenheitIcon, EhreIcon } from '@/components/ReactionIcons';
 
 import { usePosts } from '@/providers/PostsProvider';
 import { useSocial } from '@/providers/SocialProvider';
@@ -22,13 +23,16 @@ import { getUserById, formatTimeAgo } from '@/lib/utils';
 import type { FeedPost } from '@/constants/types';
 import ReportModal from '@/components/ReportModal';
 
-export type PostReactionType = 'respekt' | 'anerkennung' | 'zuspruch' | 'verbundenheit';
+export type PostReactionType = 'respekt' | 'anerkennung' | 'zuspruch' | 'verbundenheit' | 'ehre';
 
-const REACTION_CONFIG: { type: PostReactionType; icon: typeof Shield; label: string; emoji: string }[] = [
-  { type: 'respekt', icon: Shield, label: 'Respekt', emoji: '🛡️' },
-  { type: 'anerkennung', icon: Star, label: 'Anerkennung', emoji: '⭐' },
-  { type: 'zuspruch', icon: Heart, label: 'Zuspruch', emoji: '💪' },
-  { type: 'verbundenheit', icon: Users, label: 'Verbundenheit', emoji: '🤝' },
+type ReactionSvgComponent = React.FC<{ size?: number; color?: string; fill?: string }>;
+
+const REACTION_CONFIG: { type: PostReactionType; SvgIcon: ReactionSvgComponent; label: string; emoji: string }[] = [
+  { type: 'respekt', SvgIcon: RespektIcon, label: 'Respekt', emoji: '🛡️' },
+  { type: 'anerkennung', SvgIcon: AnerkennungIcon, label: 'Anerkennung', emoji: '⭐' },
+  { type: 'zuspruch', SvgIcon: ZuspruchIcon, label: 'Zuspruch', emoji: '💪' },
+  { type: 'verbundenheit', SvgIcon: VerbundenheitIcon, label: 'Verbundenheit', emoji: '🤝' },
+  { type: 'ehre', SvgIcon: EhreIcon, label: 'Ehre', emoji: '🏆' },
 ];
 
 const TEXT_GRADIENTS: [string, string, ...string[]][] = [
@@ -84,6 +88,7 @@ function FeedCardInner({
   const ownMenuAnim = useRef(new Animated.Value(0)).current;
   const reactionMenuAnim = useRef(new Animated.Value(0)).current;
   const reactionItemAnims = useRef(REACTION_CONFIG.map(() => new Animated.Value(0))).current;
+  const [reactionIconSize] = useState(28);
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const taggedPeopleAnim = useRef(new Animated.Value(0)).current;
   const doubleTapAnim = useRef(new Animated.Value(0)).current;
@@ -617,7 +622,11 @@ function FeedCardInner({
                         onPress={() => handleReaction(r.type, r.emoji)}
                         testID={`reaction-${r.type}-${post.id}`}
                       >
-                        <Text style={cardStyles.reactionMenuEmoji}>{r.emoji}</Text>
+                        <r.SvgIcon
+                          size={reactionIconSize}
+                          color={isChosen ? '#BFA35D' : 'rgba(232,220,200,0.7)'}
+                          fill={isChosen ? 'rgba(191,163,93,0.15)' : 'none'}
+                        />
                         <Text style={[
                           cardStyles.reactionMenuLabel,
                           isChosen && cardStyles.reactionMenuLabelActive,
@@ -685,12 +694,16 @@ function FeedCardInner({
           >
             <Animated.View style={{ transform: [{ scale: likeScaleAnim }] }}>
               {activeReactionConfig ? (
-                <Text style={cardStyles.actionEmoji}>{activeReactionConfig.emoji}</Text>
-              ) : (
-                <Shield
+                <activeReactionConfig.SvgIcon
                   size={22}
                   color={liked ? '#BFA35D' : 'rgba(232,220,200,0.5)'}
-                  fill={liked ? 'rgba(191,163,93,0.3)' : 'transparent'}
+                  fill={liked ? 'rgba(191,163,93,0.2)' : 'none'}
+                />
+              ) : (
+                <RespektIcon
+                  size={22}
+                  color={liked ? '#BFA35D' : 'rgba(232,220,200,0.5)'}
+                  fill={liked ? 'rgba(191,163,93,0.2)' : 'none'}
                 />
               )}
             </Animated.View>
@@ -722,13 +735,11 @@ function FeedCardInner({
         </Pressable>
       </View>
 
-      {reaction && (
+      {reaction && activeReactionConfig && (
         <View style={cardStyles.reactionIndicator}>
-          <Text style={cardStyles.reactionIndicatorEmoji}>
-            {activeReactionConfig?.emoji}
-          </Text>
+          <activeReactionConfig.SvgIcon size={14} color="#BFA35D" fill="rgba(191,163,93,0.15)" />
           <Text style={cardStyles.reactionIndicatorLabel}>
-            {activeReactionConfig?.label}
+            {activeReactionConfig.label}
           </Text>
         </View>
       )}
@@ -982,25 +993,28 @@ const cardStyles = StyleSheet.create({
   },
   reactionMenuRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 6,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   reactionMenuBtn: {
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     borderRadius: 16,
     backgroundColor: 'rgba(191,163,93,0.06)',
     borderWidth: 1,
     borderColor: 'rgba(191,163,93,0.1)',
-    minWidth: 72,
+    minWidth: 58,
   },
   reactionMenuBtnActive: {
     backgroundColor: 'rgba(191,163,93,0.18)',
     borderColor: 'rgba(191,163,93,0.35)',
   },
-  reactionMenuEmoji: {
-    fontSize: 28,
+  reactionMenuIconWrap: {
     marginBottom: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   reactionMenuLabel: {
     color: 'rgba(232,220,200,0.6)',
