@@ -877,69 +877,81 @@ export default function CreatePostScreen() {
             showsVerticalScrollIndicator={false}
             scrollEnabled={scrollEnabled}
           >
-            <View style={styles.composerCard}>
-              <View style={styles.authorRow}>
-                <View style={styles.avatar}>
-                  <LinearGradient colors={['#BFA35D', '#DAA520']} style={styles.avatarGradient}>
-                    <Text style={styles.avatarText}>{initial}</Text>
-                  </LinearGradient>
+            {!hasImage && (
+              <View style={styles.photoFirstPrompt}>
+                <View style={styles.photoFirstIconWrap}>
+                  <ImagePlus size={36} color="#BFA35D" />
                 </View>
-                <View style={styles.authorInfo}>
-                  <Text style={styles.authorName}>{user?.name ?? 'Ich'}</Text>
-                  <Text style={styles.authorSubtext}>Öffentlich</Text>
-                </View>
+                <Text style={styles.photoFirstTitle}>Wähle zuerst ein Foto</Text>
+                <Text style={styles.photoFirstSub}>Dein Beitrag beginnt mit einem Bild</Text>
               </View>
+            )}
 
-              <TextInput
-                style={[
-                  styles.textInput,
-                  {
-                    fontFamily: currentFont.id === 'system' || currentFont.id === 'system-bold' ? undefined : currentFont.family,
-                    fontWeight: currentFont.weight,
-                    fontStyle: currentFont.style ?? 'normal',
-                  },
-                ]}
-                placeholder="Was hast du entdeckt? Teile deine Geschichte..."
-                placeholderTextColor="rgba(142,142,147,0.5)"
-                multiline
-                maxLength={MAX_LENGTH}
-                value={content}
-                onChangeText={setContent}
-                testID="create-post-input"
-                scrollEnabled={false}
-              />
-
-              {content.length > 100 && (
-                <Text style={styles.charCount}>{content.length}/{MAX_LENGTH}</Text>
-              )}
-
-              {taggedUsers.length > 0 && (
-                <View style={styles.taggedSection}>
-                  <View style={styles.taggedRow}>
-                    <UserPlus size={12} color="#BFA35D" />
-                    <Text style={styles.taggedLabel}>Mit:</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.taggedScroll}>
-                      {taggedUsers.map((u) => (
-                        <Pressable key={u.id} style={styles.taggedChip} onPress={() => removeTaggedUser(u.id)}>
-                          <Text style={styles.taggedChipText}>@{u.username}</Text>
-                          <X size={10} color="rgba(191,163,93,0.7)" />
-                        </Pressable>
-                      ))}
-                    </ScrollView>
+            {hasImage && (
+              <View style={styles.composerCard}>
+                <View style={styles.authorRow}>
+                  <View style={styles.avatar}>
+                    <LinearGradient colors={['#BFA35D', '#DAA520']} style={styles.avatarGradient}>
+                      <Text style={styles.avatarText}>{initial}</Text>
+                    </LinearGradient>
+                  </View>
+                  <View style={styles.authorInfo}>
+                    <Text style={styles.authorName}>{user?.name ?? 'Ich'}</Text>
+                    <Text style={styles.authorSubtext}>Öffentlich</Text>
                   </View>
                 </View>
-              )}
 
-              {locationText.length > 0 && (
-                <View style={styles.locationBadge}>
-                  <MapPin size={12} color="#BFA35D" />
-                  <Text style={styles.locationBadgeText}>{locationText}</Text>
-                  <Pressable onPress={() => setLocationText('')} hitSlop={6}>
-                    <X size={12} color="rgba(191,163,93,0.6)" />
-                  </Pressable>
-                </View>
-              )}
-            </View>
+                <TextInput
+                  style={[
+                    styles.textInput,
+                    {
+                      fontFamily: currentFont.id === 'system' || currentFont.id === 'system-bold' ? undefined : currentFont.family,
+                      fontWeight: currentFont.weight,
+                      fontStyle: currentFont.style ?? 'normal',
+                    },
+                  ]}
+                  placeholder="Was hast du entdeckt? Teile deine Geschichte..."
+                  placeholderTextColor="rgba(142,142,147,0.5)"
+                  multiline
+                  maxLength={MAX_LENGTH}
+                  value={content}
+                  onChangeText={setContent}
+                  testID="create-post-input"
+                  scrollEnabled={false}
+                />
+
+                {content.length > 100 && (
+                  <Text style={styles.charCount}>{content.length}/{MAX_LENGTH}</Text>
+                )}
+
+                {taggedUsers.length > 0 && (
+                  <View style={styles.taggedSection}>
+                    <View style={styles.taggedRow}>
+                      <UserPlus size={12} color="#BFA35D" />
+                      <Text style={styles.taggedLabel}>Mit:</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.taggedScroll}>
+                        {taggedUsers.map((u) => (
+                          <Pressable key={u.id} style={styles.taggedChip} onPress={() => removeTaggedUser(u.id)}>
+                            <Text style={styles.taggedChipText}>@{u.username}</Text>
+                            <X size={10} color="rgba(191,163,93,0.7)" />
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  </View>
+                )}
+
+                {locationText.length > 0 && (
+                  <View style={styles.locationBadge}>
+                    <MapPin size={12} color="#BFA35D" />
+                    <Text style={styles.locationBadgeText}>{locationText}</Text>
+                    <Pressable onPress={() => setLocationText('')} hitSlop={6}>
+                      <X size={12} color="rgba(191,163,93,0.6)" />
+                    </Pressable>
+                  </View>
+                )}
+              </View>
+            )}
 
             {hasImage && (
               <ScrollView
@@ -1722,6 +1734,34 @@ const styles = StyleSheet.create({
   },
   dontShowText: {
     color: 'rgba(232,220,200,0.6)',
+    fontSize: 13,
+    fontWeight: '500' as const,
+  },
+  photoFirstPrompt: {
+    alignItems: 'center',
+    paddingTop: 40,
+    paddingBottom: 28,
+    gap: 10,
+  },
+  photoFirstIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  photoFirstTitle: {
+    color: '#E8DCC8',
+    fontSize: 18,
+    fontWeight: '700' as const,
+    letterSpacing: 0.2,
+  },
+  photoFirstSub: {
+    color: 'rgba(142,142,147,0.45)',
     fontSize: 13,
     fontWeight: '500' as const,
   },
