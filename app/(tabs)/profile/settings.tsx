@@ -21,6 +21,9 @@ import {
   Shield,
   LogOut,
   Share2,
+  FileText,
+  Building2,
+  HeadphonesIcon,
 } from 'lucide-react-native';
 import { useFriends } from '@/providers/FriendsProvider';
 import { useChat } from '@/providers/ChatProvider';
@@ -207,6 +210,40 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
       )}
+
+      <View style={styles.menuSection}>
+        <Text style={styles.sectionLabel}>Rechtliches & Hilfe</Text>
+
+        <Pressable
+          style={styles.menuItem}
+          onPress={() => handleNavigate('/(tabs)/profile/datenschutz')}
+          testID="settings-datenschutz"
+        >
+          <FileText size={20} color="#BFA35D" />
+          <Text style={styles.menuItemText}>Datenschutzerklärung</Text>
+          <ChevronRight size={18} color="rgba(232,220,200,0.25)" />
+        </Pressable>
+
+        <Pressable
+          style={styles.menuItem}
+          onPress={() => handleNavigate('/(tabs)/profile/impressum')}
+          testID="settings-impressum"
+        >
+          <Building2 size={20} color="#BFA35D" />
+          <Text style={styles.menuItemText}>Impressum</Text>
+          <ChevronRight size={18} color="rgba(232,220,200,0.25)" />
+        </Pressable>
+
+        <Pressable
+          style={styles.menuItem}
+          onPress={() => handleNavigate('/(tabs)/profile/support')}
+          testID="settings-support"
+        >
+          <HeadphonesIcon size={20} color="#BFA35D" />
+          <Text style={styles.menuItemText}>Support anschreiben</Text>
+          <ChevronRight size={18} color="rgba(232,220,200,0.25)" />
+        </Pressable>
+      </View>
 
       <View style={styles.menuSection}>
         <Text style={styles.sectionLabel}>Konto</Text>

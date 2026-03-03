@@ -351,6 +351,15 @@ export default function RegisterScreen() {
           </Animated.View>
         </Pressable>
       </Modal>
+      <View style={styles.legalLinks}>
+        <Pressable onPress={() => router.push('/(tabs)/profile/datenschutz' as any)}>
+          <Text style={styles.legalLinkText}>Datenschutz</Text>
+        </Pressable>
+        <Text style={styles.legalDot}>·</Text>
+        <Pressable onPress={() => router.push('/(tabs)/profile/impressum' as any)}>
+          <Text style={styles.legalLinkText}>Impressum</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -487,6 +496,22 @@ const styles = StyleSheet.create({
   switchBold: {
     color: '#BFA35D',
     fontWeight: '700' as const,
+  },
+  legalLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    paddingBottom: 20,
+  },
+  legalLinkText: {
+    color: 'rgba(191,163,93,0.35)',
+    fontSize: 12,
+    fontWeight: '500' as const,
+  },
+  legalDot: {
+    color: 'rgba(191,163,93,0.25)',
+    fontSize: 12,
   },
   optionalDivider: {
     flexDirection: 'row',
