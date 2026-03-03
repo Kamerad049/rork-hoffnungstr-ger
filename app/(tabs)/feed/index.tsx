@@ -39,7 +39,7 @@ const CARD_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_MARGIN * 2;
 export default function FeedScreen() {
   trackRender('FeedScreen');
   measureSinceBoot('FeedScreen_render');
-  const { allPosts, archivePost, toggleCommentsDisabled } = usePosts();
+  const { allPosts, archivePost, deletePost, toggleCommentsDisabled } = usePosts();
   const { activePromotions, trackImpression, trackClick, getSponsorById } = usePromotions();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -136,6 +136,15 @@ export default function FeedScreen() {
     []
   );
 
+  const handleDeletePress = useCallback(
+    (postId: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      console.log('[FEED] Deleting post:', postId);
+      deletePost(postId);
+    },
+    [deletePost]
+  );
+
   const handleArchivePress = useCallback(
     (postId: string) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -225,6 +234,7 @@ export default function FeedScreen() {
               onPostPress={handlePostPress}
               onLocationPress={handleLocationPress}
               onEditPress={handleEditPress}
+              onDeletePress={handleDeletePress}
               onArchivePress={handleArchivePress}
               onToggleCommentsPress={handleToggleCommentsPress}
               reaction={postReactions[post.id] ?? null}
@@ -235,7 +245,7 @@ export default function FeedScreen() {
         </View>
       );
     },
-    [handleCommentPress, handleUserPress, handlePostPress, handleLocationPress, handleEditPress, handleArchivePress, handleToggleCommentsPress, postReactions, handleReaction, getSponsorById, trackImpression, trackClick]
+    [handleCommentPress, handleUserPress, handlePostPress, handleLocationPress, handleEditPress, handleDeletePress, handleArchivePress, handleToggleCommentsPress, postReactions, handleReaction, getSponsorById, trackImpression, trackClick]
   );
 
   const renderHeader = useCallback(() => (
