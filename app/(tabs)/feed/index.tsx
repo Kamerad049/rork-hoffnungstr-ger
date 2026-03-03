@@ -13,7 +13,8 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { Plus } from 'lucide-react-native';
+
+import { useQueryClient } from '@tanstack/react-query';
 import { usePosts } from '@/providers/PostsProvider';
 import FeedCardComponent from '@/components/FeedCard';
 import type { PostReactionType } from '@/components/FeedCard';
@@ -23,6 +24,8 @@ import EditPostModal from '@/components/EditPostModal';
 import type { FeedPost, StoryGroup, Promotion } from '@/constants/types';
 import { trackRender, measureSinceBoot } from '@/lib/perf';
 import { usePromotions } from '@/providers/PromotionProvider';
+import { useAuth } from '@/providers/AuthProvider';
+import { queryKeys } from '@/constants/queryKeys';
 
 type FeedItem = 
   | { type: 'post'; data: FeedPost }
@@ -38,6 +41,8 @@ export default function FeedScreen() {
   measureSinceBoot('FeedScreen_render');
   const { allPosts, archivePost, toggleCommentsDisabled } = usePosts();
   const { activePromotions, trackImpression, trackClick, getSponsorById } = usePromotions();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -45,7 +50,6 @@ export default function FeedScreen() {
   const [ready, setReady] = useState<boolean>(false);
   const [editingPost, setEditingPost] = useState<FeedPost | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  const fabScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setReady(true));
@@ -161,19 +165,19 @@ export default function FeedScreen() {
     });
   }, []);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setTimeout(() => setRefreshing(false), 1200);
-  }, []);
-
-  const handleFabPressIn = useCallback(() => {
-    Animated.spring(fabScale, { toValue: 0.88, useNativeDriver: true, speed: 50 }).start();
-  }, [fabScale]);
-
-  const handleFabPressOut = useCallback(() => {
-    Animated.spring(fabScale, { toValue: 1, useNativeDriver: true, speed: 50 }).start();
-  }, [fabScale]);
+    console.log('[FEED] Refreshing posts from server...');
+    try {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.posts(user?.id ?? '') });
+      console.log('[FEED] Posts refreshed successfully');
+    } catch (e) {
+      console.log('[FEED] Error refreshing posts:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient, user?.id]);
 
   const renderFeedItem = useCallback(
     ({ item }: { item: FeedItem }) => {
@@ -295,32 +299,6 @@ export default function FeedScreen() {
         />
       )}
 
-      <Animated.View
-        style={[
-          styles.fab,
-          {
-            bottom: insets.bottom + 90,
-            transform: [{ scale: fabScale }],
-          },
-        ]}
-      >
-        <Pressable
-          style={styles.fabInner}
-          onPress={handleCreatePost}
-          onPressIn={handleFabPressIn}
-          onPressOut={handleFabPressOut}
-          testID="feed-create-fab"
-        >
-          <LinearGradient
-            colors={['#D4B96A', '#BFA35D', '#A68B45']}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-          <Plus size={24} color="#1a1710" strokeWidth={2.5} />
-        </Pressable>
-      </Animated.View>
-
       <EditPostModal
         visible={editingPost !== null}
         post={editingPost}
@@ -370,28 +348,7 @@ const styles = StyleSheet.create({
     elevation: 10,
     borderRadius: 24,
   },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    zIndex: 50,
-  },
-  fabInner: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    ...(Platform.OS !== 'web'
-      ? {
-          shadowColor: '#BFA35D',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.4,
-          shadowRadius: 12,
-        }
-      : {}),
-    elevation: 8,
-  },
+
   emptyContainer: {
     paddingHorizontal: CARD_HORIZONTAL_MARGIN,
     paddingTop: 40,
