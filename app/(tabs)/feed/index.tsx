@@ -301,9 +301,7 @@ export default function FeedScreen() {
       </LinearGradient>
 
       <View style={[styles.heroHeader, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.heroLeft}>
-          <Text style={styles.heroTitle}>Feed</Text>
-        </View>
+        <View style={styles.heroLeft} />
 
         <View style={styles.feedToggleContainer}>
           <Animated.View
