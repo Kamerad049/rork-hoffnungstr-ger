@@ -13,7 +13,7 @@ import {
   Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { ArrowLeft, Send, CornerDownRight, ChevronDown, MapPin, Share2, Bookmark, Shield } from 'lucide-react-native';
+import { ArrowLeft, Send, CornerDownRight, ChevronDown, MapPin, Share2, Bookmark, Shield, MessageCircle } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import OptimizedImage, { OptimizedAvatar } from '@/components/OptimizedImage';
@@ -64,8 +64,11 @@ export default function PostDetailScreen() {
   const [floatingTrigger, setFloatingTrigger] = useState<number>(0);
   const [floatingEmoji, setFloatingEmoji] = useState<string>('🛡️');
   const [showShare, setShowShare] = useState<boolean>(false);
+  const [showCommentInput, setShowCommentInput] = useState<boolean>(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState<boolean>(false);
 
   const inputRef = useRef<TextInput>(null);
+  const imageContainerRef = useRef<View>(null);
   const defendAnims = useRef<Record<string, Animated.Value>>({}).current;
   const reactionPickerAnim = useRef(new Animated.Value(0)).current;
   const reactionItemAnims = useRef(REACTION_CONFIG.map(() => new Animated.Value(0))).current;
@@ -128,15 +131,24 @@ export default function PostDetailScreen() {
     addComment(postId, input.trim());
     setInput('');
     setReplyTo(null);
+    setShowCommentInput(false);
   }, [input, postId, addComment]);
+
+  const handleOpenCommentInput = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowCommentInput(true);
+    setReplyTo(null);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, []);
 
   const handleReply = useCallback((comment: PostComment) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setReplyTo(comment);
+    setShowCommentInput(true);
     const commentUser = comment.userId === 'me' ? null : getUserById(comment.userId);
     const username = comment.userId === 'me' ? 'ich' : (commentUser?.username ?? 'unknown');
     setInput(`@${username} `);
-    inputRef.current?.focus();
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
   const handleDefend = useCallback((commentId: string) => {
@@ -173,6 +185,7 @@ export default function PostDetailScreen() {
   const cancelReply = useCallback(() => {
     setReplyTo(null);
     setInput('');
+    setShowCommentInput(false);
   }, []);
 
   const handleLike = useCallback(() => {
@@ -250,7 +263,6 @@ export default function PostDetailScreen() {
   const hasImage = post.mediaUrls.length > 0;
   const initial = author.displayName.charAt(0).toUpperCase();
   const activeReaction = reaction ? REACTION_CONFIG.find((r) => r.type === reaction) : null;
-  const imageContainerRef = useRef<View>(null);
 
   const renderComment = (item: PostComment, isReply: boolean) => {
     const isMe = item.userId === 'me';
@@ -438,7 +450,14 @@ export default function PostDetailScreen() {
           )}
 
           {post.content.length > 0 && (
-            <Text style={styles.postContent}>{post.content}</Text>
+            <Pressable onPress={() => setDescriptionExpanded((p) => !p)} disabled={post.content.length <= 120}>
+              <Text style={styles.postContent} numberOfLines={descriptionExpanded ? undefined : 3}>
+                {post.content}
+              </Text>
+              {!descriptionExpanded && post.content.length > 120 && (
+                <Text style={styles.showMoreText}>... mehr</Text>
+              )}
+            </Pressable>
           )}
 
           {post.location && (
@@ -485,6 +504,16 @@ export default function PostDetailScreen() {
                   <Text style={[styles.actionCount, liked && styles.actionCountActive]}>
                     {post.likeCount + (liked ? 1 : 0)}
                   </Text>
+                )}
+              </Pressable>
+              <Pressable
+                style={styles.actionBtn}
+                onPress={handleOpenCommentInput}
+                testID="post-detail-comment-btn"
+              >
+                <MessageCircle size={20} color="rgba(232,220,200,0.5)" />
+                {comments.length > 0 && (
+                  <Text style={styles.actionCount}>{comments.length}</Text>
                 )}
               </Pressable>
               <Pressable
@@ -628,39 +657,41 @@ export default function PostDetailScreen() {
           )}
         </ScrollView>
 
-        <View style={[styles.inputSection, { paddingBottom: insets.bottom + 8 }]}>
-          {replyTo && (
-            <View style={styles.replyBanner}>
-              <CornerDownRight size={12} color="#BFA35D" />
-              <Text style={styles.replyBannerText} numberOfLines={1}>
-                Antwort an {replyTo.userId === 'me' ? 'dich' : (getUserById(replyTo.userId)?.displayName ?? 'Unbekannt')}
-              </Text>
-              <Pressable onPress={cancelReply} hitSlop={8}>
-                <Text style={styles.replyCancel}>Abbrechen</Text>
+        {showCommentInput && (
+          <View style={[styles.inputSection, { paddingBottom: insets.bottom + 8 }]}>
+            {replyTo && (
+              <View style={styles.replyBanner}>
+                <CornerDownRight size={12} color="#BFA35D" />
+                <Text style={styles.replyBannerText} numberOfLines={1}>
+                  Antwort an {replyTo.userId === 'me' ? 'dich' : (getUserById(replyTo.userId)?.displayName ?? 'Unbekannt')}
+                </Text>
+                <Pressable onPress={cancelReply} hitSlop={8}>
+                  <Text style={styles.replyCancel}>Abbrechen</Text>
+                </Pressable>
+              </View>
+            )}
+            <View style={styles.inputBar}>
+              <TextInput
+                ref={inputRef}
+                style={styles.textInput}
+                placeholder="Kommentar schreiben..."
+                placeholderTextColor="rgba(191,163,93,0.35)"
+                value={input}
+                onChangeText={setInput}
+                maxLength={1000}
+                testID="comment-input"
+              />
+              <Pressable
+                style={[styles.sendBtn, input.trim() ? styles.sendBtnActive : undefined]}
+                onPress={handleSend}
+                disabled={!input.trim()}
+                testID="send-comment-btn"
+              >
+                <Send size={18} color={input.trim() ? '#0f0e0b' : 'rgba(191,163,93,0.3)'} />
               </Pressable>
             </View>
-          )}
-          <View style={styles.inputBar}>
-            <TextInput
-              ref={inputRef}
-              style={styles.textInput}
-              placeholder="Kommentar schreiben..."
-              placeholderTextColor="rgba(191,163,93,0.35)"
-              value={input}
-              onChangeText={setInput}
-              maxLength={1000}
-              testID="comment-input"
-            />
-            <Pressable
-              style={[styles.sendBtn, input.trim() ? styles.sendBtnActive : undefined]}
-              onPress={handleSend}
-              disabled={!input.trim()}
-              testID="send-comment-btn"
-            >
-              <Send size={18} color={input.trim() ? '#0f0e0b' : 'rgba(191,163,93,0.3)'} />
-            </Pressable>
           </View>
-        </View>
+        )}
       </KeyboardAvoidingView>
 
       <ShareModal
@@ -1073,22 +1104,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 6,
     gap: 8,
   },
   textInput: {
     flex: 1,
-    fontSize: 15,
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    fontSize: 14,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     color: '#E8DCC8',
     backgroundColor: 'rgba(42,42,46,0.6)',
+    height: 36,
+  },
+  showMoreText: {
+    color: 'rgba(191,163,93,0.6)',
+    fontSize: 14,
+    fontWeight: '500' as const,
+    paddingHorizontal: 16,
+    marginTop: -2,
+    paddingBottom: 4,
   },
   sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(191,163,93,0.15)',
