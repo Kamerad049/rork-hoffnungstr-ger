@@ -22,6 +22,9 @@ import { useAuth } from '@/providers/AuthProvider';
 
 import { PERSONAL_VALUES, GENDER_OPTIONS, RELIGION_OPTIONS, CROSS_STYLE_OPTIONS, BUNDESLAENDER } from '@/constants/types';
 import type { Gender, Religion, CrossStyle } from '@/constants/types';
+import LatinCrossIcon from '@/components/LatinCrossIcon';
+import OrthodoxCrossIcon from '@/components/OrthodoxCrossIcon';
+import GenderIcon from '@/components/GenderIcon';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { File as ExpoFile, Paths, Directory } from 'expo-file-system';
@@ -406,6 +409,9 @@ export default function EditProfileScreen() {
           onPress={() => { setShowGenderPicker(!showGenderPicker); setShowReligionPicker(false); setShowCrossPicker(false); }}
           testID="edit-gender-picker"
         >
+          {gender ? (
+            <GenderIcon gender={gender} size={15} color="rgba(191,163,93,0.6)" />
+          ) : null}
           <Text style={[styles.pickerText, gender ? styles.pickerTextSelected : null]}>
             {gender ? GENDER_OPTIONS.find(g => g.value === gender)?.label : 'Keine Angabe'}
           </Text>
@@ -423,6 +429,9 @@ export default function EditProfileScreen() {
                   setShowGenderPicker(false);
                 }}
               >
+                {opt.value ? (
+                  <GenderIcon gender={opt.value as 'mann' | 'frau'} size={14} color={gender === opt.value ? '#BFA35D' : 'rgba(191,163,93,0.5)'} />
+                ) : null}
                 <Text style={[styles.optionText, gender === opt.value && styles.optionTextActive]}>
                   {opt.label}
                 </Text>
@@ -497,6 +506,11 @@ export default function EditProfileScreen() {
               onPress={() => { setShowCrossPicker(!showCrossPicker); setShowGenderPicker(false); setShowReligionPicker(false); }}
               testID="edit-cross-picker"
             >
+              {crossStyle === 'orthodox' ? (
+                <OrthodoxCrossIcon size={15} color="rgba(191,163,93,0.6)" />
+              ) : crossStyle === 'latin' ? (
+                <LatinCrossIcon size={15} color="rgba(191,163,93,0.6)" />
+              ) : null}
               <Text style={[styles.pickerText, crossStyle !== 'none' ? styles.pickerTextSelected : null]}>
                 {CROSS_STYLE_OPTIONS.find(c => c.value === crossStyle)?.label ?? 'Kein Kreuz anzeigen'}
               </Text>
@@ -514,6 +528,11 @@ export default function EditProfileScreen() {
                       setShowCrossPicker(false);
                     }}
                   >
+                    {opt.value === 'orthodox' ? (
+                      <OrthodoxCrossIcon size={14} color={crossStyle === opt.value ? '#BFA35D' : 'rgba(191,163,93,0.5)'} />
+                    ) : opt.value === 'latin' ? (
+                      <LatinCrossIcon size={14} color={crossStyle === opt.value ? '#BFA35D' : 'rgba(191,163,93,0.5)'} />
+                    ) : null}
                     <Text style={[styles.optionText, crossStyle === opt.value && styles.optionTextActive]}>
                       {opt.label}
                     </Text>

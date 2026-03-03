@@ -18,6 +18,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { User, Mail, Lock, ArrowLeft, Info, X, ChevronDown } from 'lucide-react-native';
 import { useAuth } from '@/providers/AuthProvider';
 import { GENDER_OPTIONS, RELIGION_OPTIONS, type Gender, type Religion } from '@/constants/types';
+import LatinCrossIcon from '@/components/LatinCrossIcon';
+import GenderIcon from '@/components/GenderIcon';
 import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -211,7 +213,11 @@ export default function RegisterScreen() {
               onPress={() => { setShowGenderPicker(!showGenderPicker); setShowReligionPicker(false); }}
               testID="register-gender"
             >
-              <User size={18} color="rgba(191,163,93,0.5)" />
+              {gender ? (
+                <GenderIcon gender={gender} size={16} color="rgba(191,163,93,0.5)" />
+              ) : (
+                <User size={18} color="rgba(191,163,93,0.5)" />
+              )}
               <Text style={[styles.pickerText, gender ? styles.pickerTextSelected : null]}>
                 {gender ? GENDER_OPTIONS.find(g => g.value === gender)?.label : 'Geschlecht (optional)'}
               </Text>
@@ -242,7 +248,7 @@ export default function RegisterScreen() {
               onPress={() => { setShowReligionPicker(!showReligionPicker); setShowGenderPicker(false); }}
               testID="register-religion"
             >
-              <Text style={styles.pickerIcon}>✝</Text>
+              <LatinCrossIcon size={16} color="rgba(191,163,93,0.5)" />
               <Text style={[styles.pickerText, religion ? styles.pickerTextSelected : null]}>
                 {religion ? RELIGION_OPTIONS.find(r => r.value === religion)?.label : 'Religion (optional)'}
               </Text>

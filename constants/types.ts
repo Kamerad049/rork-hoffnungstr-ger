@@ -160,8 +160,8 @@ export type CrossStyle = 'latin' | 'orthodox' | 'none';
 
 export const CROSS_STYLE_OPTIONS: { value: CrossStyle; label: string }[] = [
   { value: 'none', label: 'Kein Kreuz anzeigen' },
-  { value: 'latin', label: 'Lateinisches Kreuz ✝' },
-  { value: 'orthodox', label: 'Orthodoxes Kreuz ☦' },
+  { value: 'latin', label: 'Lateinisches Kreuz' },
+  { value: 'orthodox', label: 'Orthodoxes Kreuz' },
 ];
 
 export interface SocialUser {

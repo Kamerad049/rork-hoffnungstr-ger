@@ -20,6 +20,9 @@ import type { OrdenDefinition } from '@/constants/orden';
 import RankIcon from '@/components/RankIcon';
 import WavingFlag from '@/components/WavingFlag';
 import OrdenBadge from '@/components/OrdenBadge';
+import LatinCrossIcon from '@/components/LatinCrossIcon';
+import OrthodoxCrossIcon from '@/components/OrthodoxCrossIcon';
+import GenderIcon from '@/components/GenderIcon';
 import NowPlayingWidget from '@/components/NowPlayingWidget';
 import { useSpotify } from '@/providers/SpotifyProvider';
 import { useUserOrdenQuery } from '@/hooks/useOrden';
@@ -641,6 +644,7 @@ export default function UserProfileScreen() {
               <View style={styles.faithGenderRow}>
                 {profile.showGender && profile.gender ? (
                   <View style={styles.faithGenderChip}>
+                    <GenderIcon gender={profile.gender} size={14} color="rgba(191,163,93,0.7)" />
                     <Text style={styles.faithGenderChipText}>
                       {GENDER_OPTIONS.find(g => g.value === profile.gender)?.label}
                     </Text>
@@ -655,9 +659,11 @@ export default function UserProfileScreen() {
                 ) : null}
                 {profile.crossStyle && profile.crossStyle !== 'none' ? (
                   <View style={styles.crossBadge}>
-                    <Text style={styles.crossSymbol}>
-                      {profile.crossStyle === 'orthodox' ? '\u2626' : '\u271d'}
-                    </Text>
+                    {profile.crossStyle === 'orthodox' ? (
+                      <OrthodoxCrossIcon size={16} color="#BFA35D" />
+                    ) : (
+                      <LatinCrossIcon size={16} color="#BFA35D" />
+                    )}
                   </View>
                 ) : null}
               </View>
@@ -1233,6 +1239,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   faithGenderChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
@@ -1255,10 +1264,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  crossSymbol: {
-    fontSize: 16,
-    color: '#BFA35D',
-  },
+
   flagActiveStrip: {
     flexDirection: 'row',
     alignItems: 'center',

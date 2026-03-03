@@ -75,6 +75,9 @@ import * as Haptics from 'expo-haptics';
 import type { Reel, FeedPost, Gender, Religion, CrossStyle } from '@/constants/types';
 import { GENDER_OPTIONS, RELIGION_OPTIONS } from '@/constants/types';
 import OrdenBadge from '@/components/OrdenBadge';
+import LatinCrossIcon from '@/components/LatinCrossIcon';
+import OrthodoxCrossIcon from '@/components/OrthodoxCrossIcon';
+import GenderIcon from '@/components/GenderIcon';
 import { TIER_COLORS, TIER_NAMES, type OrdenDefinition } from '@/constants/orden';
 import { useOrden } from '@/hooks/useOrden';
 import { Trophy } from 'lucide-react-native';
@@ -686,6 +689,7 @@ export default function ProfileScreen() {
             <View style={styles.faithGenderRow}>
               {profile.showGender && profile.gender ? (
                 <View style={styles.faithGenderChip}>
+                  <GenderIcon gender={profile.gender} size={14} color="rgba(191,163,93,0.7)" />
                   <Text style={styles.faithGenderChipText}>
                     {GENDER_OPTIONS.find(g => g.value === profile.gender)?.label}
                   </Text>
@@ -700,9 +704,11 @@ export default function ProfileScreen() {
               ) : null}
               {profile.crossStyle && profile.crossStyle !== 'none' ? (
                 <View style={styles.crossBadge}>
-                  <Text style={styles.crossSymbol}>
-                    {profile.crossStyle === 'orthodox' ? '\u2626' : '\u271d'}
-                  </Text>
+                  {profile.crossStyle === 'orthodox' ? (
+                    <OrthodoxCrossIcon size={16} color="#BFA35D" />
+                  ) : (
+                    <LatinCrossIcon size={16} color="#BFA35D" />
+                  )}
                 </View>
               ) : null}
             </View>
@@ -1375,6 +1381,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   faithGenderChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
@@ -1397,10 +1406,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  crossSymbol: {
-    fontSize: 16,
-    color: '#BFA35D',
-  },
+
   rankProgressBarBg: {
     width: '100%',
     height: 4,
