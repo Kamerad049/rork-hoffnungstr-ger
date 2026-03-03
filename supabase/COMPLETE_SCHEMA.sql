@@ -1107,7 +1107,7 @@ DECLARE
 BEGIN
   SELECT u.is_admin INTO result
   FROM public.users u
-  WHERE u.id::text = auth.uid()::text;
+  WHERE u.id = auth.uid();
   RETURN COALESCE(result, false);
 END;
 $;
