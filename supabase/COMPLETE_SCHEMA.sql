@@ -1080,7 +1080,7 @@ SECURITY DEFINER
 STABLE
 AS $$
   SELECT COALESCE(
-    (SELECT is_admin FROM users WHERE id = auth.uid()),
+    (SELECT is_admin FROM users WHERE id = auth.uid()::text::text),
     false
   );
 $$;
@@ -1100,12 +1100,12 @@ CREATE POLICY "users_select_authenticated" ON users
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "users_insert_own" ON users
-  FOR INSERT TO authenticated WITH CHECK (id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (id = auth.uid()::text::text);
 
 CREATE POLICY "users_update_own" ON users
   FOR UPDATE TO authenticated
-  USING (id = auth.uid() OR public.is_admin())
-  WITH CHECK (id = auth.uid() OR public.is_admin());
+  USING (id = auth.uid()::text::text OR public.is_admin())
+  WITH CHECK (id = auth.uid()::text::text OR public.is_admin());
 
 CREATE POLICY "users_delete_admin" ON users
   FOR DELETE TO authenticated USING (public.is_admin());
@@ -1120,10 +1120,10 @@ CREATE POLICY "user_values_select_authenticated" ON user_values
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "user_values_insert_own" ON user_values
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "user_values_delete_own" ON user_values
-  FOR DELETE TO authenticated USING (user_id = auth.uid());
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
 
 -- === PRIVACY_SETTINGS ===
@@ -1132,14 +1132,14 @@ DROP POLICY IF EXISTS "privacy_insert_own" ON privacy_settings;
 DROP POLICY IF EXISTS "privacy_update_own" ON privacy_settings;
 
 CREATE POLICY "privacy_select_own" ON privacy_settings
-  FOR SELECT TO authenticated USING (user_id = auth.uid());
+  FOR SELECT TO authenticated USING (user_id = auth.uid()::text);
 
 CREATE POLICY "privacy_insert_own" ON privacy_settings
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "privacy_update_own" ON privacy_settings
   FOR UPDATE TO authenticated
-  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  USING (user_id = auth.uid()::text) WITH CHECK (user_id = auth.uid()::text);
 
 
 -- === FRIENDSHIPS ===
@@ -1149,15 +1149,15 @@ DROP POLICY IF EXISTS "friendships_delete_own" ON friendships;
 
 CREATE POLICY "friendships_select_own" ON friendships
   FOR SELECT TO authenticated
-  USING (user_id = auth.uid() OR friend_id = auth.uid());
+  USING (user_id = auth.uid()::text OR friend_id = auth.uid()::text);
 
 CREATE POLICY "friendships_insert_own" ON friendships
   FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid() OR friend_id = auth.uid());
+  WITH CHECK (user_id = auth.uid()::text OR friend_id = auth.uid()::text);
 
 CREATE POLICY "friendships_delete_own" ON friendships
   FOR DELETE TO authenticated
-  USING (user_id = auth.uid() OR friend_id = auth.uid());
+  USING (user_id = auth.uid()::text OR friend_id = auth.uid()::text);
 
 
 -- === FRIEND_REQUESTS ===
@@ -1168,17 +1168,17 @@ DROP POLICY IF EXISTS "friend_requests_delete_own" ON friend_requests;
 
 CREATE POLICY "friend_requests_select_own" ON friend_requests
   FOR SELECT TO authenticated
-  USING (from_user_id = auth.uid() OR to_user_id = auth.uid());
+  USING (from_user_id = auth.uid()::text OR to_user_id = auth.uid()::text);
 
 CREATE POLICY "friend_requests_insert_own" ON friend_requests
-  FOR INSERT TO authenticated WITH CHECK (from_user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (from_user_id = auth.uid()::text);
 
 CREATE POLICY "friend_requests_update_own" ON friend_requests
   FOR UPDATE TO authenticated
-  USING (to_user_id = auth.uid()) WITH CHECK (to_user_id = auth.uid());
+  USING (to_user_id = auth.uid()::text) WITH CHECK (to_user_id = auth.uid()::text);
 
 CREATE POLICY "friend_requests_delete_own" ON friend_requests
-  FOR DELETE TO authenticated USING (from_user_id = auth.uid());
+  FOR DELETE TO authenticated USING (from_user_id = auth.uid()::text);
 
 
 -- === BLOCKED_USERS ===
@@ -1187,13 +1187,13 @@ DROP POLICY IF EXISTS "blocked_insert_own" ON blocked_users;
 DROP POLICY IF EXISTS "blocked_delete_own" ON blocked_users;
 
 CREATE POLICY "blocked_select_own" ON blocked_users
-  FOR SELECT TO authenticated USING (blocker_id = auth.uid());
+  FOR SELECT TO authenticated USING (blocker_id = auth.uid()::text);
 
 CREATE POLICY "blocked_insert_own" ON blocked_users
-  FOR INSERT TO authenticated WITH CHECK (blocker_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (blocker_id = auth.uid()::text);
 
 CREATE POLICY "blocked_delete_own" ON blocked_users
-  FOR DELETE TO authenticated USING (blocker_id = auth.uid());
+  FOR DELETE TO authenticated USING (blocker_id = auth.uid()::text);
 
 
 -- === POSTS ===
@@ -1206,16 +1206,16 @@ CREATE POLICY "posts_select_authenticated" ON posts
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "posts_insert_own" ON posts
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "posts_update_own" ON posts
   FOR UPDATE TO authenticated
-  USING (user_id = auth.uid() OR public.is_admin())
-  WITH CHECK (user_id = auth.uid() OR public.is_admin());
+  USING (user_id = auth.uid()::text OR public.is_admin())
+  WITH CHECK (user_id = auth.uid()::text OR public.is_admin());
 
 CREATE POLICY "posts_delete_own" ON posts
   FOR DELETE TO authenticated
-  USING (user_id = auth.uid() OR public.is_admin());
+  USING (user_id = auth.uid()::text OR public.is_admin());
 
 
 -- === POST_LIKES ===
@@ -1227,10 +1227,10 @@ CREATE POLICY "post_likes_select_authenticated" ON post_likes
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "post_likes_insert_own" ON post_likes
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "post_likes_delete_own" ON post_likes
-  FOR DELETE TO authenticated USING (user_id = auth.uid());
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
 
 -- === POST_COMMENTS ===
@@ -1242,11 +1242,11 @@ CREATE POLICY "post_comments_select_authenticated" ON post_comments
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "post_comments_insert_own" ON post_comments
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "post_comments_delete_own" ON post_comments
   FOR DELETE TO authenticated
-  USING (user_id = auth.uid() OR public.is_admin());
+  USING (user_id = auth.uid()::text OR public.is_admin());
 
 
 -- === STORIES ===
@@ -1258,10 +1258,10 @@ CREATE POLICY "stories_select_authenticated" ON stories
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "stories_insert_own" ON stories
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "stories_delete_own" ON stories
-  FOR DELETE TO authenticated USING (user_id = auth.uid());
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
 
 -- === STORY_VIEWERS ===
@@ -1272,7 +1272,7 @@ CREATE POLICY "story_viewers_select_authenticated" ON story_viewers
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "story_viewers_insert_own" ON story_viewers
-  FOR INSERT TO authenticated WITH CHECK (viewer_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (viewer_id = auth.uid()::text);
 
 
 -- === CHAT_MESSAGES ===
@@ -1283,18 +1283,18 @@ DROP POLICY IF EXISTS "chat_delete_own" ON chat_messages;
 
 CREATE POLICY "chat_select_own" ON chat_messages
   FOR SELECT TO authenticated
-  USING (from_user_id = auth.uid() OR to_user_id = auth.uid());
+  USING (from_user_id = auth.uid()::text OR to_user_id = auth.uid()::text);
 
 CREATE POLICY "chat_insert_own" ON chat_messages
-  FOR INSERT TO authenticated WITH CHECK (from_user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (from_user_id = auth.uid()::text);
 
 CREATE POLICY "chat_update_own" ON chat_messages
   FOR UPDATE TO authenticated
-  USING (from_user_id = auth.uid() OR to_user_id = auth.uid());
+  USING (from_user_id = auth.uid()::text OR to_user_id = auth.uid()::text);
 
 CREATE POLICY "chat_delete_own" ON chat_messages
   FOR DELETE TO authenticated
-  USING (from_user_id = auth.uid() OR to_user_id = auth.uid());
+  USING (from_user_id = auth.uid()::text OR to_user_id = auth.uid()::text);
 
 
 -- === NEWS ===
@@ -1365,7 +1365,7 @@ CREATE POLICY "reviews_select_authenticated" ON reviews
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "reviews_insert_own" ON reviews
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 
 -- === REVIEW_VOTES ===
@@ -1377,10 +1377,10 @@ CREATE POLICY "review_votes_select_authenticated" ON review_votes
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "review_votes_insert_own" ON review_votes
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "review_votes_delete_own" ON review_votes
-  FOR DELETE TO authenticated USING (user_id = auth.uid());
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
 
 -- === FAVORITES ===
@@ -1389,13 +1389,13 @@ DROP POLICY IF EXISTS "favorites_insert_own" ON favorites;
 DROP POLICY IF EXISTS "favorites_delete_own" ON favorites;
 
 CREATE POLICY "favorites_select_own" ON favorites
-  FOR SELECT TO authenticated USING (user_id = auth.uid());
+  FOR SELECT TO authenticated USING (user_id = auth.uid()::text);
 
 CREATE POLICY "favorites_insert_own" ON favorites
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "favorites_delete_own" ON favorites
-  FOR DELETE TO authenticated USING (user_id = auth.uid());
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
 
 -- === COLLECTED_STAMPS ===
@@ -1406,7 +1406,7 @@ CREATE POLICY "stamps_select_authenticated" ON collected_stamps
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "stamps_insert_own" ON collected_stamps
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 
 -- === INBOX_NOTIFICATIONS ===
@@ -1416,17 +1416,17 @@ DROP POLICY IF EXISTS "inbox_update_own" ON inbox_notifications;
 DROP POLICY IF EXISTS "inbox_delete_own" ON inbox_notifications;
 
 CREATE POLICY "inbox_select_own" ON inbox_notifications
-  FOR SELECT TO authenticated USING (user_id = auth.uid());
+  FOR SELECT TO authenticated USING (user_id = auth.uid()::text);
 
 CREATE POLICY "inbox_insert_own" ON inbox_notifications
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "inbox_update_own" ON inbox_notifications
   FOR UPDATE TO authenticated
-  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  USING (user_id = auth.uid()::text) WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "inbox_delete_own" ON inbox_notifications
-  FOR DELETE TO authenticated USING (user_id = auth.uid());
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
 
 -- === PUSH_NOTIFICATIONS ===
@@ -1447,10 +1447,10 @@ DROP POLICY IF EXISTS "submissions_update_admin" ON submissions;
 DROP POLICY IF EXISTS "submissions_delete_admin" ON submissions;
 
 CREATE POLICY "submissions_select_authenticated" ON submissions
-  FOR SELECT TO authenticated USING (submitted_by = auth.uid() OR public.is_admin());
+  FOR SELECT TO authenticated USING (submitted_by = auth.uid()::text OR public.is_admin());
 
 CREATE POLICY "submissions_insert_own" ON submissions
-  FOR INSERT TO authenticated WITH CHECK (submitted_by = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (submitted_by = auth.uid()::text);
 
 CREATE POLICY "submissions_update_admin" ON submissions
   FOR UPDATE TO authenticated
@@ -1466,13 +1466,13 @@ DROP POLICY IF EXISTS "reel_bookmarks_insert_own" ON reel_bookmarks;
 DROP POLICY IF EXISTS "reel_bookmarks_delete_own" ON reel_bookmarks;
 
 CREATE POLICY "reel_bookmarks_select_own" ON reel_bookmarks
-  FOR SELECT TO authenticated USING (user_id = auth.uid());
+  FOR SELECT TO authenticated USING (user_id = auth.uid()::text);
 
 CREATE POLICY "reel_bookmarks_insert_own" ON reel_bookmarks
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "reel_bookmarks_delete_own" ON reel_bookmarks
-  FOR DELETE TO authenticated USING (user_id = auth.uid());
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
 
 -- === REEL_COMMENTS ===
@@ -1483,7 +1483,7 @@ CREATE POLICY "reel_comments_select_authenticated" ON reel_comments
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "reel_comments_insert_own" ON reel_comments
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 
 -- === REEL_COMMENT_LIKES ===
@@ -1492,13 +1492,13 @@ DROP POLICY IF EXISTS "reel_comment_likes_insert_own" ON reel_comment_likes;
 DROP POLICY IF EXISTS "reel_comment_likes_delete_own" ON reel_comment_likes;
 
 CREATE POLICY "reel_comment_likes_select_own" ON reel_comment_likes
-  FOR SELECT TO authenticated USING (user_id = auth.uid());
+  FOR SELECT TO authenticated USING (user_id = auth.uid()::text);
 
 CREATE POLICY "reel_comment_likes_insert_own" ON reel_comment_likes
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "reel_comment_likes_delete_own" ON reel_comment_likes
-  FOR DELETE TO authenticated USING (user_id = auth.uid());
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
 
 -- === LIVE_LOCATIONS ===
@@ -1511,14 +1511,14 @@ CREATE POLICY "live_locations_select_authenticated" ON live_locations
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "live_locations_insert_own" ON live_locations
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "live_locations_update_own" ON live_locations
   FOR UPDATE TO authenticated
-  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  USING (user_id = auth.uid()::text) WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "live_locations_delete_own" ON live_locations
-  FOR DELETE TO authenticated USING (user_id = auth.uid());
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
 
 -- === SPOTIFY_TRACKS ===
@@ -1530,11 +1530,11 @@ CREATE POLICY "spotify_select_authenticated" ON spotify_tracks
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "spotify_insert_own" ON spotify_tracks
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "spotify_update_own" ON spotify_tracks
   FOR UPDATE TO authenticated
-  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  USING (user_id = auth.uid()::text) WITH CHECK (user_id = auth.uid()::text);
 
 
 -- === SPONSORS ===
@@ -1598,7 +1598,7 @@ DROP POLICY IF EXISTS "impressions_insert_own" ON promotion_impressions;
 DROP POLICY IF EXISTS "impressions_select_admin" ON promotion_impressions;
 
 CREATE POLICY "impressions_insert_own" ON promotion_impressions
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "impressions_select_admin" ON promotion_impressions
   FOR SELECT TO authenticated USING (public.is_admin());
@@ -1609,7 +1609,7 @@ DROP POLICY IF EXISTS "clicks_insert_own" ON promotion_clicks;
 DROP POLICY IF EXISTS "clicks_select_admin" ON promotion_clicks;
 
 CREATE POLICY "clicks_insert_own" ON promotion_clicks
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "clicks_select_admin" ON promotion_clicks
   FOR SELECT TO authenticated USING (public.is_admin());
@@ -1646,7 +1646,7 @@ CREATE POLICY "user_orders_read_authenticated" ON user_orders
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "user_orders_insert_service" ON user_orders
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 
 -- === KADERSCHMIEDE (alle Tabellen) ===
@@ -1657,7 +1657,7 @@ CREATE POLICY "kader_activities_select" ON kaderschmiede_activities
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "kader_activities_insert" ON kaderschmiede_activities
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 DROP POLICY IF EXISTS "kader_act_part_select" ON kaderschmiede_activity_participants;
 DROP POLICY IF EXISTS "kader_act_part_insert" ON kaderschmiede_activity_participants;
@@ -1667,10 +1667,10 @@ CREATE POLICY "kader_act_part_select" ON kaderschmiede_activity_participants
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "kader_act_part_insert" ON kaderschmiede_activity_participants
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "kader_act_part_delete" ON kaderschmiede_activity_participants
-  FOR DELETE TO authenticated USING (user_id = auth.uid());
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
 DROP POLICY IF EXISTS "kader_trupps_select" ON kaderschmiede_trupps;
 DROP POLICY IF EXISTS "kader_trupps_insert" ON kaderschmiede_trupps;
@@ -1679,7 +1679,7 @@ CREATE POLICY "kader_trupps_select" ON kaderschmiede_trupps
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "kader_trupps_insert" ON kaderschmiede_trupps
-  FOR INSERT TO authenticated WITH CHECK (leader_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (leader_id = auth.uid()::text);
 
 DROP POLICY IF EXISTS "kader_trupp_members_select" ON kaderschmiede_trupp_members;
 DROP POLICY IF EXISTS "kader_trupp_members_insert" ON kaderschmiede_trupp_members;
@@ -1689,10 +1689,10 @@ CREATE POLICY "kader_trupp_members_select" ON kaderschmiede_trupp_members
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "kader_trupp_members_insert" ON kaderschmiede_trupp_members
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "kader_trupp_members_delete" ON kaderschmiede_trupp_members
-  FOR DELETE TO authenticated USING (user_id = auth.uid());
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
 DROP POLICY IF EXISTS "kader_meetings_select" ON kaderschmiede_trupp_meetings;
 DROP POLICY IF EXISTS "kader_meetings_insert" ON kaderschmiede_trupp_meetings;
@@ -1711,10 +1711,10 @@ CREATE POLICY "kader_meeting_att_select" ON kaderschmiede_meeting_attendees
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "kader_meeting_att_insert" ON kaderschmiede_meeting_attendees
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 CREATE POLICY "kader_meeting_att_delete" ON kaderschmiede_meeting_attendees
-  FOR DELETE TO authenticated USING (user_id = auth.uid());
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
 DROP POLICY IF EXISTS "kader_challenges_select" ON kaderschmiede_challenges;
 DROP POLICY IF EXISTS "kader_challenges_insert" ON kaderschmiede_challenges;
@@ -1723,7 +1723,7 @@ CREATE POLICY "kader_challenges_select" ON kaderschmiede_challenges
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "kader_challenges_insert" ON kaderschmiede_challenges
-  FOR INSERT TO authenticated WITH CHECK (creator_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (creator_id = auth.uid()::text);
 
 DROP POLICY IF EXISTS "kader_ch_part_select" ON kaderschmiede_challenge_participants;
 DROP POLICY IF EXISTS "kader_ch_part_insert" ON kaderschmiede_challenge_participants;
@@ -1732,7 +1732,7 @@ CREATE POLICY "kader_ch_part_select" ON kaderschmiede_challenge_participants
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "kader_ch_part_insert" ON kaderschmiede_challenge_participants
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 DROP POLICY IF EXISTS "kader_ch_results_select" ON kaderschmiede_challenge_results;
 DROP POLICY IF EXISTS "kader_ch_results_insert" ON kaderschmiede_challenge_results;
@@ -1741,16 +1741,16 @@ CREATE POLICY "kader_ch_results_select" ON kaderschmiede_challenge_results
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "kader_ch_results_insert" ON kaderschmiede_challenge_results
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 DROP POLICY IF EXISTS "kader_workout_select" ON kaderschmiede_workout_logs;
 DROP POLICY IF EXISTS "kader_workout_insert" ON kaderschmiede_workout_logs;
 
 CREATE POLICY "kader_workout_select" ON kaderschmiede_workout_logs
-  FOR SELECT TO authenticated USING (user_id = auth.uid());
+  FOR SELECT TO authenticated USING (user_id = auth.uid()::text);
 
 CREATE POLICY "kader_workout_insert" ON kaderschmiede_workout_logs
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 DROP POLICY IF EXISTS "kader_checkins_select" ON kaderschmiede_checkins;
 DROP POLICY IF EXISTS "kader_checkins_insert" ON kaderschmiede_checkins;
@@ -1760,11 +1760,11 @@ CREATE POLICY "kader_checkins_select" ON kaderschmiede_checkins
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "kader_checkins_insert" ON kaderschmiede_checkins
-  FOR INSERT TO authenticated WITH CHECK (host_user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (host_user_id = auth.uid()::text);
 
 CREATE POLICY "kader_checkins_update" ON kaderschmiede_checkins
   FOR UPDATE TO authenticated
-  USING (host_user_id = auth.uid()) WITH CHECK (host_user_id = auth.uid());
+  USING (host_user_id = auth.uid()::text) WITH CHECK (host_user_id = auth.uid()::text);
 
 DROP POLICY IF EXISTS "kader_checkin_entries_select" ON kaderschmiede_checkin_entries;
 DROP POLICY IF EXISTS "kader_checkin_entries_insert" ON kaderschmiede_checkin_entries;
@@ -1773,7 +1773,7 @@ CREATE POLICY "kader_checkin_entries_select" ON kaderschmiede_checkin_entries
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "kader_checkin_entries_insert" ON kaderschmiede_checkin_entries
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
 
 
 -- ############################################################
