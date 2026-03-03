@@ -635,41 +635,35 @@ export default function ProfileScreen() {
         >
           <View style={styles.heroPattern}>
             <LinearGradient
-              colors={['rgba(10,10,10,0.9)', 'rgba(10,10,10,0.6)', 'rgba(10,10,10,0)']}
+              colors={['rgba(10,10,10,0.85)', 'rgba(10,10,10,0.5)', 'rgba(10,10,10,0)']}
               start={{ x: 1, y: 0 }}
-              end={{ x: 0, y: 0.5 }}
-              style={[styles.heroStripe, styles.heroStripeBlack]}
+              end={{ x: 0, y: 0.6 }}
+              style={[styles.heroColorBand, styles.heroBandBlack]}
             />
             <LinearGradient
-              colors={['rgba(10,10,10,0.5)', 'rgba(10,10,10,0.25)', 'rgba(10,10,10,0)']}
+              colors={['rgba(180,30,30,0.65)', 'rgba(160,25,25,0.35)', 'rgba(140,20,20,0)']}
               start={{ x: 1, y: 0 }}
-              end={{ x: 0, y: 0.5 }}
-              style={[styles.heroStripe, styles.heroStripeBlackAccent]}
+              end={{ x: 0, y: 0.6 }}
+              style={[styles.heroColorBand, styles.heroBandRed]}
             />
             <LinearGradient
-              colors={['rgba(180,30,30,0.7)', 'rgba(180,30,30,0.45)', 'rgba(180,30,30,0)']}
+              colors={['rgba(212,175,55,0.55)', 'rgba(191,163,93,0.3)', 'rgba(170,140,50,0)']}
               start={{ x: 1, y: 0 }}
-              end={{ x: 0, y: 0.5 }}
-              style={[styles.heroStripe, styles.heroStripeRed]}
+              end={{ x: 0, y: 0.6 }}
+              style={[styles.heroColorBand, styles.heroBandGold]}
             />
-            <LinearGradient
-              colors={['rgba(160,25,25,0.4)', 'rgba(160,25,25,0.2)', 'rgba(160,25,25,0)']}
-              start={{ x: 1, y: 0 }}
-              end={{ x: 0, y: 0.5 }}
-              style={[styles.heroStripe, styles.heroStripeRedAccent]}
-            />
-            <LinearGradient
-              colors={['rgba(212,175,55,0.6)', 'rgba(212,175,55,0.35)', 'rgba(212,175,55,0)']}
-              start={{ x: 1, y: 0 }}
-              end={{ x: 0, y: 0.5 }}
-              style={[styles.heroStripe, styles.heroStripeGold]}
-            />
-            <LinearGradient
-              colors={['rgba(191,163,93,0.3)', 'rgba(191,163,93,0.15)', 'rgba(191,163,93,0)']}
-              start={{ x: 1, y: 0 }}
-              end={{ x: 0, y: 0.5 }}
-              style={[styles.heroStripe, styles.heroStripeGoldAccent]}
-            />
+            {[...Array(8)].map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.heroLine,
+                  {
+                    top: 14 + i * 22,
+                    opacity: 0.04 + i * 0.006,
+                  },
+                ]}
+              />
+            ))}
           </View>
 
           <View style={styles.headerTopRow}>
@@ -1123,46 +1117,35 @@ const styles = StyleSheet.create({
   heroPattern: {
     ...StyleSheet.absoluteFillObject,
   },
-  heroStripe: {
+  heroColorBand: {
     position: 'absolute',
-    height: 14,
-    transform: [{ rotate: '-32deg' }],
+    transform: [{ rotate: '-12deg' }],
   },
-  heroStripeBlack: {
-    top: 12,
-    right: -60,
-    width: SCREEN_WIDTH * 0.9,
+  heroBandBlack: {
+    top: 10,
+    left: -40,
+    right: -40,
+    height: 18,
   },
-  heroStripeBlackAccent: {
-    top: 28,
-    right: -50,
-    width: SCREEN_WIDTH * 0.78,
-    height: 6,
-    opacity: 0.6,
+  heroBandRed: {
+    top: 54,
+    left: -40,
+    right: -40,
+    height: 18,
   },
-  heroStripeRed: {
-    top: 40,
-    right: -60,
-    width: SCREEN_WIDTH * 0.8,
+  heroBandGold: {
+    top: 98,
+    left: -40,
+    right: -40,
+    height: 18,
   },
-  heroStripeRedAccent: {
-    top: 56,
-    right: -50,
-    width: SCREEN_WIDTH * 0.68,
-    height: 6,
-    opacity: 0.7,
-  },
-  heroStripeGold: {
-    top: 68,
-    right: -60,
-    width: SCREEN_WIDTH * 0.7,
-  },
-  heroStripeGoldAccent: {
-    top: 84,
-    right: -50,
-    width: SCREEN_WIDTH * 0.55,
-    height: 5,
-    opacity: 0.5,
+  heroLine: {
+    position: 'absolute',
+    left: -40,
+    right: -40,
+    height: 1,
+    backgroundColor: '#BFA35D',
+    transform: [{ rotate: '-12deg' }],
   },
   headerTopRow: {
     flexDirection: 'row',

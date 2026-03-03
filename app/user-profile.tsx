@@ -609,23 +609,35 @@ export default function UserProfileScreen() {
             </Pressable>
             <View style={styles.heroPattern}>
               <LinearGradient
-                colors={['rgba(10,10,10,0.9)', 'rgba(10,10,10,0.6)', 'rgba(10,10,10,0)']}
+                colors={['rgba(10,10,10,0.85)', 'rgba(10,10,10,0.5)', 'rgba(10,10,10,0)']}
                 start={{ x: 1, y: 0 }}
-                end={{ x: 0, y: 0.5 }}
-                style={[styles.heroStripe, styles.heroStripeBlack]}
+                end={{ x: 0, y: 0.6 }}
+                style={[styles.heroColorBand, styles.heroBandBlack]}
               />
               <LinearGradient
-                colors={['rgba(180,30,30,0.7)', 'rgba(180,30,30,0.45)', 'rgba(180,30,30,0)']}
+                colors={['rgba(180,30,30,0.65)', 'rgba(160,25,25,0.35)', 'rgba(140,20,20,0)']}
                 start={{ x: 1, y: 0 }}
-                end={{ x: 0, y: 0.5 }}
-                style={[styles.heroStripe, styles.heroStripeRed]}
+                end={{ x: 0, y: 0.6 }}
+                style={[styles.heroColorBand, styles.heroBandRed]}
               />
               <LinearGradient
-                colors={['rgba(212,175,55,0.6)', 'rgba(212,175,55,0.35)', 'rgba(212,175,55,0)']}
+                colors={['rgba(212,175,55,0.55)', 'rgba(191,163,93,0.3)', 'rgba(170,140,50,0)']}
                 start={{ x: 1, y: 0 }}
-                end={{ x: 0, y: 0.5 }}
-                style={[styles.heroStripe, styles.heroStripeGold]}
+                end={{ x: 0, y: 0.6 }}
+                style={[styles.heroColorBand, styles.heroBandGold]}
               />
+              {[...Array(8)].map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.heroLine,
+                    {
+                      top: 14 + i * 22,
+                      opacity: 0.04 + i * 0.006,
+                    },
+                  ]}
+                />
+              ))}
             </View>
 
             <View style={styles.avatarArea}>
@@ -1076,25 +1088,35 @@ const styles = StyleSheet.create({
   heroPattern: {
     ...StyleSheet.absoluteFillObject,
   },
-  heroStripe: {
+  heroColorBand: {
     position: 'absolute',
-    height: 14,
-    transform: [{ rotate: '-32deg' }],
+    transform: [{ rotate: '-12deg' }],
   },
-  heroStripeBlack: {
-    top: 18,
-    right: -60,
-    width: SCREEN_WIDTH * 0.85,
+  heroBandBlack: {
+    top: 10,
+    left: -40,
+    right: -40,
+    height: 18,
   },
-  heroStripeRed: {
-    top: 38,
-    right: -60,
-    width: SCREEN_WIDTH * 0.75,
+  heroBandRed: {
+    top: 54,
+    left: -40,
+    right: -40,
+    height: 18,
   },
-  heroStripeGold: {
-    top: 58,
-    right: -60,
-    width: SCREEN_WIDTH * 0.65,
+  heroBandGold: {
+    top: 98,
+    left: -40,
+    right: -40,
+    height: 18,
+  },
+  heroLine: {
+    position: 'absolute',
+    left: -40,
+    right: -40,
+    height: 1,
+    backgroundColor: '#BFA35D',
+    transform: [{ rotate: '-12deg' }],
   },
   avatarArea: {
     marginBottom: 16,
