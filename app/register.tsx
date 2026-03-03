@@ -15,8 +15,9 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { User, Mail, Lock, ArrowLeft, Info, X } from 'lucide-react-native';
+import { User, Mail, Lock, ArrowLeft, Info, X, ChevronDown } from 'lucide-react-native';
 import { useAuth } from '@/providers/AuthProvider';
+import { GENDER_OPTIONS, RELIGION_OPTIONS, type Gender, type Religion } from '@/constants/types';
 import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -28,6 +29,10 @@ export default function RegisterScreen() {
   const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [gender, setGender] = useState<Gender>('');
+  const [religion, setReligion] = useState<Religion>('');
+  const [showGenderPicker, setShowGenderPicker] = useState<boolean>(false);
+  const [showReligionPicker, setShowReligionPicker] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showEmailHint, setShowEmailHint] = useState<boolean>(false);
   const [hasShownEmailHint, setHasShownEmailHint] = useState<boolean>(false);
@@ -98,7 +103,7 @@ export default function RegisterScreen() {
 
     setIsLoading(true);
     try {
-      await register(name.trim(), email.trim(), password);
+      await register(name.trim(), email.trim(), password, { gender, religion });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace('/');
     } catch (err: any) {
@@ -194,6 +199,74 @@ export default function RegisterScreen() {
                 testID="register-password"
               />
             </View>
+
+            <View style={styles.optionalDivider}>
+              <View style={styles.optionalDividerLine} />
+              <Text style={styles.optionalDividerText}>Freiwillige Angaben</Text>
+              <View style={styles.optionalDividerLine} />
+            </View>
+
+            <Pressable
+              style={styles.pickerWrapper}
+              onPress={() => { setShowGenderPicker(!showGenderPicker); setShowReligionPicker(false); }}
+              testID="register-gender"
+            >
+              <User size={18} color="rgba(191,163,93,0.5)" />
+              <Text style={[styles.pickerText, gender ? styles.pickerTextSelected : null]}>
+                {gender ? GENDER_OPTIONS.find(g => g.value === gender)?.label : 'Geschlecht (optional)'}
+              </Text>
+              <ChevronDown size={16} color="rgba(191,163,93,0.35)" />
+            </Pressable>
+            {showGenderPicker && (
+              <View style={styles.optionsList}>
+                {GENDER_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    style={[styles.optionItem, gender === opt.value && styles.optionItemActive]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setGender(opt.value);
+                      setShowGenderPicker(false);
+                    }}
+                  >
+                    <Text style={[styles.optionText, gender === opt.value && styles.optionTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            <Pressable
+              style={styles.pickerWrapper}
+              onPress={() => { setShowReligionPicker(!showReligionPicker); setShowGenderPicker(false); }}
+              testID="register-religion"
+            >
+              <Text style={styles.pickerIcon}>✝</Text>
+              <Text style={[styles.pickerText, religion ? styles.pickerTextSelected : null]}>
+                {religion ? RELIGION_OPTIONS.find(r => r.value === religion)?.label : 'Religion (optional)'}
+              </Text>
+              <ChevronDown size={16} color="rgba(191,163,93,0.35)" />
+            </Pressable>
+            {showReligionPicker && (
+              <View style={styles.optionsList}>
+                {RELIGION_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    style={[styles.optionItem, religion === opt.value && styles.optionItemActive]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setReligion(opt.value);
+                      setShowReligionPicker(false);
+                    }}
+                  >
+                    <Text style={[styles.optionText, religion === opt.value && styles.optionTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
 
             <Pressable
               style={({ pressed }) => [
@@ -407,6 +480,74 @@ const styles = StyleSheet.create({
   switchBold: {
     color: '#BFA35D',
     fontWeight: '700' as const,
+  },
+  optionalDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 4,
+    marginBottom: -4,
+  },
+  optionalDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+  },
+  optionalDividerText: {
+    color: 'rgba(191,163,93,0.35)',
+    fontSize: 12,
+    fontWeight: '600' as const,
+    letterSpacing: 0.5,
+  },
+  pickerWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    height: 54,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.15)',
+  },
+  pickerIcon: {
+    fontSize: 18,
+    color: 'rgba(191,163,93,0.5)',
+    width: 18,
+    textAlign: 'center' as const,
+  },
+  pickerText: {
+    flex: 1,
+    color: 'rgba(191,163,93,0.35)',
+    fontSize: 16,
+  },
+  pickerTextSelected: {
+    color: '#E8DCC8',
+  },
+  optionsList: {
+    backgroundColor: 'rgba(191,163,93,0.04)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+    overflow: 'hidden',
+    marginTop: -8,
+  },
+  optionItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(191,163,93,0.06)',
+  },
+  optionItemActive: {
+    backgroundColor: 'rgba(191,163,93,0.1)',
+  },
+  optionText: {
+    color: 'rgba(232,220,200,0.6)',
+    fontSize: 15,
+  },
+  optionTextActive: {
+    color: '#BFA35D',
+    fontWeight: '600' as const,
   },
   modalOverlay: {
     flex: 1,

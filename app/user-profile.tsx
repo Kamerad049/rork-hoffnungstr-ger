@@ -13,7 +13,8 @@ import { useStories } from '@/providers/StoriesProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { useLiveLocation } from '@/providers/LiveLocationProvider';
 import { getUserById } from '@/lib/utils';
-import type { SocialUser, Reel, FeedPost } from '@/constants/types';
+import type { SocialUser, Reel, FeedPost, Gender, Religion, CrossStyle } from '@/constants/types';
+import { GENDER_OPTIONS, RELIGION_OPTIONS } from '@/constants/types';
 import type { OrdenDefinition } from '@/constants/orden';
 
 import RankIcon from '@/components/RankIcon';
@@ -265,6 +266,11 @@ export default function UserProfileScreen() {
         birthplace: socialProfile.birthplace ?? '',
         residence: socialProfile.residence ?? '',
         bundesland: socialProfile.bundesland ?? '',
+        gender: socialProfile.gender,
+        religion: socialProfile.religion,
+        crossStyle: socialProfile.crossStyle,
+        showGender: socialProfile.showGender,
+        showReligion: socialProfile.showReligion,
       };
     }
     const mockUser = getUserById(userId);
@@ -630,6 +636,32 @@ export default function UserProfileScreen() {
 
             <Text style={styles.heroName}>{profile.displayName}</Text>
             <Text style={styles.heroUsername}>@{profile.username}</Text>
+
+            {((profile.showGender && profile.gender) || (profile.showReligion && profile.religion) || (profile.crossStyle && profile.crossStyle !== 'none')) ? (
+              <View style={styles.faithGenderRow}>
+                {profile.showGender && profile.gender ? (
+                  <View style={styles.faithGenderChip}>
+                    <Text style={styles.faithGenderChipText}>
+                      {GENDER_OPTIONS.find(g => g.value === profile.gender)?.label}
+                    </Text>
+                  </View>
+                ) : null}
+                {profile.showReligion && profile.religion ? (
+                  <View style={styles.faithGenderChip}>
+                    <Text style={styles.faithGenderChipText}>
+                      {RELIGION_OPTIONS.find(r => r.value === profile.religion)?.label}
+                    </Text>
+                  </View>
+                ) : null}
+                {profile.crossStyle && profile.crossStyle !== 'none' ? (
+                  <View style={styles.crossBadge}>
+                    <Text style={styles.crossSymbol}>
+                      {profile.crossStyle === 'orthodox' ? '\u2626' : '\u271d'}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
 
             <View style={styles.rankPill}>
               <RankIcon icon={profile.rankIcon} size={14} color="#BFA35D" />
@@ -1192,6 +1224,40 @@ const styles = StyleSheet.create({
     color: 'rgba(191,163,93,0.45)',
     fontSize: 11,
     fontWeight: '600' as const,
+  },
+  faithGenderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    marginTop: 2,
+  },
+  faithGenderChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.12)',
+  },
+  faithGenderChipText: {
+    color: 'rgba(191,163,93,0.6)',
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  crossBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  crossSymbol: {
+    fontSize: 16,
+    color: '#BFA35D',
   },
   flagActiveStrip: {
     flexDirection: 'row',

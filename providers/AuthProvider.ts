@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { markTime, trackNetwork, trackRender } from '@/lib/perf';
+import type { Gender, Religion } from '@/constants/types';
 
 interface AuthUser {
   id: string;
@@ -242,7 +243,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     throw new Error('Anmeldung fehlgeschlagen.');
   }, [fetchProfile]);
 
-  const register = useCallback(async (name: string, email: string, password: string) => {
+  const register = useCallback(async (name: string, email: string, password: string, extras?: { gender?: Gender; religion?: Religion }) => {
     console.log('[AUTH] Registering with email:', email);
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -257,14 +258,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     if (data.user) {
       const username = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') + '_' + Date.now().toString(36);
 
+      const profileData: Record<string, unknown> = {
+        id: data.user.id,
+        username,
+        display_name: name,
+        email,
+      };
+      if (extras?.gender) profileData.gender = extras.gender;
+      if (extras?.religion) profileData.religion = extras.religion;
+
       const { error: profileError } = await supabase
         .from('users')
-        .upsert({
-          id: data.user.id,
-          username,
-          display_name: name,
-          email,
-        }, { onConflict: 'id' });
+        .upsert(profileData, { onConflict: 'id' });
 
       if (profileError) {
         console.log('[AUTH] Profile creation error:', profileError.message);

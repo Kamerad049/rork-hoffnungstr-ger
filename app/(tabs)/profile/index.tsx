@@ -72,7 +72,8 @@ import NowPlayingWidget from '@/components/NowPlayingWidget';
 import { useSpotify } from '@/providers/SpotifyProvider';
 import { Radio, Trophy as TrophyIcon } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import type { Reel, FeedPost } from '@/constants/types';
+import type { Reel, FeedPost, Gender, Religion, CrossStyle } from '@/constants/types';
+import { GENDER_OPTIONS, RELIGION_OPTIONS } from '@/constants/types';
 import OrdenBadge from '@/components/OrdenBadge';
 import { TIER_COLORS, TIER_NAMES, type OrdenDefinition } from '@/constants/orden';
 import { useOrden } from '@/hooks/useOrden';
@@ -680,6 +681,32 @@ export default function ProfileScreen() {
 
           <Text style={styles.heroName}>{displayName}</Text>
           <Text style={styles.heroUsername}>@{username}</Text>
+
+          {(profile.showGender && profile.gender) || (profile.showReligion && profile.religion) || (profile.crossStyle && profile.crossStyle !== 'none') ? (
+            <View style={styles.faithGenderRow}>
+              {profile.showGender && profile.gender ? (
+                <View style={styles.faithGenderChip}>
+                  <Text style={styles.faithGenderChipText}>
+                    {GENDER_OPTIONS.find(g => g.value === profile.gender)?.label}
+                  </Text>
+                </View>
+              ) : null}
+              {profile.showReligion && profile.religion ? (
+                <View style={styles.faithGenderChip}>
+                  <Text style={styles.faithGenderChipText}>
+                    {RELIGION_OPTIONS.find(r => r.value === profile.religion)?.label}
+                  </Text>
+                </View>
+              ) : null}
+              {profile.crossStyle && profile.crossStyle !== 'none' ? (
+                <View style={styles.crossBadge}>
+                  <Text style={styles.crossSymbol}>
+                    {profile.crossStyle === 'orthodox' ? '\u2626' : '\u271d'}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
 
           <Pressable
             style={styles.rankPill}
@@ -1340,6 +1367,40 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(191,163,93,0.08)',
   },
 
+  faithGenderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    marginTop: 2,
+  },
+  faithGenderChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.12)',
+  },
+  faithGenderChipText: {
+    color: 'rgba(191,163,93,0.6)',
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  crossBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  crossSymbol: {
+    fontSize: 16,
+    color: '#BFA35D',
+  },
   rankProgressBarBg: {
     width: '100%',
     height: 4,

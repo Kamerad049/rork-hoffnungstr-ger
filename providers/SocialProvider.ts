@@ -6,6 +6,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { addToUserCache } from '@/lib/userCache';
 import { useFriends } from '@/providers/FriendsProvider';
 import { queryKeys } from '@/constants/queryKeys';
+import type { Gender, Religion, CrossStyle } from '@/constants/types';
 
 
 const FLAG_EXPIRY_HOURS = 24;
@@ -46,6 +47,11 @@ interface SocialProfile {
   birthplace: string;
   residence: string;
   bundesland: string;
+  gender: Gender;
+  religion: Religion;
+  crossStyle: CrossStyle;
+  showGender: boolean;
+  showReligion: boolean;
 }
 
 interface ProfileQueryData {
@@ -68,6 +74,11 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
     birthplace: '',
     residence: '',
     bundesland: '',
+    gender: '',
+    religion: '',
+    crossStyle: 'none',
+    showGender: false,
+    showReligion: false,
   });
   const [privacy, setPrivacy] = useState<PrivacySettings>({ ...DEFAULT_PRIVACY });
   const [flagHoistedAtState, setFlagHoistedAt] = useState<string | null>(null);
@@ -91,6 +102,11 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
         birthplace: '',
         residence: '',
         bundesland: '',
+        gender: '',
+        religion: '',
+        crossStyle: 'none',
+        showGender: false,
+        showReligion: false,
       };
       let loadedPrivacy: PrivacySettings = { ...DEFAULT_PRIVACY };
       let loadedFlag: string | null = null;
@@ -106,6 +122,11 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
           birthplace: p.birthplace ?? '',
           residence: p.residence ?? '',
           bundesland: p.bundesland ?? '',
+          gender: (p.gender as Gender) ?? '',
+          religion: (p.religion as Religion) ?? '',
+          crossStyle: (p.cross_style as CrossStyle) ?? 'none',
+          showGender: p.show_gender ?? false,
+          showReligion: p.show_religion ?? false,
         };
         loadedFlag = p.flag_hoisted_at ?? null;
         addToUserCache({
@@ -173,6 +194,11 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
       if (updates.birthplace !== undefined) dbUpdates.birthplace = updates.birthplace;
       if (updates.residence !== undefined) dbUpdates.residence = updates.residence;
       if (updates.bundesland !== undefined) dbUpdates.bundesland = updates.bundesland;
+      if (updates.gender !== undefined) dbUpdates.gender = updates.gender;
+      if (updates.religion !== undefined) dbUpdates.religion = updates.religion;
+      if (updates.crossStyle !== undefined) dbUpdates.cross_style = updates.crossStyle;
+      if (updates.showGender !== undefined) dbUpdates.show_gender = updates.showGender;
+      if (updates.showReligion !== undefined) dbUpdates.show_religion = updates.showReligion;
       if (Object.keys(dbUpdates).length > 0) {
         await supabase.from('users').update(dbUpdates).eq('id', userId);
       }

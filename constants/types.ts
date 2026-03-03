@@ -138,6 +138,32 @@ export const PERSONAL_VALUES = [
 
 export type PersonalValue = typeof PERSONAL_VALUES[number];
 
+export type Gender = 'mann' | 'frau' | '';
+
+export const GENDER_OPTIONS: { value: Gender; label: string }[] = [
+  { value: '', label: 'Keine Angabe' },
+  { value: 'mann', label: 'Mann' },
+  { value: 'frau', label: 'Frau' },
+];
+
+export type Religion = '' | 'katholisch' | 'evangelisch' | 'orthodox' | 'anders_glaeubig';
+
+export const RELIGION_OPTIONS: { value: Religion; label: string }[] = [
+  { value: '', label: 'Keine Angabe' },
+  { value: 'katholisch', label: 'Katholisch' },
+  { value: 'evangelisch', label: 'Evangelisch' },
+  { value: 'orthodox', label: 'Orthodox' },
+  { value: 'anders_glaeubig', label: 'Anders gläubig' },
+];
+
+export type CrossStyle = 'latin' | 'orthodox' | 'none';
+
+export const CROSS_STYLE_OPTIONS: { value: CrossStyle; label: string }[] = [
+  { value: 'none', label: 'Kein Kreuz anzeigen' },
+  { value: 'latin', label: 'Lateinisches Kreuz ✝' },
+  { value: 'orthodox', label: 'Orthodoxes Kreuz ☦' },
+];
+
 export interface SocialUser {
   id: string;
   username: string;
@@ -155,6 +181,11 @@ export interface SocialUser {
   birthplace?: string;
   residence?: string;
   bundesland?: string;
+  gender?: Gender;
+  religion?: Religion;
+  crossStyle?: CrossStyle;
+  showGender?: boolean;
+  showReligion?: boolean;
 }
 
 export interface FeedPost {

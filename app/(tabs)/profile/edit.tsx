@@ -15,13 +15,13 @@ import { Image } from 'expo-image';
 import { useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, Check, ImageIcon, Trash2, MapPin, Home, Sparkles, ChevronLeft } from 'lucide-react-native';
+import { Camera, Check, ImageIcon, Trash2, MapPin, Home, Sparkles, ChevronLeft, ChevronDown, User } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useSocial } from '@/providers/SocialProvider';
 import { useAuth } from '@/providers/AuthProvider';
 
-import { PERSONAL_VALUES } from '@/constants/types';
-import { BUNDESLAENDER } from '@/constants/types';
+import { PERSONAL_VALUES, GENDER_OPTIONS, RELIGION_OPTIONS, CROSS_STYLE_OPTIONS, BUNDESLAENDER } from '@/constants/types';
+import type { Gender, Religion, CrossStyle } from '@/constants/types';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { File as ExpoFile, Paths, Directory } from 'expo-file-system';
@@ -94,6 +94,14 @@ export default function EditProfileScreen() {
   const [selectedValues, setSelectedValues] = useState<string[]>(profile.values ?? []);
   const [birthplace, setBirthplace] = useState<string>(profile.birthplace ?? '');
   const [residence, setResidence] = useState<string>(profile.residence ?? '');
+  const [gender, setGender] = useState<Gender>(profile.gender ?? '');
+  const [religion, setReligion] = useState<Religion>(profile.religion ?? '');
+  const [crossStyle, setCrossStyle] = useState<CrossStyle>(profile.crossStyle ?? 'none');
+  const [showGender, setShowGender] = useState<boolean>(profile.showGender ?? false);
+  const [showReligion, setShowReligion] = useState<boolean>(profile.showReligion ?? false);
+  const [showGenderPicker, setShowGenderPicker] = useState<boolean>(false);
+  const [showReligionPicker, setShowReligionPicker] = useState<boolean>(false);
+  const [showCrossPicker, setShowCrossPicker] = useState<boolean>(false);
 
   const detectedBundesland = useMemo(() => {
     const fromResidence = detectBundesland(residence);
@@ -227,9 +235,14 @@ export default function EditProfileScreen() {
       birthplace: birthplace.trim(),
       residence: residence.trim(),
       bundesland: detectedBundesland,
+      gender,
+      religion,
+      crossStyle,
+      showGender,
+      showReligion,
     });
     router.back();
-  }, [displayName, bio, avatarUrl, selectedValues, birthplace, residence, detectedBundesland, updateProfile, router]);
+  }, [displayName, bio, avatarUrl, selectedValues, birthplace, residence, detectedBundesland, gender, religion, crossStyle, showGender, showReligion, updateProfile, router]);
 
   const initial = (displayName || user?.name || 'U').charAt(0).toUpperCase();
 
@@ -376,6 +389,140 @@ export default function EditProfileScreen() {
             Bundesland wird automatisch erkannt
           </Text>
         ) : null}
+      </View>
+
+      <View style={styles.faithGenderSection}>
+        <View style={styles.sectionHeader}>
+          <User size={18} color="#BFA35D" />
+          <Text style={styles.sectionTitle}>Geschlecht & Glaube</Text>
+        </View>
+        <Text style={styles.faithHint}>
+          Freiwillige Angaben. Du kannst selbst wählen, ob sie im Profil sichtbar sind.
+        </Text>
+
+        <Text style={styles.editLabel}>Geschlecht</Text>
+        <Pressable
+          style={styles.pickerWrapper}
+          onPress={() => { setShowGenderPicker(!showGenderPicker); setShowReligionPicker(false); setShowCrossPicker(false); }}
+          testID="edit-gender-picker"
+        >
+          <Text style={[styles.pickerText, gender ? styles.pickerTextSelected : null]}>
+            {gender ? GENDER_OPTIONS.find(g => g.value === gender)?.label : 'Keine Angabe'}
+          </Text>
+          <ChevronDown size={16} color="rgba(191,163,93,0.35)" />
+        </Pressable>
+        {showGenderPicker && (
+          <View style={styles.optionsList}>
+            {GENDER_OPTIONS.map((opt) => (
+              <Pressable
+                key={opt.value}
+                style={[styles.optionItem, gender === opt.value && styles.optionItemActive]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setGender(opt.value);
+                  setShowGenderPicker(false);
+                }}
+              >
+                <Text style={[styles.optionText, gender === opt.value && styles.optionTextActive]}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+        {gender !== '' && (
+          <Pressable
+            style={styles.visibilityToggle}
+            onPress={() => { setShowGender(!showGender); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            testID="toggle-show-gender"
+          >
+            <View style={[styles.toggleDot, showGender && styles.toggleDotActive]} />
+            <Text style={styles.visibilityToggleText}>
+              {showGender ? 'Im Profil sichtbar' : 'Im Profil verborgen'}
+            </Text>
+          </Pressable>
+        )}
+
+        <Text style={[styles.editLabel, { marginTop: 20 }]}>Religion</Text>
+        <Pressable
+          style={styles.pickerWrapper}
+          onPress={() => { setShowReligionPicker(!showReligionPicker); setShowGenderPicker(false); setShowCrossPicker(false); }}
+          testID="edit-religion-picker"
+        >
+          <Text style={[styles.pickerText, religion ? styles.pickerTextSelected : null]}>
+            {religion ? RELIGION_OPTIONS.find(r => r.value === religion)?.label : 'Keine Angabe'}
+          </Text>
+          <ChevronDown size={16} color="rgba(191,163,93,0.35)" />
+        </Pressable>
+        {showReligionPicker && (
+          <View style={styles.optionsList}>
+            {RELIGION_OPTIONS.map((opt) => (
+              <Pressable
+                key={opt.value}
+                style={[styles.optionItem, religion === opt.value && styles.optionItemActive]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setReligion(opt.value);
+                  setShowReligionPicker(false);
+                  if (!opt.value) {
+                    setCrossStyle('none');
+                  }
+                }}
+              >
+                <Text style={[styles.optionText, religion === opt.value && styles.optionTextActive]}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+        {religion !== '' && (
+          <Pressable
+            style={styles.visibilityToggle}
+            onPress={() => { setShowReligion(!showReligion); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            testID="toggle-show-religion"
+          >
+            <View style={[styles.toggleDot, showReligion && styles.toggleDotActive]} />
+            <Text style={styles.visibilityToggleText}>
+              {showReligion ? 'Im Profil sichtbar' : 'Im Profil verborgen'}
+            </Text>
+          </Pressable>
+        )}
+
+        {religion !== '' && (
+          <>
+            <Text style={[styles.editLabel, { marginTop: 20 }]}>Kreuz im Profil</Text>
+            <Pressable
+              style={styles.pickerWrapper}
+              onPress={() => { setShowCrossPicker(!showCrossPicker); setShowGenderPicker(false); setShowReligionPicker(false); }}
+              testID="edit-cross-picker"
+            >
+              <Text style={[styles.pickerText, crossStyle !== 'none' ? styles.pickerTextSelected : null]}>
+                {CROSS_STYLE_OPTIONS.find(c => c.value === crossStyle)?.label ?? 'Kein Kreuz anzeigen'}
+              </Text>
+              <ChevronDown size={16} color="rgba(191,163,93,0.35)" />
+            </Pressable>
+            {showCrossPicker && (
+              <View style={styles.optionsList}>
+                {CROSS_STYLE_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    style={[styles.optionItem, crossStyle === opt.value && styles.optionItemActive]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setCrossStyle(opt.value);
+                      setShowCrossPicker(false);
+                    }}
+                  >
+                    <Text style={[styles.optionText, crossStyle === opt.value && styles.optionTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </>
+        )}
       </View>
 
       <View style={styles.valuesSection}>
@@ -651,6 +798,85 @@ const styles = StyleSheet.create({
   valueChipText: {
     fontSize: 14,
     fontWeight: '600' as const,
+  },
+  faithGenderSection: {
+    marginTop: 24,
+    paddingHorizontal: 20,
+  },
+  faithHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 6,
+    marginBottom: 4,
+    color: 'rgba(232,220,200,0.5)',
+  },
+  pickerWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1e1e20',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 50,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+    justifyContent: 'space-between',
+  },
+  pickerText: {
+    flex: 1,
+    color: 'rgba(191,163,93,0.35)',
+    fontSize: 16,
+  },
+  pickerTextSelected: {
+    color: '#E8DCC8',
+  },
+  optionsList: {
+    backgroundColor: 'rgba(191,163,93,0.04)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  optionItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(191,163,93,0.06)',
+  },
+  optionItemActive: {
+    backgroundColor: 'rgba(191,163,93,0.1)',
+  },
+  optionText: {
+    color: 'rgba(232,220,200,0.6)',
+    fontSize: 15,
+  },
+  optionTextActive: {
+    color: '#BFA35D',
+    fontWeight: '600' as const,
+  },
+  visibilityToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+    paddingVertical: 4,
+  },
+  toggleDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: 'rgba(191,163,93,0.25)',
+    backgroundColor: 'transparent',
+  },
+  toggleDotActive: {
+    backgroundColor: '#BFA35D',
+    borderColor: '#BFA35D',
+  },
+  visibilityToggleText: {
+    color: 'rgba(191,163,93,0.5)',
+    fontSize: 13,
+    fontWeight: '500' as const,
   },
   saveBtn: {
     flexDirection: 'row',
