@@ -24,4 +24,8 @@ export const queryKeys = {
   promotionAnalytics: (promotionId: string) => ['promotion-analytics', promotionId] as const,
   promotionDailyStats: (promotionId: string) => ['promotion-daily-stats', promotionId] as const,
   activePromotions: () => ['active-promotions'] as const,
+  moderationActions: () => ['moderation-actions'] as const,
+  moderationAppeals: () => ['moderation-appeals'] as const,
+  userModerationActions: (userId: string) => ['user-moderation-actions', userId] as const,
+  userModerationAppeals: (userId: string) => ['user-moderation-appeals', userId] as const,
 } as const;

@@ -25,6 +25,7 @@ import {
   Mountain,
   Zap,
   Target,
+  Play,
 } from 'lucide-react-native';
 import { useKaderschmiede } from '@/providers/KaderschmiedeProvider';
 import GermanyMap from '@/components/GermanyMap';
@@ -260,6 +261,27 @@ export default function KaderschmiedeScreen() {
           </Pressable>
         </View>
 
+        <Pressable
+          style={styles.lobbyBanner}
+          onPress={() => router.push({ pathname: '/(tabs)/kaderschmiede/lobby', params: { mode: '1v1', distance: '1000' } } as any)}
+        >
+          <LinearGradient
+            colors={['rgba(191,163,93,0.12)', 'rgba(191,163,93,0.04)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.lobbyBannerGradient}
+          >
+            <View style={styles.lobbyBannerIcon}>
+              <Play size={18} color="#BFA35D" />
+            </View>
+            <View style={styles.lobbyBannerContent}>
+              <Text style={styles.lobbyBannerTitle}>1v1 CHALLENGE</Text>
+              <Text style={styles.lobbyBannerSubtitle}>Fordere jemanden heraus – jetzt Lobby starten</Text>
+            </View>
+            <ChevronRight size={18} color="rgba(191,163,93,0.4)" />
+          </LinearGradient>
+        </Pressable>
+
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>AKTIVITÄTEN IN DEUTSCHLAND</Text>
           <View style={styles.mapContainer}>
@@ -445,6 +467,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700' as const,
     color: '#E8DCC8',
+  },
+  lobbyBanner: {
+    marginHorizontal: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(191,163,93,0.15)',
+    marginBottom: 4,
+  },
+  lobbyBannerGradient: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  lobbyBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(191,163,93,0.12)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(191,163,93,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lobbyBannerContent: {
+    flex: 1,
+  },
+  lobbyBannerTitle: {
+    fontSize: 15,
+    fontWeight: '900' as const,
+    color: '#BFA35D',
+    letterSpacing: 1,
+  },
+  lobbyBannerSubtitle: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    color: 'rgba(232,220,200,0.4)',
+    marginTop: 2,
   },
   section: {
     paddingHorizontal: 20,

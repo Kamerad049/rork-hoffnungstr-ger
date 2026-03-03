@@ -43,8 +43,8 @@ import {
   CHECKIN_TOKEN_ROTATION_S,
 } from '@/constants/kaderschmiede';
 
-const SLOT_SIZE = 72;
-const SLOT_GAP = 14;
+const SLOT_SIZE = 82;
+const SLOT_GAP = 16;
 
 let CameraViewComponent: any = null;
 let useCameraPermissionsHook: any = null;
@@ -67,28 +67,96 @@ function CheckInSlot({
   isEmpty: boolean;
   totalSlots: number;
 }) {
-  const scaleAnim = useRef(new Animated.Value(isEmpty ? 1 : 0)).current;
-  const bounceAnim = useRef(new Animated.Value(isEmpty ? 0 : -80)).current;
+  const slamY = useRef(new Animated.Value(isEmpty ? 0 : -250)).current;
+  const scaleAnim = useRef(new Animated.Value(isEmpty ? 1 : 0.2)).current;
+  const shakeX = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
+  const impactRing1 = useRef(new Animated.Value(0)).current;
+  const impactRing2 = useRef(new Animated.Value(0)).current;
+  const impactRing3 = useRef(new Animated.Value(0)).current;
+  const impactOpacity1 = useRef(new Animated.Value(0)).current;
+  const impactOpacity2 = useRef(new Animated.Value(0)).current;
+  const impactOpacity3 = useRef(new Animated.Value(0)).current;
+  const craterDepth = useRef(new Animated.Value(0)).current;
+  const checkScale = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const reliefShadow = useRef(new Animated.Value(0)).current;
   const hasAnimated = useRef(false);
 
   useEffect(() => {
     if (!isEmpty && !hasAnimated.current) {
       hasAnimated.current = true;
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }
+
       Animated.sequence([
-        Animated.delay(index * 120),
+        Animated.delay(index * 250),
         Animated.parallel([
-          Animated.spring(scaleAnim, { toValue: 1, friction: 4, tension: 200, useNativeDriver: true }),
-          Animated.spring(bounceAnim, { toValue: 0, friction: 5, tension: 180, useNativeDriver: true }),
+          Animated.spring(slamY, {
+            toValue: 0,
+            friction: 3,
+            tension: 350,
+            useNativeDriver: true,
+          }),
+          Animated.spring(scaleAnim, {
+            toValue: 1,
+            friction: 3,
+            tension: 250,
+            useNativeDriver: true,
+          }),
         ]),
       ]).start(() => {
+        if (Platform.OS !== 'web') {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), 80);
+        }
+
         Animated.sequence([
-          Animated.timing(glowAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(glowAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+          Animated.timing(shakeX, { toValue: 10, duration: 40, useNativeDriver: true }),
+          Animated.timing(shakeX, { toValue: -8, duration: 35, useNativeDriver: true }),
+          Animated.timing(shakeX, { toValue: 6, duration: 35, useNativeDriver: true }),
+          Animated.timing(shakeX, { toValue: -4, duration: 30, useNativeDriver: true }),
+          Animated.timing(shakeX, { toValue: 2, duration: 25, useNativeDriver: true }),
+          Animated.timing(shakeX, { toValue: 0, duration: 20, useNativeDriver: true }),
+        ]).start();
+
+        Animated.parallel([
+          Animated.sequence([
+            Animated.timing(glowAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+            Animated.timing(glowAnim, { toValue: 0, duration: 1000, useNativeDriver: true }),
+          ]),
+          Animated.parallel([
+            Animated.timing(impactRing1, { toValue: 2.5, duration: 600, useNativeDriver: true }),
+            Animated.timing(impactOpacity1, { toValue: 0, duration: 600, useNativeDriver: true }),
+          ]),
+          Animated.sequence([
+            Animated.delay(100),
+            Animated.parallel([
+              Animated.timing(impactRing2, { toValue: 3, duration: 700, useNativeDriver: true }),
+              Animated.timing(impactOpacity2, { toValue: 0, duration: 700, useNativeDriver: true }),
+            ]),
+          ]),
+          Animated.sequence([
+            Animated.delay(200),
+            Animated.parallel([
+              Animated.timing(impactRing3, { toValue: 3.5, duration: 800, useNativeDriver: true }),
+              Animated.timing(impactOpacity3, { toValue: 0, duration: 800, useNativeDriver: true }),
+            ]),
+          ]),
+          Animated.timing(craterDepth, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.timing(reliefShadow, { toValue: 1, duration: 400, useNativeDriver: true }),
+        ]).start();
+
+        impactOpacity1.setValue(0.7);
+        impactOpacity2.setValue(0.5);
+        impactOpacity3.setValue(0.3);
+
+        Animated.sequence([
+          Animated.delay(400),
+          Animated.spring(checkScale, {
+            toValue: 1,
+            friction: 3,
+            tension: 200,
+            useNativeDriver: true,
+          }),
         ]).start();
       });
     }
@@ -98,8 +166,8 @@ function CheckInSlot({
     if (isEmpty) {
       const animation = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 0.92, duration: 1500 + index * 200, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 1500 + index * 200, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 0.88, duration: 1800 + index * 250, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 1800 + index * 250, useNativeDriver: true }),
         ]),
       );
       animation.start();
@@ -115,8 +183,10 @@ function CheckInSlot({
         <View style={styles.slotEmpty}>
           <View style={styles.slotInnerShadow}>
             <View style={styles.slotInnerDeep}>
-              <View style={styles.slotDottedCircle}>
-                <Text style={styles.slotQuestionMark}>?</Text>
+              <View style={styles.slotCraterRidge}>
+                <View style={styles.slotDottedCircle}>
+                  <Text style={styles.slotQuestionMark}>?</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -127,25 +197,45 @@ function CheckInSlot({
   }
 
   return (
-    <Animated.View style={[styles.slotContainer, { transform: [{ scale: scaleAnim }, { translateY: bounceAnim }] }]}>
+    <Animated.View style={[styles.slotContainer, { transform: [{ translateY: slamY }, { translateX: shakeX }, { scale: scaleAnim }] }]}>
+      <Animated.View style={[styles.impactRing, { opacity: impactOpacity1, transform: [{ scale: impactRing1 }] }]} />
+      <Animated.View style={[styles.impactRing, styles.impactRing2nd, { opacity: impactOpacity2, transform: [{ scale: impactRing2 }] }]} />
+      <Animated.View style={[styles.impactRing, styles.impactRing3rd, { opacity: impactOpacity3, transform: [{ scale: impactRing3 }] }]} />
+
       <Animated.View style={[styles.slotGlow, { opacity: glowAnim }]} />
+
+      <Animated.View style={[styles.reliefOuter, { opacity: reliefShadow }]}>
+        <View style={styles.reliefTopShadow} />
+        <View style={styles.reliefLeftShadow} />
+        <View style={styles.reliefBottomHighlight} />
+        <View style={styles.reliefRightHighlight} />
+      </Animated.View>
+
+      <Animated.View style={[styles.slotFilledCrater, { opacity: craterDepth }]}>
+        <View style={styles.craterInnerShadow} />
+      </Animated.View>
+
       <View style={styles.slotFilled}>
         {entry?.avatarUrl ? (
           <Image source={{ uri: entry.avatarUrl }} style={styles.slotAvatar} />
         ) : (
-          <LinearGradient colors={['#BFA35D', '#8B7340']} style={styles.slotAvatarGradient}>
+          <LinearGradient colors={['#BFA35D', '#8B7340', '#6B5C30']} style={styles.slotAvatarGradient}>
             <Text style={styles.slotAvatarText}>{initial}</Text>
           </LinearGradient>
         )}
-        <View style={styles.slotCheckMark}>
-          <Check size={10} color="#141416" strokeWidth={3} />
-        </View>
+        <View style={styles.slotReliefOverlay} />
+        <Animated.View style={[styles.slotCheckMark, { transform: [{ scale: checkScale }] }]}>
+          <Check size={11} color="#141416" strokeWidth={3} />
+        </Animated.View>
       </View>
       <Text style={styles.slotLabelFilled} numberOfLines={1}>
         {entry?.userName?.split(' ')[0] ?? 'User'}
       </Text>
       {entry?.distanceToHost != null && (
-        <Text style={styles.slotDistance}>{Math.round(entry.distanceToHost)}m</Text>
+        <View style={styles.slotDistanceBadge}>
+          <MapPin size={8} color="#BFA35D" />
+          <Text style={styles.slotDistance}>{Math.round(entry.distanceToHost)}m</Text>
+        </View>
       )}
     </Animated.View>
   );
@@ -255,8 +345,27 @@ function QRScanner({
   onClose: () => void;
 }) {
   const [hasScanned, setHasScanned] = useState<boolean>(false);
-  const permission = useCameraPermissionsHook ? useCameraPermissionsHook() : [null, null, null];
-  const [permissionResponse, requestPermission] = permission;
+  const [camPermission, setCamPermission] = useState<any>(null);
+  const [camRequestFn, setCamRequestFn] = useState<(() => Promise<any>) | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' && useCameraPermissionsHook) {
+      try {
+        const cam = require('expo-camera');
+        if (cam.Camera?.getCameraPermissionsAsync) {
+          cam.Camera.getCameraPermissionsAsync().then((resp: any) => {
+            setCamPermission(resp);
+            setCamRequestFn(() => cam.Camera.requestCameraPermissionsAsync);
+          });
+        }
+      } catch (e) {
+        console.log('[CHECKIN] Camera permissions error:', e);
+      }
+    }
+  }, []);
+
+  const permissionResponse = camPermission;
+  const requestPermission = camRequestFn;
   const scanLineAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -1374,65 +1483,178 @@ const styles = StyleSheet.create({
     gap: SLOT_GAP,
   },
   slotContainer: {
-    width: SLOT_SIZE + 10,
+    width: SLOT_SIZE + 20,
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   slotEmpty: {
     width: SLOT_SIZE,
     height: SLOT_SIZE,
-    borderRadius: Math.round(SLOT_SIZE * 0.22),
-    backgroundColor: '#0e0e10',
+    borderRadius: Math.round(SLOT_SIZE * 0.24),
+    backgroundColor: '#0c0c0e',
     borderWidth: 2,
-    borderColor: 'rgba(191,163,93,0.06)',
+    borderColor: 'rgba(191,163,93,0.05)',
     overflow: 'hidden',
   },
   slotInnerShadow: {
     flex: 1,
-    borderRadius: Math.round(SLOT_SIZE * 0.22),
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: Math.round(SLOT_SIZE * 0.24),
+    backgroundColor: 'rgba(0,0,0,0.4)',
     padding: 3,
   },
   slotInnerDeep: {
     flex: 1,
-    borderRadius: Math.round(SLOT_SIZE * 0.22),
-    backgroundColor: '#0a0a0c',
+    borderRadius: Math.round(SLOT_SIZE * 0.24),
+    backgroundColor: '#080809',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderTopColor: 'rgba(0,0,0,0.7)',
+    borderLeftColor: 'rgba(0,0,0,0.6)',
+    borderRightColor: 'rgba(191,163,93,0.03)',
+    borderBottomColor: 'rgba(191,163,93,0.05)',
+  },
+  slotCraterRidge: {
+    width: SLOT_SIZE - 16,
+    height: SLOT_SIZE - 16,
+    borderRadius: Math.round((SLOT_SIZE - 16) * 0.24),
+    backgroundColor: 'rgba(0,0,0,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.5)',
-    borderLeftColor: 'rgba(0,0,0,0.4)',
-    borderRightColor: 'rgba(191,163,93,0.04)',
-    borderBottomColor: 'rgba(191,163,93,0.06)',
+    borderBottomColor: 'rgba(191,163,93,0.04)',
+    borderLeftColor: 'rgba(0,0,0,0.3)',
+    borderRightColor: 'rgba(191,163,93,0.03)',
   },
   slotDottedCircle: {
-    width: SLOT_SIZE - 22,
-    height: SLOT_SIZE - 22,
-    borderRadius: Math.round((SLOT_SIZE - 22) * 0.22),
+    width: SLOT_SIZE - 30,
+    height: SLOT_SIZE - 30,
+    borderRadius: Math.round((SLOT_SIZE - 30) * 0.24),
     borderWidth: 1.5,
-    borderColor: 'rgba(191,163,93,0.08)',
+    borderColor: 'rgba(191,163,93,0.06)',
     borderStyle: 'dashed' as const,
     alignItems: 'center',
     justifyContent: 'center',
   },
   slotQuestionMark: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    color: 'rgba(191,163,93,0.12)',
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: 'rgba(191,163,93,0.08)',
   },
   slotLabel: {
     fontSize: 10,
     fontWeight: '600' as const,
-    color: 'rgba(232,220,200,0.2)',
+    color: 'rgba(232,220,200,0.15)',
     textAlign: 'center' as const,
+  },
+  impactRing: {
+    position: 'absolute' as const,
+    top: (SLOT_SIZE / 2) - 20,
+    left: (SLOT_SIZE + 20) / 2 - 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(191,163,93,0.5)',
+    zIndex: -1,
+  },
+  impactRing2nd: {
+    borderWidth: 1.5,
+    borderColor: 'rgba(191,163,93,0.3)',
+  },
+  impactRing3rd: {
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.15)',
+  },
+  reliefOuter: {
+    position: 'absolute' as const,
+    top: -2,
+    left: 8,
+    width: SLOT_SIZE + 4,
+    height: SLOT_SIZE + 4,
+    borderRadius: Math.round((SLOT_SIZE + 4) * 0.24),
+    zIndex: -1,
+  },
+  reliefTopShadow: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 4,
+    right: 4,
+    height: 6,
+    borderTopLeftRadius: Math.round((SLOT_SIZE + 4) * 0.24),
+    borderTopRightRadius: Math.round((SLOT_SIZE + 4) * 0.24),
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  reliefLeftShadow: {
+    position: 'absolute' as const,
+    top: 4,
+    left: 0,
+    width: 6,
+    bottom: 4,
+    borderTopLeftRadius: Math.round((SLOT_SIZE + 4) * 0.24),
+    borderBottomLeftRadius: Math.round((SLOT_SIZE + 4) * 0.24),
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  reliefBottomHighlight: {
+    position: 'absolute' as const,
+    bottom: 0,
+    left: 4,
+    right: 4,
+    height: 4,
+    borderBottomLeftRadius: Math.round((SLOT_SIZE + 4) * 0.24),
+    borderBottomRightRadius: Math.round((SLOT_SIZE + 4) * 0.24),
+    backgroundColor: 'rgba(191,163,93,0.08)',
+  },
+  reliefRightHighlight: {
+    position: 'absolute' as const,
+    top: 4,
+    right: 0,
+    width: 4,
+    bottom: 4,
+    borderTopRightRadius: Math.round((SLOT_SIZE + 4) * 0.24),
+    borderBottomRightRadius: Math.round((SLOT_SIZE + 4) * 0.24),
+    backgroundColor: 'rgba(191,163,93,0.06)',
+  },
+  slotFilledCrater: {
+    position: 'absolute' as const,
+    top: -4,
+    left: 6,
+    width: SLOT_SIZE + 8,
+    height: SLOT_SIZE + 8,
+    borderRadius: Math.round((SLOT_SIZE + 8) * 0.24),
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    zIndex: -1,
+  },
+  craterInnerShadow: {
+    flex: 1,
+    borderRadius: Math.round((SLOT_SIZE + 8) * 0.24),
+    borderWidth: 2,
+    borderTopColor: 'rgba(0,0,0,0.6)',
+    borderLeftColor: 'rgba(0,0,0,0.5)',
+    borderRightColor: 'rgba(191,163,93,0.06)',
+    borderBottomColor: 'rgba(191,163,93,0.08)',
   },
   slotFilled: {
     width: SLOT_SIZE,
     height: SLOT_SIZE,
-    borderRadius: Math.round(SLOT_SIZE * 0.22),
+    borderRadius: Math.round(SLOT_SIZE * 0.24),
     overflow: 'hidden',
-    borderWidth: 2.5,
+    borderWidth: 3,
     borderColor: '#BFA35D',
+    shadowColor: '#BFA35D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  slotReliefOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderTopWidth: 2,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    borderBottomWidth: 2,
+    borderBottomColor: 'rgba(0,0,0,0.15)',
+    borderRadius: Math.round(SLOT_SIZE * 0.24) - 3,
   },
   slotAvatar: {
     width: '100%',
@@ -1445,42 +1667,60 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   slotAvatarText: {
-    fontSize: 26,
+    fontSize: 30,
     fontWeight: '900' as const,
     color: '#141416',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   slotCheckMark: {
     position: 'absolute' as const,
     bottom: -1,
     right: -1,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#BFA35D',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: '#141416',
+    shadowColor: '#BFA35D',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
   },
   slotGlow: {
     position: 'absolute' as const,
-    top: -6,
-    left: -6,
-    right: -6,
-    bottom: -6,
-    borderRadius: (SLOT_SIZE + 12) / 2,
-    backgroundColor: 'rgba(191,163,93,0.25)',
+    top: -12,
+    left: -2,
+    right: -2,
+    bottom: -12,
+    borderRadius: (SLOT_SIZE + 24) / 2,
+    backgroundColor: 'rgba(191,163,93,0.4)',
+    zIndex: -1,
   },
   slotLabelFilled: {
-    fontSize: 10,
-    fontWeight: '700' as const,
+    fontSize: 11,
+    fontWeight: '800' as const,
     color: '#BFA35D',
     textAlign: 'center' as const,
   },
+  slotDistanceBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+  },
   slotDistance: {
     fontSize: 9,
-    fontWeight: '600' as const,
-    color: 'rgba(191,163,93,0.4)',
+    fontWeight: '700' as const,
+    color: 'rgba(191,163,93,0.5)',
   },
   celebrationContainer: {
     marginBottom: 24,

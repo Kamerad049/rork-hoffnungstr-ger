@@ -490,6 +490,49 @@ export interface PromotionAnalytics {
   dailyStats: PromotionDailyStats[];
 }
 
+export type ModerationActionType = 'remove_post' | 'remove_story' | 'remove_comment' | 'remove_reel';
+export type ModerationActionStatus = 'active' | 'restored' | 'permanently_deleted';
+export type AppealStatus = 'pending' | 'accepted' | 'rejected';
+
+export const MODERATION_REASONS: { key: string; label: string; icon: string }[] = [
+  { key: 'spam', label: 'Spam', icon: '🚫' },
+  { key: 'harassment', label: 'Belästigung', icon: '😤' },
+  { key: 'hate_speech', label: 'Hassrede', icon: '🗯️' },
+  { key: 'violence', label: 'Gewalt / Gewaltverherrlichung', icon: '⚠️' },
+  { key: 'nudity', label: 'Unangemessener Inhalt', icon: '🔞' },
+  { key: 'misinformation', label: 'Falschinformation', icon: '📰' },
+  { key: 'copyright', label: 'Urheberrechtsverletzung', icon: '©️' },
+  { key: 'community_guidelines', label: 'Verstoß gegen Gemeinschaftsrichtlinien', icon: '📋' },
+  { key: 'other', label: 'Sonstiges', icon: '🔍' },
+];
+
+export interface ModerationAction {
+  id: string;
+  postId: string;
+  targetUserId: string;
+  moderatorId: string;
+  actionType: ModerationActionType;
+  reason: string;
+  details: string;
+  status: ModerationActionStatus;
+  postSnapshot: FeedPost | null;
+  createdAt: string;
+  restoredAt: string | null;
+  permanentlyDeletedAt: string | null;
+}
+
+export interface ModerationAppeal {
+  id: string;
+  actionId: string;
+  userId: string;
+  appealText: string;
+  status: AppealStatus;
+  reviewerId: string | null;
+  reviewerNote: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+}
+
 export function getActivityIconColor(type: ActivityType): string {
   switch (type) {
     case 'like_post':

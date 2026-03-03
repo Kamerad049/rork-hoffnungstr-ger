@@ -20,6 +20,7 @@ export default function KaderschmiedeLayout() {
         <Stack.Screen name="create-activity" />
         <Stack.Screen name="create-challenge" />
         <Stack.Screen name="checkin" />
+        <Stack.Screen name="lobby" />
       </Stack>
     </KaderschmiedeProvider>
   );

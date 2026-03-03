@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
-import type { SocialUser } from '@/constants/types';
+import type { SocialUser, FeedPost, ModerationAction, ModerationAppeal, ModerationActionStatus, AppealStatus } from '@/constants/types';
 
 export const HAUPTADMIN_ID = 'admin';
 
@@ -154,6 +154,37 @@ function mapDbModerator(m: any): Moderator {
     },
     appointedAt: m.appointed_at,
     appointedBy: m.appointed_by ?? '',
+  };
+}
+
+function mapDbModerationAction(a: any): ModerationAction {
+  return {
+    id: a.id,
+    postId: a.post_id,
+    targetUserId: a.target_user_id,
+    moderatorId: a.moderator_id,
+    actionType: a.action_type ?? 'remove_post',
+    reason: a.reason ?? '',
+    details: a.details ?? '',
+    status: a.status ?? 'active',
+    postSnapshot: a.post_snapshot ?? null,
+    createdAt: a.created_at,
+    restoredAt: a.restored_at ?? null,
+    permanentlyDeletedAt: a.permanently_deleted_at ?? null,
+  };
+}
+
+function mapDbAppeal(ap: any): ModerationAppeal {
+  return {
+    id: ap.id,
+    actionId: ap.action_id,
+    userId: ap.user_id,
+    appealText: ap.appeal_text,
+    status: ap.status ?? 'pending',
+    reviewerId: ap.reviewer_id ?? null,
+    reviewerNote: ap.reviewer_note ?? null,
+    createdAt: ap.created_at,
+    reviewedAt: ap.reviewed_at ?? null,
   };
 }
 
@@ -526,6 +557,300 @@ export const [ModerationProvider, useModeration] = createContextHook(() => {
     return allUsers.filter((u) => !modIds.includes(u.id));
   }, [moderators, allUsers]);
 
+  const [moderationActions, setModerationActions] = useState<ModerationAction[]>([]);
+  const [moderationAppeals, setModerationAppeals] = useState<ModerationAppeal[]>([]);
+  const [actionsLoaded, setActionsLoaded] = useState<boolean>(false);
+
+  const loadModerationActions = useCallback(async () => {
+    try {
+      console.log('[MODERATION] Loading moderation actions & appeals...');
+      const [actionsRes, appealsRes] = await Promise.all([
+        supabase.from('moderation_actions').select('*').order('created_at', { ascending: false }),
+        supabase.from('moderation_appeals').select('*').order('created_at', { ascending: false }),
+      ]);
+      if (actionsRes.data) {
+        setModerationActions(actionsRes.data.map(mapDbModerationAction));
+      }
+      if (appealsRes.data) {
+        setModerationAppeals(appealsRes.data.map(mapDbAppeal));
+      }
+      setActionsLoaded(true);
+      console.log('[MODERATION] Loaded', actionsRes.data?.length ?? 0, 'actions,', appealsRes.data?.length ?? 0, 'appeals');
+    } catch (e) {
+      console.log('[MODERATION] Load actions error:', e);
+    }
+  }, []);
+
+  const loadUserModerationData = useCallback(async (userId: string) => {
+    try {
+      console.log('[MODERATION] Loading user moderation data for:', userId);
+      const [actionsRes, appealsRes] = await Promise.all([
+        supabase.from('moderation_actions').select('*').eq('target_user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('moderation_appeals').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+      ]);
+      const actions = (actionsRes.data ?? []).map(mapDbModerationAction);
+      const appeals = (appealsRes.data ?? []).map(mapDbAppeal);
+      setModerationActions((prev) => {
+        const otherActions = prev.filter((a) => a.targetUserId !== userId);
+        return [...otherActions, ...actions];
+      });
+      setModerationAppeals((prev) => {
+        const otherAppeals = prev.filter((a) => a.userId !== userId);
+        return [...otherAppeals, ...appeals];
+      });
+      console.log('[MODERATION] User data loaded:', actions.length, 'actions,', appeals.length, 'appeals');
+      return { actions, appeals };
+    } catch (e) {
+      console.log('[MODERATION] Load user data error:', e);
+      return { actions: [], appeals: [] };
+    }
+  }, []);
+
+  const adminRemovePost = useCallback(async (
+    post: FeedPost,
+    moderatorId: string,
+    reason: string,
+    details: string,
+  ): Promise<ModerationAction | null> => {
+    try {
+      console.log('[MODERATION] Admin removing post:', post.id, 'reason:', reason);
+      const snapshot: FeedPost = { ...post };
+      const { data, error } = await supabase
+        .from('moderation_actions')
+        .insert({
+          post_id: post.id,
+          target_user_id: post.userId === 'me' ? moderatorId : post.userId,
+          moderator_id: moderatorId,
+          action_type: 'remove_post',
+          reason,
+          details,
+          status: 'active',
+          post_snapshot: snapshot,
+        })
+        .select('*')
+        .single();
+
+      if (error || !data) {
+        console.log('[MODERATION] Admin remove post error:', error?.message);
+        return null;
+      }
+
+      const action = mapDbModerationAction(data);
+      setModerationActions((prev) => [action, ...prev]);
+
+      await supabase.from('inbox_notifications').insert({
+        user_id: post.userId === 'me' ? moderatorId : post.userId,
+        title: 'Beitrag entfernt',
+        message: `Dein Beitrag wurde von einem Moderator entfernt. Grund: ${reason}${details ? ' – ' + details : ''}. Du kannst Widerspruch einlegen, wenn du die Entscheidung für ungerechtfertigt hältst.`,
+        sent_at: new Date().toISOString(),
+      });
+
+      console.log('[MODERATION] Post removed and notification sent, action id:', action.id);
+      return action;
+    } catch (e) {
+      console.log('[MODERATION] Admin remove post exception:', e);
+      return null;
+    }
+  }, []);
+
+  const submitAppeal = useCallback(async (
+    actionId: string,
+    userId: string,
+    appealText: string,
+  ): Promise<ModerationAppeal | null> => {
+    try {
+      console.log('[MODERATION] Submitting appeal for action:', actionId);
+      const existing = moderationAppeals.find((a) => a.actionId === actionId && a.status === 'pending');
+      if (existing) {
+        console.log('[MODERATION] Appeal already exists for this action');
+        return null;
+      }
+
+      const { data, error } = await supabase
+        .from('moderation_appeals')
+        .insert({
+          action_id: actionId,
+          user_id: userId,
+          appeal_text: appealText,
+          status: 'pending',
+        })
+        .select('*')
+        .single();
+
+      if (error || !data) {
+        console.log('[MODERATION] Submit appeal error:', error?.message);
+        return null;
+      }
+
+      const appeal = mapDbAppeal(data);
+      setModerationAppeals((prev) => [appeal, ...prev]);
+      console.log('[MODERATION] Appeal submitted:', appeal.id);
+      return appeal;
+    } catch (e) {
+      console.log('[MODERATION] Submit appeal exception:', e);
+      return null;
+    }
+  }, [moderationAppeals]);
+
+  const reviewAppeal = useCallback(async (
+    appealId: string,
+    reviewerId: string,
+    accepted: boolean,
+    reviewerNote: string,
+  ): Promise<boolean> => {
+    try {
+      const appeal = moderationAppeals.find((a) => a.id === appealId);
+      if (!appeal) {
+        console.log('[MODERATION] Appeal not found:', appealId);
+        return false;
+      }
+
+      const newStatus: AppealStatus = accepted ? 'accepted' : 'rejected';
+      const now = new Date().toISOString();
+
+      console.log('[MODERATION] Reviewing appeal:', appealId, 'decision:', newStatus);
+
+      const { error: appealError } = await supabase
+        .from('moderation_appeals')
+        .update({
+          status: newStatus,
+          reviewer_id: reviewerId,
+          reviewer_note: reviewerNote,
+          reviewed_at: now,
+        })
+        .eq('id', appealId);
+
+      if (appealError) {
+        console.log('[MODERATION] Review appeal error:', appealError.message);
+        return false;
+      }
+
+      setModerationAppeals((prev) =>
+        prev.map((a) =>
+          a.id === appealId
+            ? { ...a, status: newStatus, reviewerId, reviewerNote, reviewedAt: now }
+            : a,
+        ),
+      );
+
+      const action = moderationActions.find((a) => a.id === appeal.actionId);
+      if (!action) return true;
+
+      if (accepted) {
+        const { error: restoreError } = await supabase
+          .from('moderation_actions')
+          .update({ status: 'restored', restored_at: now })
+          .eq('id', appeal.actionId);
+
+        if (!restoreError) {
+          setModerationActions((prev) =>
+            prev.map((a) =>
+              a.id === appeal.actionId
+                ? { ...a, status: 'restored' as ModerationActionStatus, restoredAt: now }
+                : a,
+            ),
+          );
+        }
+
+        if (action.postSnapshot) {
+          console.log('[MODERATION] Restoring post from snapshot...');
+          const snap = action.postSnapshot as FeedPost;
+          const restoreData: Record<string, unknown> = {
+            id: action.postId,
+            user_id: action.targetUserId,
+            content: snap.content ?? '',
+            media_urls: snap.mediaUrls ?? [],
+            media_type: snap.mediaType ?? 'none',
+          };
+          if (snap.location) restoreData.location = snap.location;
+          if (snap.taggedUserIds) restoreData.tagged_user_ids = snap.taggedUserIds;
+          if (snap.tags) restoreData.tags = snap.tags;
+
+          await supabase.from('posts').upsert(restoreData, { onConflict: 'id' });
+          console.log('[MODERATION] Post restored successfully');
+        }
+
+        await supabase.from('inbox_notifications').insert({
+          user_id: action.targetUserId,
+          title: 'Widerspruch stattgegeben ✅',
+          message: `Dein Widerspruch wurde geprüft und stattgegeben. Dein Beitrag wurde wiederhergestellt.${reviewerNote ? ' Anmerkung: ' + reviewerNote : ''}`,
+          sent_at: now,
+        });
+      } else {
+        const { error: permDeleteError } = await supabase
+          .from('moderation_actions')
+          .update({ status: 'permanently_deleted', permanently_deleted_at: now })
+          .eq('id', appeal.actionId);
+
+        if (!permDeleteError) {
+          setModerationActions((prev) =>
+            prev.map((a) =>
+              a.id === appeal.actionId
+                ? { ...a, status: 'permanently_deleted' as ModerationActionStatus, permanentlyDeletedAt: now }
+                : a,
+            ),
+          );
+        }
+
+        await supabase.from('posts').delete().eq('id', action.postId);
+
+        await supabase.from('inbox_notifications').insert({
+          user_id: action.targetUserId,
+          title: 'Widerspruch abgelehnt ❌',
+          message: `Dein Widerspruch wurde erneut geprüft und abgelehnt. Der Beitrag bleibt unwiderruflich gelöscht.${reviewerNote ? ' Begründung: ' + reviewerNote : ''}`,
+          sent_at: now,
+        });
+      }
+
+      console.log('[MODERATION] Appeal reviewed successfully');
+      return true;
+    } catch (e) {
+      console.log('[MODERATION] Review appeal exception:', e);
+      return false;
+    }
+  }, [moderationAppeals, moderationActions]);
+
+  const getUserModerationActions = useCallback(
+    (userId: string): ModerationAction[] => {
+      return moderationActions.filter((a) => a.targetUserId === userId);
+    },
+    [moderationActions],
+  );
+
+  const getAppealsForAction = useCallback(
+    (actionId: string): ModerationAppeal[] => {
+      return moderationAppeals.filter((a) => a.actionId === actionId);
+    },
+    [moderationAppeals],
+  );
+
+  const canUserAppeal = useCallback(
+    (actionId: string): boolean => {
+      const action = moderationActions.find((a) => a.id === actionId);
+      if (!action || action.status !== 'active') return false;
+      const existingAppeals = moderationAppeals.filter((a) => a.actionId === actionId);
+      return !existingAppeals.some((a) => a.status === 'pending');
+    },
+    [moderationActions, moderationAppeals],
+  );
+
+  const pendingAppeals = useMemo(
+    () => moderationAppeals.filter((a) => a.status === 'pending'),
+    [moderationAppeals],
+  );
+
+  const activeModActions = useMemo(
+    () => moderationActions.filter((a) => a.status === 'active'),
+    [moderationActions],
+  );
+
+  const isPostModerated = useCallback(
+    (postId: string): boolean => {
+      return moderationActions.some((a) => a.postId === postId && a.status === 'active');
+    },
+    [moderationActions],
+  );
+
   return {
     reports,
     moderators,
@@ -559,5 +884,19 @@ export const [ModerationProvider, useModeration] = createContextHook(() => {
     getActiveRestrictions,
     getAllRestrictions,
     loadCoreData,
+    moderationActions,
+    moderationAppeals,
+    loadModerationActions,
+    loadUserModerationData,
+    adminRemovePost,
+    submitAppeal,
+    reviewAppeal,
+    getUserModerationActions,
+    getAppealsForAction,
+    canUserAppeal,
+    pendingAppeals,
+    activeModActions,
+    isPostModerated,
+    actionsLoaded,
   };
 });

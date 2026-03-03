@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useAlert } from '@/providers/AlertProvider';
 import OptimizedImage, { OptimizedAvatar } from '@/components/OptimizedImage';
-import { Users, MessageCircle, Share2, MoreHorizontal, MapPin, X, ChevronRight, Pencil, MessageCircleOff, Archive, Trash2, Bookmark } from 'lucide-react-native';
+import { Users, MessageCircle, Share2, MoreHorizontal, MapPin, X, ChevronRight, Pencil, MessageCircleOff, Archive, Trash2, Bookmark, ShieldAlert } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import RankIcon from '@/components/RankIcon';
@@ -53,6 +53,7 @@ interface FeedCardProps {
   onArchivePress?: (postId: string) => void;
   onDeletePress?: (postId: string) => void;
   onToggleCommentsPress?: (postId: string) => void;
+  onAdminDeletePress?: (post: FeedPost) => void;
   reaction: PostReactionType | null;
   onReaction: (postId: string, type: PostReactionType) => void;
   isActive?: boolean;
@@ -69,6 +70,7 @@ function FeedCardInner({
   onArchivePress,
   onDeletePress,
   onToggleCommentsPress,
+  onAdminDeletePress,
   reaction,
   onReaction,
   isActive = true,
@@ -268,6 +270,7 @@ function FeedCardInner({
   }, [showTaggedPeople, taggedPeopleAnim, showOwnMenu, ownMenuAnim]);
 
   const isOwnPost = post.userId === 'me';
+  const isAdmin = user?.isAdmin === true;
   const commentsOff = isCommentsDisabled(post.id);
 
   const toggleOwnMenu = useCallback(() => {
@@ -455,7 +458,7 @@ function FeedCardInner({
             <Pressable
               style={cardStyles.moreBtn}
               hitSlop={12}
-              onPress={isOwnPost ? toggleOwnMenu : () => setShowReport(true)}
+              onPress={isOwnPost || isAdmin ? toggleOwnMenu : () => setShowReport(true)}
               testID={`card-more-${post.id}`}
             >
               <MoreHorizontal size={16} color="rgba(255,255,255,0.6)" />
@@ -463,7 +466,7 @@ function FeedCardInner({
           </View>
         </View>
 
-        {showOwnMenu && isOwnPost && (
+        {showOwnMenu && (isOwnPost || isAdmin) && (
           <Animated.View
             style={[
               cardStyles.ownMenuDropdown,
@@ -478,51 +481,98 @@ function FeedCardInner({
               },
             ]}
           >
-            <Pressable
-              style={cardStyles.ownMenuItem}
-              onPress={() => { setShowOwnMenu(false); ownMenuAnim.setValue(0); onEditPress?.(post); }}
-            >
-              <Pencil size={15} color="#E8DCC8" />
-              <Text style={cardStyles.ownMenuItemText}>Bearbeiten</Text>
-            </Pressable>
-            <View style={cardStyles.ownMenuDivider} />
-            <Pressable
-              style={cardStyles.ownMenuItem}
-              onPress={() => { setShowOwnMenu(false); ownMenuAnim.setValue(0); onToggleCommentsPress?.(post.id); }}
-            >
-              <MessageCircleOff size={15} color={commentsOff ? '#BFA35D' : '#E8DCC8'} />
-              <Text style={[cardStyles.ownMenuItemText, commentsOff && { color: '#BFA35D' }]}>
-                {commentsOff ? 'Kommentare aktivieren' : 'Kommentare deaktivieren'}
-              </Text>
-            </Pressable>
-            <View style={cardStyles.ownMenuDivider} />
-            <Pressable
-              style={cardStyles.ownMenuItem}
-              onPress={() => { setShowOwnMenu(false); ownMenuAnim.setValue(0); onArchivePress?.(post.id); }}
-            >
-              <Archive size={15} color="#E8DCC8" />
-              <Text style={cardStyles.ownMenuItemText}>Archivieren</Text>
-            </Pressable>
-            <View style={cardStyles.ownMenuDivider} />
-            <Pressable
-              style={cardStyles.ownMenuItem}
-              onPress={() => {
-                setShowOwnMenu(false);
-                ownMenuAnim.setValue(0);
-                showAlert(
-                  'Beitrag löschen?',
-                  'Dieser Beitrag wird endgültig gelöscht.',
-                  [
-                    { text: 'Abbrechen', style: 'cancel' },
-                    { text: 'Endgültig löschen', style: 'destructive', onPress: () => onDeletePress?.(post.id) },
-                  ],
-                  'warning',
-                );
-              }}
-            >
-              <Trash2 size={15} color="#C0392B" />
-              <Text style={[cardStyles.ownMenuItemText, { color: '#C0392B' }]}>Löschen</Text>
-            </Pressable>
+            {isOwnPost && (
+              <>
+                <Pressable
+                  style={cardStyles.ownMenuItem}
+                  onPress={() => { setShowOwnMenu(false); ownMenuAnim.setValue(0); onEditPress?.(post); }}
+                >
+                  <Pencil size={15} color="#E8DCC8" />
+                  <Text style={cardStyles.ownMenuItemText}>Bearbeiten</Text>
+                </Pressable>
+                <View style={cardStyles.ownMenuDivider} />
+                <Pressable
+                  style={cardStyles.ownMenuItem}
+                  onPress={() => { setShowOwnMenu(false); ownMenuAnim.setValue(0); onToggleCommentsPress?.(post.id); }}
+                >
+                  <MessageCircleOff size={15} color={commentsOff ? '#BFA35D' : '#E8DCC8'} />
+                  <Text style={[cardStyles.ownMenuItemText, commentsOff && { color: '#BFA35D' }]}>
+                    {commentsOff ? 'Kommentare aktivieren' : 'Kommentare deaktivieren'}
+                  </Text>
+                </Pressable>
+                <View style={cardStyles.ownMenuDivider} />
+                <Pressable
+                  style={cardStyles.ownMenuItem}
+                  onPress={() => { setShowOwnMenu(false); ownMenuAnim.setValue(0); onArchivePress?.(post.id); }}
+                >
+                  <Archive size={15} color="#E8DCC8" />
+                  <Text style={cardStyles.ownMenuItemText}>Archivieren</Text>
+                </Pressable>
+                <View style={cardStyles.ownMenuDivider} />
+                <Pressable
+                  style={cardStyles.ownMenuItem}
+                  onPress={() => {
+                    setShowOwnMenu(false);
+                    ownMenuAnim.setValue(0);
+                    showAlert(
+                      'Beitrag löschen?',
+                      'Dieser Beitrag wird endgültig gelöscht.',
+                      [
+                        { text: 'Abbrechen', style: 'cancel' },
+                        { text: 'Endgültig löschen', style: 'destructive', onPress: () => onDeletePress?.(post.id) },
+                      ],
+                      'warning',
+                    );
+                  }}
+                >
+                  <Trash2 size={15} color="#C0392B" />
+                  <Text style={[cardStyles.ownMenuItemText, { color: '#C0392B' }]}>Löschen</Text>
+                </Pressable>
+              </>
+            )}
+            {!isOwnPost && isAdmin && (
+              <>
+                <Pressable
+                  style={cardStyles.ownMenuItem}
+                  onPress={() => {
+                    setShowOwnMenu(false);
+                    ownMenuAnim.setValue(0);
+                    onAdminDeletePress?.(post);
+                  }}
+                >
+                  <ShieldAlert size={15} color="#C0392B" />
+                  <Text style={[cardStyles.ownMenuItemText, { color: '#C0392B' }]}>Admin: Beitrag entfernen</Text>
+                </Pressable>
+                <View style={cardStyles.ownMenuDivider} />
+                <Pressable
+                  style={cardStyles.ownMenuItem}
+                  onPress={() => {
+                    setShowOwnMenu(false);
+                    ownMenuAnim.setValue(0);
+                    setShowReport(true);
+                  }}
+                >
+                  <Trash2 size={15} color="#E8DCC8" />
+                  <Text style={cardStyles.ownMenuItemText}>Melden</Text>
+                </Pressable>
+              </>
+            )}
+            {isOwnPost && isAdmin && (
+              <>
+                <View style={cardStyles.ownMenuDivider} />
+                <Pressable
+                  style={cardStyles.ownMenuItem}
+                  onPress={() => {
+                    setShowOwnMenu(false);
+                    ownMenuAnim.setValue(0);
+                    onAdminDeletePress?.(post);
+                  }}
+                >
+                  <ShieldAlert size={15} color="#BFA35D" />
+                  <Text style={[cardStyles.ownMenuItemText, { color: '#BFA35D' }]}>Admin: Moderiert entfernen</Text>
+                </Pressable>
+              </>
+            )}
           </Animated.View>
         )}
 

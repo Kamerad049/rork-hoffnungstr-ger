@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,9 +19,15 @@ import {
   Mic,
   Clock,
   Volume2,
+  ShieldAlert,
+  Scale,
+  ChevronRight,
 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useNotifications, type InboxNotification } from '@/hooks/useNotifications';
+import { useModeration } from '@/providers/ModerationProvider';
+import { useAuth } from '@/providers/AuthProvider';
 import * as Haptics from 'expo-haptics';
 import { useAlert } from '@/providers/AlertProvider';
 
@@ -144,19 +150,30 @@ function AudioPlayer({ uri, duration, colors }: { uri: string; duration: number;
   );
 }
 
+const MODERATION_TITLES = ['Beitrag entfernt', 'Widerspruch stattgegeben ✅', 'Widerspruch abgelehnt ❌'];
+
+function isModerationNotification(item: InboxNotification): boolean {
+  return MODERATION_TITLES.some((t) => item.title.includes(t.replace(' ✅', '').replace(' ❌', '')));
+}
+
 function NotificationItem({
   item,
   colors,
   onRead,
   onDelete,
+  onModerationPress,
 }: {
   item: InboxNotification;
   colors: any;
   onRead: (id: string) => void;
   onDelete: (id: string) => void;
+  onModerationPress: () => void;
 }) {
   const { showAlert } = useAlert();
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const isModeration = isModerationNotification(item);
+  const isAppealResult = item.title.includes('Widerspruch');
+  const isRemoval = item.title === 'Beitrag entfernt';
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
@@ -167,7 +184,10 @@ function NotificationItem({
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onRead(item.id);
     }
-  }, [item.id, item.read, onRead]);
+    if (isModeration) {
+      onModerationPress();
+    }
+  }, [item.id, item.read, onRead, isModeration, onModerationPress]);
 
   const handleDelete = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -175,7 +195,15 @@ function NotificationItem({
       { text: 'Abbrechen', style: 'cancel' },
       { text: 'Löschen', style: 'destructive', onPress: () => onDelete(item.id) },
     ]);
-  }, [item.id, onDelete]);
+  }, [item.id, onDelete, showAlert]);
+
+  const iconColor = isModeration
+    ? (isRemoval ? '#C06060' : isAppealResult && item.title.includes('stattgegeben') ? '#4CAF50' : '#E8A44E')
+    : (item.read ? colors.tertiaryText : colors.accent);
+
+  const iconBg = isModeration
+    ? `${iconColor}15`
+    : (item.read ? colors.surfaceSecondary : 'rgba(191,163,93,0.15)');
 
   return (
     <Animated.View style={{ opacity: fadeAnim }}>
@@ -183,8 +211,8 @@ function NotificationItem({
         style={[
           styles.card,
           {
-            backgroundColor: item.read ? colors.surface : 'rgba(191,163,93,0.06)',
-            borderLeftColor: item.read ? 'transparent' : colors.accent,
+            backgroundColor: item.read ? colors.surface : (isModeration ? `${iconColor}08` : 'rgba(191,163,93,0.06)'),
+            borderLeftColor: item.read ? 'transparent' : iconColor,
             borderLeftWidth: item.read ? 0 : 3,
           },
         ]}
@@ -192,11 +220,13 @@ function NotificationItem({
         testID={`notification-${item.id}`}
       >
         <View style={styles.cardHeader}>
-          <View style={[styles.iconCircle, { backgroundColor: item.read ? colors.surfaceSecondary : 'rgba(191,163,93,0.15)' }]}>
+          <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
             {item.audioUri ? (
-              <Volume2 size={18} color={item.read ? colors.tertiaryText : colors.accent} />
+              <Volume2 size={18} color={iconColor} />
+            ) : isModeration ? (
+              <ShieldAlert size={18} color={iconColor} />
             ) : (
-              <Bell size={18} color={item.read ? colors.tertiaryText : colors.accent} />
+              <Bell size={18} color={iconColor} />
             )}
           </View>
           <View style={styles.cardTitleRow}>
@@ -234,9 +264,23 @@ function NotificationItem({
           <AudioPlayer uri={item.audioUri} duration={item.audioDuration} colors={colors} />
         ) : null}
 
+        {isRemoval && (
+          <Pressable
+            style={styles.moderationActionBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onModerationPress();
+            }}
+          >
+            <Scale size={14} color="#E8A44E" />
+            <Text style={styles.moderationActionText}>Verlauf & Widerspruch ansehen</Text>
+            <ChevronRight size={14} color="rgba(232,164,78,0.5)" />
+          </Pressable>
+        )}
+
         {!item.read && (
           <View style={styles.unreadDot}>
-            <View style={[styles.dot, { backgroundColor: colors.accent }]} />
+            <View style={[styles.dot, { backgroundColor: iconColor }]} />
           </View>
         )}
       </Pressable>
@@ -247,8 +291,20 @@ function NotificationItem({
 export default function InboxScreen() {
   const { colors } = useTheme();
   const { showAlert } = useAlert();
+  const { user } = useAuth();
+  const router = useRouter();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearAll } = useNotifications();
+  const { activeModActions } = useModeration();
   const [refreshing, setRefreshing] = useState<boolean>(false);
+
+  const userHasModActions = useMemo(() => {
+    if (!user) return false;
+    return activeModActions.some((a) => a.targetUserId === user.id);
+  }, [user, activeModActions]);
+
+  const handleModerationPress = useCallback(() => {
+    router.push('/moderation-history' as any);
+  }, [router]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -283,28 +339,47 @@ export default function InboxScreen() {
         colors={colors}
         onRead={markAsRead}
         onDelete={deleteNotification}
+        onModerationPress={handleModerationPress}
       />
     ),
-    [colors, markAsRead, deleteNotification]
+    [colors, markAsRead, deleteNotification, handleModerationPress]
   );
 
   const ListHeader = useCallback(() => {
-    if (notifications.length === 0) return null;
     return (
-      <View style={styles.headerActions}>
-        {unreadCount > 0 && (
-          <Pressable style={styles.headerBtn} onPress={handleMarkAllRead}>
-            <CheckCheck size={14} color={colors.accent} />
-            <Text style={[styles.headerBtnText, { color: colors.accent }]}>Alle gelesen</Text>
+      <View>
+        {userHasModActions && (
+          <Pressable
+            style={styles.modBanner}
+            onPress={handleModerationPress}
+          >
+            <View style={styles.modBannerIcon}>
+              <ShieldAlert size={18} color="#E8A44E" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.modBannerTitle}>Moderations-Verlauf</Text>
+              <Text style={styles.modBannerSub}>Du hast offene Moderations-Aktionen</Text>
+            </View>
+            <ChevronRight size={16} color="rgba(232,164,78,0.5)" />
           </Pressable>
         )}
-        <Pressable style={[styles.headerBtn, { marginLeft: 'auto' }]} onPress={handleClearAll}>
-          <Trash2 size={14} color={colors.red} />
-          <Text style={[styles.headerBtnText, { color: colors.red }]}>Alle löschen</Text>
-        </Pressable>
+        {notifications.length > 0 && (
+          <View style={styles.headerActions}>
+            {unreadCount > 0 && (
+              <Pressable style={styles.headerBtn} onPress={handleMarkAllRead}>
+                <CheckCheck size={14} color={colors.accent} />
+                <Text style={[styles.headerBtnText, { color: colors.accent }]}>Alle gelesen</Text>
+              </Pressable>
+            )}
+            <Pressable style={[styles.headerBtn, { marginLeft: 'auto' }]} onPress={handleClearAll}>
+              <Trash2 size={14} color={colors.red} />
+              <Text style={[styles.headerBtnText, { color: colors.red }]}>Alle löschen</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     );
-  }, [notifications.length, unreadCount, colors, handleMarkAllRead, handleClearAll]);
+  }, [notifications.length, unreadCount, colors, handleMarkAllRead, handleClearAll, userHasModActions, handleModerationPress]);
 
   const ListEmpty = useCallback(
     () => (
@@ -466,6 +541,54 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600' as const,
     fontVariant: ['tabular-nums'],
+  },
+  moderationActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+    marginLeft: 50,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: 'rgba(232,164,78,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(232,164,78,0.15)',
+  },
+  moderationActionText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#E8A44E',
+  },
+  modBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(232,164,78,0.06)',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(232,164,78,0.12)',
+  },
+  modBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(232,164,78,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#E8A44E',
+  },
+  modBannerSub: {
+    fontSize: 12,
+    color: 'rgba(232,164,78,0.5)',
+    marginTop: 2,
   },
   unreadDot: {
     position: 'absolute',

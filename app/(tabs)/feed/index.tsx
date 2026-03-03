@@ -22,10 +22,12 @@ import type { PostReactionType } from '@/components/FeedCard';
 import SponsoredCard from '@/components/SponsoredCard';
 import StoryBar from '@/components/StoryBar';
 import EditPostModal from '@/components/EditPostModal';
+import AdminDeleteModal from '@/components/AdminDeleteModal';
 import type { FeedPost, StoryGroup, Promotion } from '@/constants/types';
 import { trackRender, measureSinceBoot } from '@/lib/perf';
 import { usePromotions } from '@/providers/PromotionProvider';
 import { useAuth } from '@/providers/AuthProvider';
+import { useModeration } from '@/providers/ModerationProvider';
 import { queryKeys } from '@/constants/queryKeys';
 
 type FeedItem = 
@@ -42,6 +44,7 @@ export default function FeedScreen() {
   const { allPosts, archivePost, deletePost, toggleCommentsDisabled } = usePosts();
   const { activePromotions, trackImpression, trackClick, getSponsorById } = usePromotions();
   const { user } = useAuth();
+  const { adminRemovePost, isPostModerated } = useModeration();
   const queryClient = useQueryClient();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -49,6 +52,7 @@ export default function FeedScreen() {
   const [postReactions, setPostReactions] = useState<Record<string, PostReactionType>>({});
   const [ready, setReady] = useState<boolean>(false);
   const [editingPost, setEditingPost] = useState<FeedPost | null>(null);
+  const [adminDeletePost, setAdminDeletePost] = useState<FeedPost | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [feedMode, setFeedMode] = useState<'discover' | 'foryou'>('discover');
   const tabIndicatorX = useRef(new Animated.Value(0)).current;
@@ -71,10 +75,12 @@ export default function FeedScreen() {
   }, [feedMode, tabIndicatorX]);
 
   const sortedPosts = useMemo(() => {
-    return [...allPosts].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [allPosts]);
+    return [...allPosts]
+      .filter((p) => !isPostModerated(p.id))
+      .sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+  }, [allPosts, isPostModerated]);
 
   const feedItems = useMemo<FeedItem[]>(() => {
     const items: FeedItem[] = sortedPosts.map((p) => ({ type: 'post' as const, data: p }));
@@ -161,6 +167,27 @@ export default function FeedScreen() {
     [toggleCommentsDisabled]
   );
 
+  const handleAdminDeletePress = useCallback(
+    (post: FeedPost) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      console.log('[FEED] Admin delete requested for post:', post.id);
+      setAdminDeletePost(post);
+    },
+    []
+  );
+
+  const handleAdminDeleteConfirm = useCallback(
+    async (post: FeedPost, reason: string, details: string) => {
+      console.log('[FEED] Admin confirming delete:', post.id, reason);
+      const action = await adminRemovePost(post, user?.id ?? 'admin', reason, details);
+      if (action) {
+        console.log('[FEED] Post removed by admin, action:', action.id);
+        await queryClient.invalidateQueries({ queryKey: queryKeys.posts(user?.id ?? '') });
+      }
+    },
+    [adminRemovePost, user?.id, queryClient]
+  );
+
   const handleCreatePost = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push('/(tabs)/feed/create' as any);
@@ -237,6 +264,7 @@ export default function FeedScreen() {
               onDeletePress={handleDeletePress}
               onArchivePress={handleArchivePress}
               onToggleCommentsPress={handleToggleCommentsPress}
+              onAdminDeletePress={handleAdminDeletePress}
               reaction={postReactions[post.id] ?? null}
               onReaction={handleReaction}
               isActive={true}
@@ -245,7 +273,7 @@ export default function FeedScreen() {
         </View>
       );
     },
-    [handleCommentPress, handleUserPress, handlePostPress, handleLocationPress, handleEditPress, handleDeletePress, handleArchivePress, handleToggleCommentsPress, postReactions, handleReaction, getSponsorById, trackImpression, trackClick]
+    [handleCommentPress, handleUserPress, handlePostPress, handleLocationPress, handleEditPress, handleDeletePress, handleArchivePress, handleToggleCommentsPress, handleAdminDeletePress, postReactions, handleReaction, getSponsorById, trackImpression, trackClick]
   );
 
   const renderHeader = useCallback(() => (
@@ -401,6 +429,13 @@ export default function FeedScreen() {
         visible={editingPost !== null}
         post={editingPost}
         onClose={() => setEditingPost(null)}
+      />
+
+      <AdminDeleteModal
+        visible={adminDeletePost !== null}
+        post={adminDeletePost}
+        onClose={() => setAdminDeletePost(null)}
+        onConfirm={handleAdminDeleteConfirm}
       />
     </View>
   );
