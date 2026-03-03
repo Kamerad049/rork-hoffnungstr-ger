@@ -70,14 +70,11 @@ export function useOrden() {
   }, [earnedOrdenMap]);
 
   const characterValues = useMemo((): number[] => {
-    const vals = userValuesQuery.data;
-    if (vals && typeof vals === 'object') {
-      return CHARACTER_DIMENSIONS.map(dim => {
-        const v = vals[dim.key];
-        return typeof v === 'number' ? v : 0;
-      });
-    }
     return CHARACTER_DIMENSIONS.map(() => 0);
+  }, []);
+
+  const userValueStrings = useMemo((): string[] => {
+    return userValuesQuery.data ?? [];
   }, [userValuesQuery.data]);
 
   const tierCounts = useMemo((): Record<OrdenTier, number> => {
@@ -96,6 +93,7 @@ export function useOrden() {
     earnedIds,
     earnedOrdenMap,
     characterValues,
+    userValueStrings,
     tierCounts,
     isLoading,
     refetchUserOrders: userOrdersQuery.refetch,

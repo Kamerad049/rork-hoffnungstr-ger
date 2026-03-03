@@ -24,10 +24,11 @@ export interface DbUserOrden {
   meta: Record<string, unknown>;
 }
 
-export interface DbUserValues {
+export interface DbUserValueRow {
+  id: string;
   user_id: string;
-  values: Record<string, number>;
-  updated_at: string;
+  value: string;
+  created_at: string;
 }
 
 export async function getOrders(): Promise<DbOrden[]> {
@@ -64,23 +65,23 @@ export async function getUserOrders(userId: string): Promise<DbUserOrden[]> {
   return result.data ?? [];
 }
 
-export async function getUserValues(userId: string): Promise<Record<string, number> | null> {
+export async function getUserValues(userId: string): Promise<string[]> {
   console.log('[ORDERS] Fetching character values for:', userId);
   const result = await trackNetwork('orders.getUserValues', () =>
     supabase
       .from('user_values')
-      .select('*')
+      .select('id, user_id, value, created_at')
       .eq('user_id', userId)
-      .single()
-  ) as { data: DbUserValues | null; error: { message: string } | null };
+  ) as { data: DbUserValueRow[] | null; error: { message: string } | null };
 
   if (result.error) {
-    console.log('[ORDERS] No character values found:', result.error.message);
-    return null;
+    console.log('[ORDERS] Error fetching character values:', result.error.message);
+    return [];
   }
 
-  console.log('[ORDERS] Character values loaded');
-  return result.data?.values ?? null;
+  const values = (result.data ?? []).map(row => row.value);
+  console.log('[ORDERS] Character values loaded:', values.length, 'values');
+  return values;
 }
 
 export async function grantUserOrder(
@@ -118,27 +119,39 @@ export async function grantUserOrder(
 
 export async function updateUserValues(
   userId: string,
-  values: Record<string, number>,
+  values: string[],
 ): Promise<boolean> {
   console.log('[ORDERS] Updating character values for:', userId);
-  const result = await trackNetwork('orders.updateValues', () =>
-    supabase
-      .from('user_values')
-      .upsert(
-        {
-          user_id: userId,
-          values,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id' }
-      )
+
+  const deleteResult = await trackNetwork('orders.deleteValues', () =>
+    supabase.from('user_values').delete().eq('user_id', userId)
   ) as { error: { message: string } | null };
 
-  if (result.error) {
-    console.log('[ORDERS] Error updating values:', result.error.message);
+  if (deleteResult.error) {
+    console.log('[ORDERS] Error clearing old values:', deleteResult.error.message);
     return false;
   }
 
-  console.log('[ORDERS] Character values updated');
+  if (values.length === 0) {
+    console.log('[ORDERS] No values to insert, cleared only');
+    return true;
+  }
+
+  const rows = values.map(value => ({
+    user_id: userId,
+    value,
+    created_at: new Date().toISOString(),
+  }));
+
+  const insertResult = await trackNetwork('orders.insertValues', () =>
+    supabase.from('user_values').insert(rows)
+  ) as { error: { message: string } | null };
+
+  if (insertResult.error) {
+    console.log('[ORDERS] Error inserting values:', insertResult.error.message);
+    return false;
+  }
+
+  console.log('[ORDERS] Character values updated:', values.length, 'values');
   return true;
 }
