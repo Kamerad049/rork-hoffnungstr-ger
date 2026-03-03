@@ -31,7 +31,7 @@ export const usersRouter = createTRPCRouter({
         avatarUrl: null,
         coverUrl: null,
         isSingle: false,
-        rank: "Sucher",
+        rank: "Neuling",
         ep: 0,
         isPremium: false,
         createdAt: new Date(),

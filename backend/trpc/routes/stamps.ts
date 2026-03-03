@@ -86,7 +86,7 @@ export const stampsRouter = createTRPCRouter({
       return {
         id,
         epEarned: STAMP_EP,
-        newRank: user?.rank ?? "Sucher",
+        newRank: user?.rank ?? "Neuling",
         totalEp: user?.ep ?? 0,
       };
     }),

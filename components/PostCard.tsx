@@ -30,14 +30,14 @@ function PostCardInner({ post, onCommentPress, onUserPress }: PostCardProps) {
         displayName: socialProfile?.displayName || user?.name || 'Ich',
         username: user?.name?.toLowerCase().replace(/\s/g, '_') ?? 'ich',
         rankIcon: 'Compass',
-        rank: 'Entdecker',
+        rank: 'Neuling',
         avatarUrl: socialProfile?.avatarUrl ?? null,
       }
     : (() => {
         const u = getUserById(post.userId);
         return u
           ? { displayName: u.displayName, username: u.username, rankIcon: u.rankIcon, rank: u.rank, avatarUrl: u.avatarUrl }
-          : { displayName: 'Unbekannt', username: 'unknown', rankIcon: 'Search', rank: 'Sucher', avatarUrl: null as string | null };
+          : { displayName: 'Unbekannt', username: 'unknown', rankIcon: 'Eye', rank: 'Neuling', avatarUrl: null as string | null };
       })();
 
   const liked = isLiked(post.id);

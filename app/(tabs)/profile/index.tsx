@@ -530,7 +530,7 @@ export default function ProfileScreen() {
     );
   }
 
-  const displayName = profile.displayName || user?.name || 'Entdecker';
+  const displayName = profile.displayName || user?.name || 'Neuling';
   const initial = displayName.charAt(0).toUpperCase();
   const username = user?.name?.toLowerCase().replace(/\s/g, '') ?? 'user';
 

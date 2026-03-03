@@ -87,13 +87,21 @@ function generateId(): string {
 }
 
 const RANKS = [
-  { name: "Sucher", minEp: 0 },
-  { name: "Entdecker", minEp: 100 },
-  { name: "Hüter", minEp: 500 },
-  { name: "Wächter", minEp: 1500 },
-  { name: "Bewahrer", minEp: 3000 },
-  { name: "Meister", minEp: 5000 },
-  { name: "Patriot", minEp: 10000 },
+  { name: "Neuling", minEp: 0 },
+  { name: "Bürger", minEp: 150 },
+  { name: "Gefährte", minEp: 500 },
+  { name: "Verbündeter", minEp: 1200 },
+  { name: "Bewahrer", minEp: 2500 },
+  { name: "Wächter", minEp: 5000 },
+  { name: "Kind der Heimat", minEp: 9000 },
+  { name: "Volksdiener", minEp: 15000 },
+  { name: "Ehrenbürger", minEp: 25000 },
+  { name: "Wegbereiter", minEp: 40000 },
+  { name: "Werteüberbringer", minEp: 65000 },
+  { name: "Wächter der Wurzeln", minEp: 100000 },
+  { name: "Hüter der Kultur", minEp: 160000 },
+  { name: "Traditionshüter", minEp: 250000 },
+  { name: "Deutscher Patriot", minEp: 500000 },
 ];
 
 function getRankForEp(ep: number): string {

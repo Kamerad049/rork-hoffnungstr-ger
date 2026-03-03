@@ -262,7 +262,7 @@ export default function UserProfileScreen() {
         displayName: socialProfile.displayName || authUser!.name,
         bio: socialProfile.bio || '',
         avatarUrl: socialProfile.avatarUrl,
-        rank: meEntry?.rank ?? 'Entdecker',
+        rank: meEntry?.rank ?? 'Neuling',
         rankIcon: meEntry?.rankIcon ?? 'Compass',
         ep: meEntry?.ep ?? 0,
         stampCount: meEntry?.stampCount ?? 0,

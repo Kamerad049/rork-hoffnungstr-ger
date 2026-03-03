@@ -293,7 +293,7 @@ export default function FriendsScreen() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
-                Noch keine Freunde. Suche nach Entdeckern!
+                Noch keine Freunde. Suche nach Gleichgesinnten!
               </Text>
             </View>
           }

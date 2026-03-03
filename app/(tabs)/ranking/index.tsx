@@ -152,7 +152,7 @@ export default function RankingScreen() {
               />
             ))}
           </View>
-          <Text style={styles.podiumTitle}>TOP 25 Entdecker</Text>
+          <Text style={styles.podiumTitle}>TOP 25 Rangliste</Text>
           <Text style={styles.podiumSubtitle}>
             Sammle EP durch Stempel, Beiträge und Kommentare
           </Text>
@@ -185,7 +185,7 @@ export default function RankingScreen() {
         </LinearGradient>
         {rest.length > 0 && (
           <Text style={styles.sectionTitle}>
-            Weitere Entdecker
+            Weitere Mitglieder
           </Text>
         )}
       </View>

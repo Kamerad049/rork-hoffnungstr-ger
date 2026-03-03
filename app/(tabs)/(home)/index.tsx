@@ -103,7 +103,7 @@ export default function HomeScreen() {
             <View>
               <Text style={styles.greeting}>{greeting}</Text>
               <Text style={styles.userName}>
-                {user?.name ?? 'Entdecker'}
+                {user?.name ?? 'Neuling'}
               </Text>
             </View>
 
