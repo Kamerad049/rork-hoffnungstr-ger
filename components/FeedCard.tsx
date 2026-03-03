@@ -532,43 +532,45 @@ function FeedCardInner({
           )}
         </View>
 
-        <View style={cardStyles.reactionBar}>
-          {REACTION_CONFIG.map((r, idx) => {
-            const isActive = reaction === r.type;
-            const IconComp = r.icon;
-            return (
-              <Pressable
-                key={r.type}
-                style={[
-                  cardStyles.reactionBtn,
-                  isActive && cardStyles.reactionBtnActive,
-                ]}
-                onPress={() => handleReaction(r.type, idx)}
-                testID={`reaction-${r.type}-${post.id}`}
-              >
-                <Animated.View style={{ transform: [{ scale: reactionScales[idx] }] }}>
-                  <IconComp
-                    size={20}
-                    color={isActive ? '#BFA35D' : 'rgba(255,255,255,0.7)'}
-                    fill={isActive ? 'rgba(191,163,93,0.3)' : 'transparent'}
-                  />
-                </Animated.View>
-              </Pressable>
-            );
-          })}
+        <View style={cardStyles.reactionBar} pointerEvents="box-none">
+          <View style={cardStyles.reactionBarInner}>
+            {REACTION_CONFIG.map((r, idx) => {
+              const isActive = reaction === r.type;
+              const IconComp = r.icon;
+              return (
+                <Pressable
+                  key={r.type}
+                  style={[
+                    cardStyles.reactionBtn,
+                    isActive && cardStyles.reactionBtnActive,
+                  ]}
+                  onPress={() => handleReaction(r.type, idx)}
+                  testID={`reaction-${r.type}-${post.id}`}
+                >
+                  <Animated.View style={{ transform: [{ scale: reactionScales[idx] }] }}>
+                    <IconComp
+                      size={20}
+                      color={isActive ? '#BFA35D' : 'rgba(255,255,255,0.7)'}
+                      fill={isActive ? 'rgba(191,163,93,0.3)' : 'transparent'}
+                    />
+                  </Animated.View>
+                </Pressable>
+              );
+            })}
 
-          <View style={cardStyles.reactionDivider} />
+            <View style={cardStyles.reactionDivider} />
 
-          <Pressable style={cardStyles.reactionBtn} onPress={handleComment} testID={`card-comment-${post.id}`}>
-            <MessageCircle size={20} color="rgba(255,255,255,0.7)" />
-            {post.commentCount > 0 && (
-              <Text style={cardStyles.reactionCount}>{post.commentCount}</Text>
-            )}
-          </Pressable>
+            <Pressable style={cardStyles.reactionBtn} onPress={handleComment} testID={`card-comment-${post.id}`}>
+              <MessageCircle size={20} color="rgba(255,255,255,0.7)" />
+              {post.commentCount > 0 && (
+                <Text style={cardStyles.reactionCount}>{post.commentCount}</Text>
+              )}
+            </Pressable>
 
-          <Pressable style={cardStyles.reactionBtn}>
-            <Share2 size={18} color="rgba(255,255,255,0.7)" />
-          </Pressable>
+            <Pressable style={cardStyles.reactionBtn}>
+              <Share2 size={18} color="rgba(255,255,255,0.7)" />
+            </Pressable>
+          </View>
         </View>
 
         <View style={cardStyles.bottomSection}>
@@ -822,7 +824,13 @@ const cardStyles = StyleSheet.create({
   reactionBar: {
     position: 'absolute' as const,
     right: 10,
-    top: '30%' as unknown as number,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  reactionBarInner: {
     alignItems: 'center',
     gap: 4,
     backgroundColor: 'rgba(15,14,11,0.55)',

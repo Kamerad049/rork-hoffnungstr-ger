@@ -1,11 +1,15 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useFriends } from '@/providers/FriendsProvider';
 import { queryKeys } from '@/constants/queryKeys';
 import type { FeedPost, PostComment } from '@/constants/types';
+
+const STORAGE_KEY_SAVED = 'posts_saved_ids';
+const STORAGE_KEY_ARCHIVED = 'posts_archived_ids';
 
 function mapDbPost(p: any, userId: string): FeedPost {
   const location = p.location ?? undefined;
@@ -40,6 +44,41 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
   const [commentsCache, setCommentsCache] = useState<Record<string, PostComment[]>>({});
   const [archivedPostIds, setArchivedPostIds] = useState<Set<string>>(new Set());
   const [savedPostIds, setSavedPostIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const loadPersisted = async () => {
+      try {
+        const [savedRaw, archivedRaw] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEY_SAVED),
+          AsyncStorage.getItem(STORAGE_KEY_ARCHIVED),
+        ]);
+        if (savedRaw) {
+          const parsed: string[] = JSON.parse(savedRaw);
+          setSavedPostIds(new Set(parsed));
+          console.log('[POSTS] Loaded', parsed.length, 'saved post IDs from storage');
+        }
+        if (archivedRaw) {
+          const parsed: string[] = JSON.parse(archivedRaw);
+          setArchivedPostIds(new Set(parsed));
+          console.log('[POSTS] Loaded', parsed.length, 'archived post IDs from storage');
+        }
+      } catch (e) {
+        console.log('[POSTS] Error loading persisted IDs:', e);
+      }
+    };
+    loadPersisted();
+  }, []);
+
+  const persistSaved = useCallback((ids: Set<string>) => {
+    AsyncStorage.setItem(STORAGE_KEY_SAVED, JSON.stringify([...ids])).catch((e) =>
+      console.log('[POSTS] Error persisting saved IDs:', e),
+    );
+  }, []);
+
+  const persistArchived = useCallback((ids: Set<string>) => {
+    AsyncStorage.setItem(STORAGE_KEY_ARCHIVED, JSON.stringify([...ids])).catch((e) =>
+      console.log('[POSTS] Error persisting archived IDs:', e),
+    );
+  }, []);
   const [savedVisibility, setSavedVisibility] = useState<'public' | 'friends' | 'private'>('private');
   const [disabledCommentsIds, setDisabledCommentsIds] = useState<Set<string>>(new Set());
 
@@ -240,17 +279,22 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
 
   const archivePost = useCallback((postId: string) => {
     console.log('[POSTS] Archiving post:', postId);
-    setArchivedPostIds((prev) => new Set([...prev, postId]));
-  }, []);
+    setArchivedPostIds((prev) => {
+      const next = new Set([...prev, postId]);
+      persistArchived(next);
+      return next;
+    });
+  }, [persistArchived]);
 
   const unarchivePost = useCallback((postId: string) => {
     console.log('[POSTS] Unarchiving post:', postId);
     setArchivedPostIds((prev) => {
       const next = new Set(prev);
       next.delete(postId);
+      persistArchived(next);
       return next;
     });
-  }, []);
+  }, [persistArchived]);
 
   const deletePost = useCallback(async (postId: string) => {
     console.log('[POSTS] Deleting post:', postId);
@@ -267,9 +311,10 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
     setArchivedPostIds((prev) => {
       const next = new Set(prev);
       next.delete(postId);
+      persistArchived(next);
       return next;
     });
-  }, [userId, queryClient]);
+  }, [userId, queryClient, persistArchived]);
 
   const editPost = useCallback(async (
     postId: string,
@@ -325,9 +370,10 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
       } else {
         next.add(postId);
       }
+      persistSaved(next);
       return next;
     });
-  }, []);
+  }, [persistSaved]);
 
   const isPostSaved = useCallback((postId: string) => savedPostIds.has(postId), [savedPostIds]);
 

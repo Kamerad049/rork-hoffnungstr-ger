@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { addToUserCache } from '@/lib/userCache';
 import { useFriends } from '@/providers/FriendsProvider';
+import { queryKeys } from '@/constants/queryKeys';
 
 
 const FLAG_EXPIRY_HOURS = 24;
@@ -47,10 +48,17 @@ interface SocialProfile {
   bundesland: string;
 }
 
+interface ProfileQueryData {
+  profile: SocialProfile;
+  privacy: PrivacySettings;
+  flagHoistedAt: string | null;
+}
+
 export const [SocialProvider, useSocial] = createContextHook(() => {
   const { user } = useAuth();
   const userId = user?.id ?? '';
   const { friends, allUsersState } = useFriends();
+  const queryClient = useQueryClient();
 
   const [profile, setProfile] = useState<SocialProfile>({
     displayName: user?.name ?? '',
@@ -63,78 +71,96 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
   });
   const [privacy, setPrivacy] = useState<PrivacySettings>({ ...DEFAULT_PRIVACY });
   const [flagHoistedAtState, setFlagHoistedAt] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const profileQuery = useQuery<ProfileQueryData | null>({
+    queryKey: [...queryKeys.socialProfile(userId), user?.name],
+    queryFn: async () => {
+      if (!userId) return null;
+      console.log('[SOCIAL] Loading profile for user:', userId);
+      const [profileRes, valuesRes, privacyRes] = await Promise.all([
+        supabase.from('users').select('*').eq('id', userId).single(),
+        supabase.from('user_values').select('value').eq('user_id', userId),
+        supabase.from('privacy_settings').select('*').eq('user_id', userId).maybeSingle(),
+      ]);
+
+      let loadedProfile: SocialProfile = {
+        displayName: user?.name ?? '',
+        bio: '',
+        avatarUrl: null,
+        values: [],
+        birthplace: '',
+        residence: '',
+        bundesland: '',
+      };
+      let loadedPrivacy: PrivacySettings = { ...DEFAULT_PRIVACY };
+      let loadedFlag: string | null = null;
+
+      if (profileRes.data) {
+        const p = profileRes.data;
+        const vals = (valuesRes.data ?? []).map((v: any) => v.value);
+        loadedProfile = {
+          displayName: p.display_name ?? '',
+          bio: p.bio ?? '',
+          avatarUrl: p.avatar_url ?? null,
+          values: vals,
+          birthplace: p.birthplace ?? '',
+          residence: p.residence ?? '',
+          bundesland: p.bundesland ?? '',
+        };
+        loadedFlag = p.flag_hoisted_at ?? null;
+        addToUserCache({
+          id: 'me',
+          username: p.username ?? '',
+          displayName: p.display_name ?? '',
+          bio: p.bio ?? '',
+          avatarUrl: p.avatar_url ?? null,
+          rank: p.rank ?? 'Neuling',
+          rankIcon: p.rank_icon ?? 'Eye',
+          ep: p.xp ?? 0,
+          stampCount: p.stamp_count ?? 0,
+          postCount: p.post_count ?? 0,
+          friendCount: p.friend_count ?? 0,
+          flagHoistedAt: p.flag_hoisted_at ?? null,
+          values: vals,
+          birthplace: p.birthplace ?? '',
+          residence: p.residence ?? '',
+          bundesland: p.bundesland ?? '',
+        });
+      }
+
+      if (privacyRes.data) {
+        const ps = privacyRes.data;
+        loadedPrivacy = {
+          showPosts: ps.show_posts ?? 'everyone',
+          showFriends: ps.show_friends ?? 'everyone',
+          showStamps: ps.show_stamps ?? 'everyone',
+          feedPostVisibility: ps.feed_post_visibility ?? 'everyone',
+          storyVisibility: ps.story_visibility ?? 'everyone',
+          showBirthplace: ps.show_birthplace ?? 'friends',
+          showResidence: ps.show_residence ?? 'friends',
+          showBundesland: ps.show_bundesland ?? 'everyone',
+          showValues: ps.show_values ?? 'everyone',
+          allowTagging: ps.allow_tagging ?? 'friends',
+        };
+      }
+
+      console.log('[SOCIAL] Profile loaded');
+      return { profile: loadedProfile, privacy: loadedPrivacy, flagHoistedAt: loadedFlag };
+    },
+    enabled: !!user,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
   useEffect(() => {
-    if (!user) {
-      setIsLoading(false);
-      return;
+    if (profileQuery.data) {
+      setProfile(profileQuery.data.profile);
+      setPrivacy(profileQuery.data.privacy);
+      setFlagHoistedAt(profileQuery.data.flagHoistedAt);
     }
-    const load = async () => {
-      try {
-        console.log('[SOCIAL] Loading profile for user:', userId);
-        const [profileRes, valuesRes, privacyRes] = await Promise.all([
-          supabase.from('users').select('*').eq('id', userId).single(),
-          supabase.from('user_values').select('value').eq('user_id', userId),
-          supabase.from('privacy_settings').select('*').eq('user_id', userId).maybeSingle(),
-        ]);
+  }, [profileQuery.data]);
 
-        if (profileRes.data) {
-          const p = profileRes.data;
-          const vals = (valuesRes.data ?? []).map((v: any) => v.value);
-          setProfile({
-            displayName: p.display_name ?? '',
-            bio: p.bio ?? '',
-            avatarUrl: p.avatar_url ?? null,
-            values: vals,
-            birthplace: p.birthplace ?? '',
-            residence: p.residence ?? '',
-            bundesland: p.bundesland ?? '',
-          });
-          setFlagHoistedAt(p.flag_hoisted_at ?? null);
-          addToUserCache({
-            id: 'me',
-            username: p.username ?? '',
-            displayName: p.display_name ?? '',
-            bio: p.bio ?? '',
-            avatarUrl: p.avatar_url ?? null,
-            rank: p.rank ?? 'Neuling',
-            rankIcon: p.rank_icon ?? 'Eye',
-            ep: p.xp ?? 0,
-            stampCount: p.stamp_count ?? 0,
-            postCount: p.post_count ?? 0,
-            friendCount: p.friend_count ?? 0,
-            flagHoistedAt: p.flag_hoisted_at ?? null,
-            values: vals,
-            birthplace: p.birthplace ?? '',
-            residence: p.residence ?? '',
-            bundesland: p.bundesland ?? '',
-          });
-        }
-
-        if (privacyRes.data) {
-          const ps = privacyRes.data;
-          setPrivacy({
-            showPosts: ps.show_posts ?? 'everyone',
-            showFriends: ps.show_friends ?? 'everyone',
-            showStamps: ps.show_stamps ?? 'everyone',
-            feedPostVisibility: ps.feed_post_visibility ?? 'everyone',
-            storyVisibility: ps.story_visibility ?? 'everyone',
-            showBirthplace: ps.show_birthplace ?? 'friends',
-            showResidence: ps.show_residence ?? 'friends',
-            showBundesland: ps.show_bundesland ?? 'everyone',
-            showValues: ps.show_values ?? 'everyone',
-            allowTagging: ps.allow_tagging ?? 'friends',
-          });
-        }
-        console.log('[SOCIAL] Profile loaded');
-      } catch (e) {
-        console.log('[SOCIAL] Load error:', e);
-      }
-      setIsLoading(false);
-    };
-    load();
-  }, [user]);
+  const isLoading = profileQuery.isLoading;
 
   const updateProfile = useCallback(
     async (updates: Partial<SocialProfile>) => {
@@ -158,8 +184,9 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
           );
         }
       }
+      queryClient.invalidateQueries({ queryKey: queryKeys.socialProfile(userId) });
     },
-    [userId],
+    [userId, queryClient],
   );
 
   const updatePrivacy = useCallback(
@@ -178,8 +205,9 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
       if (updates.showValues !== undefined) dbUpdates.show_values = updates.showValues;
       if (updates.allowTagging !== undefined) dbUpdates.allow_tagging = updates.allowTagging;
       await supabase.from('privacy_settings').update(dbUpdates).eq('user_id', userId);
+      queryClient.invalidateQueries({ queryKey: queryKeys.socialProfile(userId) });
     },
-    [userId],
+    [userId, queryClient],
   );
 
   const hoistFlag = useCallback(async () => {

@@ -18,4 +18,5 @@ export const queryKeys = {
   userOrders: (userId: string) => ['user-orders', userId] as const,
   userValues: (userId: string) => ['user-values', userId] as const,
   submissions: () => ['submissions'] as const,
+  socialProfile: (userId: string) => ['social-profile', userId] as const,
 } as const;
