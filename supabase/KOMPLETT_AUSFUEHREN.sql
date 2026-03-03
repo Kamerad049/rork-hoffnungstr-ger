@@ -123,7 +123,7 @@ SECURITY DEFINER
 STABLE
 AS $$
   SELECT COALESCE(
-    (SELECT is_admin FROM users WHERE id = auth.uid()),
+    (SELECT is_admin FROM users WHERE id = auth.uid()::text),
     false
   );
 $$;
