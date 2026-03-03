@@ -1080,7 +1080,7 @@ SECURITY DEFINER
 STABLE
 AS $$
   SELECT COALESCE(
-    (SELECT is_admin FROM users WHERE id = auth.uid()::text),
+    (SELECT is_admin FROM users WHERE id = auth.uid()),
     false
   );
 $$;
@@ -1100,12 +1100,12 @@ CREATE POLICY "users_select_authenticated" ON users
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "users_insert_own" ON users
-  FOR INSERT TO authenticated WITH CHECK (id = auth.uid()::text);
+  FOR INSERT TO authenticated WITH CHECK (id = auth.uid());
 
 CREATE POLICY "users_update_own" ON users
   FOR UPDATE TO authenticated
-  USING (id = auth.uid()::text OR public.is_admin())
-  WITH CHECK (id = auth.uid()::text OR public.is_admin());
+  USING (id = auth.uid() OR public.is_admin())
+  WITH CHECK (id = auth.uid() OR public.is_admin());
 
 CREATE POLICY "users_delete_admin" ON users
   FOR DELETE TO authenticated USING (public.is_admin());
