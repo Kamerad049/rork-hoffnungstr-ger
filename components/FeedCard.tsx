@@ -22,6 +22,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { getUserById, formatTimeAgo } from '@/lib/utils';
 import type { FeedPost } from '@/constants/types';
 import ReportModal from '@/components/ReportModal';
+import ShareModal from '@/components/ShareModal';
 
 export type PostReactionType = 'respekt' | 'anerkennung' | 'zuspruch' | 'verbundenheit' | 'ehre';
 
@@ -84,6 +85,7 @@ function FeedCardInner({
   const [showReactionMenu, setShowReactionMenu] = useState<boolean>(false);
   const [floatingTrigger, setFloatingTrigger] = useState<number>(0);
   const [floatingEmoji, setFloatingEmoji] = useState<string>('🛡️');
+  const [showShare, setShowShare] = useState<boolean>(false);
 
   const ownMenuAnim = useRef(new Animated.Value(0)).current;
   const reactionMenuAnim = useRef(new Animated.Value(0)).current;
@@ -725,7 +727,14 @@ function FeedCardInner({
             )}
           </Pressable>
 
-          <Pressable style={cardStyles.actionBtn}>
+          <Pressable
+            style={cardStyles.actionBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowShare(true);
+            }}
+            testID={`share-btn-${post.id}`}
+          >
             <Share2 size={20} color="rgba(232,220,200,0.5)" />
           </Pressable>
         </View>
@@ -751,6 +760,13 @@ function FeedCardInner({
         contentId={post.id}
         contentPreview={post.content}
         reportedUserId={post.userId}
+      />
+
+      <ShareModal
+        visible={showShare}
+        onClose={() => setShowShare(false)}
+        post={post}
+        authorName={author.displayName}
       />
     </View>
   );

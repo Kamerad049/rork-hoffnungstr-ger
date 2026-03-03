@@ -25,6 +25,7 @@ import { useSocial } from '@/providers/SocialProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { getUserById, formatTimeAgo } from '@/lib/utils';
 import type { PostComment } from '@/constants/types';
+import ShareModal from '@/components/ShareModal';
 
 type PostReactionType = 'respekt' | 'anerkennung' | 'zuspruch' | 'verbundenheit' | 'ehre';
 
@@ -62,6 +63,7 @@ export default function PostDetailScreen() {
   const [showReactionPicker, setShowReactionPicker] = useState<boolean>(false);
   const [floatingTrigger, setFloatingTrigger] = useState<number>(0);
   const [floatingEmoji, setFloatingEmoji] = useState<string>('🛡️');
+  const [showShare, setShowShare] = useState<boolean>(false);
 
   const inputRef = useRef<TextInput>(null);
   const defendAnims = useRef<Record<string, Animated.Value>>({}).current;
@@ -485,7 +487,14 @@ export default function PostDetailScreen() {
                   </Text>
                 )}
               </Pressable>
-              <Pressable style={styles.actionBtn}>
+              <Pressable
+                style={styles.actionBtn}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowShare(true);
+                }}
+                testID="post-detail-share-btn"
+              >
                 <Share2 size={20} color="rgba(232,220,200,0.5)" />
               </Pressable>
             </View>
@@ -653,6 +662,13 @@ export default function PostDetailScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      <ShareModal
+        visible={showShare}
+        onClose={() => setShowShare(false)}
+        post={post}
+        authorName={author.displayName}
+      />
     </View>
   );
 }
