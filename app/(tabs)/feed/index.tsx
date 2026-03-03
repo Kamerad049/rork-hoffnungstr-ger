@@ -179,11 +179,22 @@ export default function FeedScreen() {
   const handleAdminDeleteConfirm = useCallback(
     async (post: FeedPost, reason: string, details: string) => {
       console.log('[FEED] Admin confirming delete:', post.id, reason);
+
+      queryClient.setQueryData<{ posts: FeedPost[]; likedPosts: string[] }>(
+        queryKeys.posts(user?.id ?? ''),
+        (old) => ({
+          posts: (old?.posts ?? []).filter((p) => p.id !== post.id),
+          likedPosts: old?.likedPosts ?? [],
+        }),
+      );
+
       const action = await adminRemovePost(post, user?.id ?? 'admin', reason, details);
       if (action) {
         console.log('[FEED] Post removed by admin, action:', action.id);
-        await queryClient.invalidateQueries({ queryKey: queryKeys.posts(user?.id ?? '') });
+      } else {
+        console.log('[FEED] Admin remove failed, refreshing...');
       }
+      await queryClient.invalidateQueries({ queryKey: queryKeys.posts(user?.id ?? '') });
     },
     [adminRemovePost, user?.id, queryClient]
   );
