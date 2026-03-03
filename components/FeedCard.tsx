@@ -6,6 +6,7 @@ import {
   Pressable,
   Animated,
   Platform,
+  Alert,
 } from 'react-native';
 import OptimizedImage, { OptimizedAvatar } from '@/components/OptimizedImage';
 import { Shield, Star, Heart, Users, MessageCircle, Share2, MoreHorizontal, MapPin, X, ChevronRight, Pencil, MessageCircleOff, Archive, Bookmark, Trash2 } from 'lucide-react-native';
@@ -475,7 +476,18 @@ function FeedCardInner({
                 onPress={() => {
                   setShowOwnMenu(false);
                   ownMenuAnim.setValue(0);
-                  onDeletePress?.(post.id);
+                  Alert.alert(
+                    'Beitrag löschen?',
+                    'Dieser Beitrag wird endgültig und unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
+                    [
+                      { text: 'Abbrechen', style: 'cancel' },
+                      {
+                        text: 'Endgültig löschen',
+                        style: 'destructive',
+                        onPress: () => onDeletePress?.(post.id),
+                      },
+                    ],
+                  );
                 }}
               >
                 <Trash2 size={15} color="#C0392B" />

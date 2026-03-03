@@ -8,6 +8,7 @@ import {
   Animated,
   Dimensions,
   Platform,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
@@ -292,8 +293,21 @@ const PostFeedItem = React.memo(function PostFeedItem({
             onPress={() => {
               setShowMenu(false);
               menuAnim.setValue(0);
-              deletePost(post.id);
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              Alert.alert(
+                'Beitrag löschen?',
+                'Dieser Beitrag wird endgültig und unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
+                [
+                  { text: 'Abbrechen', style: 'cancel' },
+                  {
+                    text: 'Endgültig löschen',
+                    style: 'destructive',
+                    onPress: () => {
+                      deletePost(post.id);
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                    },
+                  },
+                ],
+              );
             }}
           >
             <Trash2 size={15} color="#C0392B" />
