@@ -55,7 +55,7 @@ import type { SocialUser } from '@/constants/types';
 
 const SVG_WIDTH = 586;
 const SVG_HEIGHT = 793;
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAP_DISPLAY_WIDTH = Math.min(SCREEN_WIDTH - 32, 380);
 const MAP_DISPLAY_HEIGHT = MAP_DISPLAY_WIDTH * (SVG_HEIGHT / SVG_WIDTH);
 
@@ -618,15 +618,32 @@ export default function LiveMapScreen() {
   return (
     <View style={styles.screen}>
       <LinearGradient
-        colors={['#1a1917', '#141416', '#111113']}
-        style={StyleSheet.absoluteFillObject}
-      />
+        colors={['#1e1d1a', '#1a1918', '#141416', 'transparent']}
+        locations={[0, 0.3, 0.7, 1]}
+        style={styles.backgroundGradient}
+      >
+        <View style={styles.heroPattern}>
+          {[...Array(10)].map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.heroLine,
+                {
+                  top: 20 + i * 28,
+                  opacity: 0.03 + i * 0.005,
+                  transform: [{ rotate: '-12deg' }],
+                },
+              ]}
+            />
+          ))}
+        </View>
+      </LinearGradient>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.heroSection, { paddingTop: insets.top + 12 }]}>
+        <View style={[styles.heroSection, { paddingTop: insets.top + 16 }]}>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
               <View style={styles.titleRow}>
@@ -1057,12 +1074,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#141416',
   },
+  backgroundGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: SCREEN_HEIGHT * 0.55,
+    zIndex: 0,
+  },
+  heroPattern: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroLine: {
+    position: 'absolute',
+    left: -40,
+    right: -40,
+    height: 1,
+    backgroundColor: '#BFA35D',
+  },
   scrollContent: {
     paddingBottom: 40,
   },
   heroSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
   headerRow: {
     flexDirection: 'row',
