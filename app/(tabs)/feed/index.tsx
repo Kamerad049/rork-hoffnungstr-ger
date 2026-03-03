@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { Rss } from 'lucide-react-native';
+import { Bell } from 'lucide-react-native';
 import { usePosts } from '@/providers/PostsProvider';
 import FeedCardComponent from '@/components/FeedCard';
 import type { PostReactionType } from '@/components/FeedCard';
@@ -291,9 +291,16 @@ export default function FeedScreen() {
           <Text style={styles.heroLabel}>Entdecken</Text>
           <Text style={styles.heroTitle}>Feed</Text>
         </View>
-        <View style={styles.heroIconWrap}>
-          <Rss size={20} color="#BFA35D" />
-        </View>
+        <Pressable
+          style={styles.heroIconWrap}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/(tabs)/(home)/activity' as any);
+          }}
+          testID="feed-activity-btn"
+        >
+          <Bell size={20} color="#BFA35D" />
+        </Pressable>
       </View>
 
       {!ready ? (
