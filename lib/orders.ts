@@ -33,8 +33,8 @@ export interface DbUserValueRow {
 
 export async function getOrders(): Promise<DbOrden[]> {
   console.log('[ORDERS] Fetching all orden definitions...');
-  const result = await trackNetwork('orders.getAll', () =>
-    supabase.from('orders').select('*').order('created_at', { ascending: true })
+  const result = await trackNetwork('orders.getAll', async () =>
+    await supabase.from('orders').select('*').order('created_at', { ascending: true })
   ) as { data: DbOrden[] | null; error: { message: string } | null };
 
   if (result.error) {
@@ -48,8 +48,8 @@ export async function getOrders(): Promise<DbOrden[]> {
 
 export async function getUserOrders(userId: string): Promise<DbUserOrden[]> {
   console.log('[ORDERS] Fetching user orders for:', userId);
-  const result = await trackNetwork('orders.getUserOrders', () =>
-    supabase
+  const result = await trackNetwork('orders.getUserOrders', async () =>
+    await supabase
       .from('user_orders')
       .select('*')
       .eq('user_id', userId)
@@ -67,8 +67,8 @@ export async function getUserOrders(userId: string): Promise<DbUserOrden[]> {
 
 export async function getUserValues(userId: string): Promise<string[]> {
   console.log('[ORDERS] Fetching character values for:', userId);
-  const result = await trackNetwork('orders.getUserValues', () =>
-    supabase
+  const result = await trackNetwork('orders.getUserValues', async () =>
+    await supabase
       .from('user_values')
       .select('id, user_id, value, created_at')
       .eq('user_id', userId)
@@ -91,8 +91,8 @@ export async function grantUserOrder(
   meta: Record<string, unknown> = {},
 ): Promise<DbUserOrden | null> {
   console.log('[ORDERS] Granting order', orderId, 'to user', userId);
-  const result = await trackNetwork('orders.grant', () =>
-    supabase
+  const result = await trackNetwork('orders.grant', async () =>
+    await supabase
       .from('user_orders')
       .upsert(
         {
@@ -123,8 +123,8 @@ export async function updateUserValues(
 ): Promise<boolean> {
   console.log('[ORDERS] Updating character values for:', userId);
 
-  const deleteResult = await trackNetwork('orders.deleteValues', () =>
-    supabase.from('user_values').delete().eq('user_id', userId)
+  const deleteResult = await trackNetwork('orders.deleteValues', async () =>
+    await supabase.from('user_values').delete().eq('user_id', userId)
   ) as { error: { message: string } | null };
 
   if (deleteResult.error) {
@@ -143,8 +143,8 @@ export async function updateUserValues(
     created_at: new Date().toISOString(),
   }));
 
-  const insertResult = await trackNetwork('orders.insertValues', () =>
-    supabase.from('user_values').insert(rows)
+  const insertResult = await trackNetwork('orders.insertValues', async () =>
+    await supabase.from('user_values').insert(rows)
   ) as { error: { message: string } | null };
 
   if (insertResult.error) {

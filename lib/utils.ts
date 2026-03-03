@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import { getCachedUser } from '@/lib/userCache';
 import type { SocialUser } from '@/constants/types';
 
@@ -21,7 +20,7 @@ export function formatTimeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('de-DE');
 }
 
-export function cleanPanHandlers(panHandlers: Record<string, unknown>): Record<string, unknown> {
+export function cleanPanHandlers(panHandlers: object): Record<string, unknown> {
   const cleaned: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(panHandlers)) {
     if (key && key.length > 0 && typeof value === 'function') {
