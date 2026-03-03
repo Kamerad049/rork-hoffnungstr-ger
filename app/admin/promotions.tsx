@@ -7,8 +7,14 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   Plus,
   Megaphone,
@@ -20,10 +26,12 @@ import {
   Pause,
   Play,
   X,
+  ArrowLeft,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { usePromotions } from '@/providers/PromotionProvider';
 import { useAlert } from '@/providers/AlertProvider';
+import { AdminImagePicker } from '@/components/AdminImagePicker';
 import type { Promotion, PromotionType, PromotionStatus } from '@/constants/types';
 
 const PROMOTION_TYPES: { value: PromotionType; label: string }[] = [
@@ -42,16 +50,17 @@ const STATUS_COLORS: Record<PromotionStatus, string> = {
 
 export default function PromotionsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { promotions, sponsors, addPromotion, updatePromotion, deletePromotion, isSavingPromotion } = usePromotions();
   const { showAlert } = useAlert();
 
-  const [showForm, setShowForm] = useState<boolean>(false);
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [title, setTitle] = useState<string>('');
   const [content, setContent] = useState<string>('');
-  const [mediaUrl, setMediaUrl] = useState<string>('');
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [ctaLabel, setCtaLabel] = useState<string>('');
   const [ctaUrl, setCtaUrl] = useState<string>('');
   const [promoType, setPromoType] = useState<PromotionType>('sponsor');
@@ -63,7 +72,7 @@ export default function PromotionsScreen() {
   const resetForm = useCallback(() => {
     setTitle('');
     setContent('');
-    setMediaUrl('');
+    setImageUrls([]);
     setCtaLabel('');
     setCtaUrl('');
     setPromoType('sponsor');
@@ -72,14 +81,14 @@ export default function PromotionsScreen() {
     setStartDate(new Date().toISOString().split('T')[0]);
     setEndDate('');
     setEditingId(null);
-    setShowForm(false);
+    setModalVisible(false);
   }, []);
 
   const loadPromoForEdit = useCallback((promo: Promotion) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTitle(promo.title);
     setContent(promo.content);
-    setMediaUrl(promo.mediaUrl);
+    setImageUrls(promo.mediaUrl ? [promo.mediaUrl] : []);
     setCtaLabel(promo.ctaLabel);
     setCtaUrl(promo.ctaUrl);
     setPromoType(promo.promotionType);
@@ -88,7 +97,7 @@ export default function PromotionsScreen() {
     setStartDate(promo.startDate.split('T')[0]);
     setEndDate(promo.endDate.split('T')[0]);
     setEditingId(promo.id);
-    setShowForm(true);
+    setModalVisible(true);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -107,7 +116,7 @@ export default function PromotionsScreen() {
       const promoData = {
         title: title.trim(),
         content: content.trim(),
-        mediaUrl: mediaUrl.trim(),
+        mediaUrl: imageUrls[0] || '',
         ctaLabel: ctaLabel.trim(),
         ctaUrl: ctaUrl.trim(),
         promotionType: promoType,
@@ -130,7 +139,7 @@ export default function PromotionsScreen() {
       console.log('[ADMIN] Promotion save error:', e);
       showAlert('Fehler', e.message ?? 'Speichern fehlgeschlagen', [{ text: 'OK' }]);
     }
-  }, [title, content, mediaUrl, ctaLabel, ctaUrl, promoType, sponsorId, feedPosition, startDate, endDate, editingId, addPromotion, updatePromotion, resetForm, showAlert]);
+  }, [title, content, imageUrls, ctaLabel, ctaUrl, promoType, sponsorId, feedPosition, startDate, endDate, editingId, addPromotion, updatePromotion, resetForm, showAlert]);
 
   const handleDelete = useCallback((id: string) => {
     showAlert(
@@ -180,171 +189,57 @@ export default function PromotionsScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Promotions' }} />
+      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.headerTitle}>Promotions</Text>
-            <Text style={styles.headerSub}>{promotions.length} gesamt</Text>
+        <LinearGradient
+          colors={['#1e1d1a', '#1a1918', '#141416']}
+          style={[styles.heroSection, { paddingTop: insets.top + 12 }]}
+        >
+          <View style={styles.heroPattern}>
+            {[...Array(6)].map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.heroLine,
+                  {
+                    top: 20 + i * 28,
+                    opacity: 0.03 + i * 0.005,
+                    transform: [{ rotate: '-12deg' }],
+                  },
+                ]}
+              />
+            ))}
           </View>
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={18} color="#BFA35D" />
+          </Pressable>
+          <View style={styles.heroIconWrap}>
+            <Megaphone size={32} color="#BFA35D" />
+          </View>
+          <Text style={styles.heroTitle}>Promotions</Text>
+          <Text style={styles.heroSubtitle}>
+            Erstelle und verwalte Anzeigen für den Feed.
+          </Text>
+        </LinearGradient>
+
+        <View style={styles.toolbar}>
           <Pressable
             style={styles.addBtn}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               resetForm();
-              setShowForm(true);
+              setEditingId(null);
+              setModalVisible(true);
             }}
             testID="add-promotion-btn"
           >
             <Plus size={18} color="#1c1c1e" />
-            <Text style={styles.addBtnText}>Neu</Text>
+            <Text style={styles.addBtnText}>Neu erstellen</Text>
           </Pressable>
-        </View>
-
-        {showForm && (
-          <View style={styles.formCard}>
-            <View style={styles.formHeader}>
-              <Text style={styles.formTitle}>{editingId ? 'Bearbeiten' : 'Neue Promotion'}</Text>
-              <Pressable onPress={resetForm} hitSlop={8}>
-                <X size={18} color="rgba(232,220,200,0.5)" />
-              </Pressable>
-            </View>
-
-            <Text style={styles.label}>Typ</Text>
-            <View style={styles.typeRow}>
-              {PROMOTION_TYPES.map((t) => (
-                <Pressable
-                  key={t.value}
-                  style={[styles.typeBtn, promoType === t.value && styles.typeBtnActive]}
-                  onPress={() => setPromoType(t.value)}
-                >
-                  <Text style={[styles.typeBtnText, promoType === t.value && styles.typeBtnTextActive]}>
-                    {t.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            {promoType === 'sponsor' && sponsors.length > 0 && (
-              <>
-                <Text style={styles.label}>Sponsor</Text>
-                <View style={styles.sponsorPicker}>
-                  {sponsors.map((s) => (
-                    <Pressable
-                      key={s.id}
-                      style={[styles.sponsorChip, sponsorId === s.id && styles.sponsorChipActive]}
-                      onPress={() => setSponsorId(s.id)}
-                    >
-                      <Text style={[styles.sponsorChipText, sponsorId === s.id && styles.sponsorChipTextActive]}>
-                        {s.name}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </>
-            )}
-
-            <Text style={styles.label}>Titel *</Text>
-            <TextInput
-              style={styles.input}
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Promotion Titel"
-              placeholderTextColor="rgba(191,163,93,0.3)"
-            />
-
-            <Text style={styles.label}>Beschreibung</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={content}
-              onChangeText={setContent}
-              placeholder="Beschreibung..."
-              placeholderTextColor="rgba(191,163,93,0.3)"
-              multiline
-              numberOfLines={3}
-            />
-
-            <Text style={styles.label}>Bild-URL</Text>
-            <TextInput
-              style={styles.input}
-              value={mediaUrl}
-              onChangeText={setMediaUrl}
-              placeholder="https://..."
-              placeholderTextColor="rgba(191,163,93,0.3)"
-              autoCapitalize="none"
-            />
-
-            <View style={styles.rowInputs}>
-              <View style={styles.halfInput}>
-                <Text style={styles.label}>CTA Label</Text>
-                <TextInput
-                  style={styles.input}
-                  value={ctaLabel}
-                  onChangeText={setCtaLabel}
-                  placeholder="Mehr erfahren"
-                  placeholderTextColor="rgba(191,163,93,0.3)"
-                />
-              </View>
-              <View style={styles.halfInput}>
-                <Text style={styles.label}>CTA URL</Text>
-                <TextInput
-                  style={styles.input}
-                  value={ctaUrl}
-                  onChangeText={setCtaUrl}
-                  placeholder="https://..."
-                  placeholderTextColor="rgba(191,163,93,0.3)"
-                  autoCapitalize="none"
-                />
-              </View>
-            </View>
-
-            <View style={styles.rowInputs}>
-              <View style={styles.halfInput}>
-                <Text style={styles.label}>Feed Position</Text>
-                <TextInput
-                  style={styles.input}
-                  value={feedPosition}
-                  onChangeText={setFeedPosition}
-                  placeholder="5"
-                  placeholderTextColor="rgba(191,163,93,0.3)"
-                  keyboardType="number-pad"
-                />
-              </View>
-              <View style={styles.halfInput}>
-                <Text style={styles.label}>Startdatum</Text>
-                <TextInput
-                  style={styles.input}
-                  value={startDate}
-                  onChangeText={setStartDate}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="rgba(191,163,93,0.3)"
-                />
-              </View>
-            </View>
-
-            <Text style={styles.label}>Enddatum *</Text>
-            <TextInput
-              style={styles.input}
-              value={endDate}
-              onChangeText={setEndDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="rgba(191,163,93,0.3)"
-            />
-
-            <Pressable
-              style={[styles.saveBtn, isSavingPromotion && styles.saveBtnDisabled]}
-              onPress={handleSave}
-              disabled={isSavingPromotion}
-              testID="save-promotion-btn"
-            >
-              {isSavingPromotion ? (
-                <ActivityIndicator size="small" color="#1c1c1e" />
-              ) : (
-                <Text style={styles.saveBtnText}>{editingId ? 'Aktualisieren' : 'Erstellen'}</Text>
-              )}
-            </Pressable>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{promotions.length}</Text>
           </View>
-        )}
+        </View>
 
         {sortedPromotions.map((promo) => {
           const isExpanded = expandedId === promo.id;
@@ -446,7 +341,7 @@ export default function PromotionsScreen() {
           );
         })}
 
-        {promotions.length === 0 && !showForm && (
+        {promotions.length === 0 && (
           <View style={styles.emptyState}>
             <Megaphone size={40} color="rgba(191,163,93,0.3)" />
             <Text style={styles.emptyTitle}>Keine Promotions</Text>
@@ -454,6 +349,170 @@ export default function PromotionsScreen() {
           </View>
         )}
       </ScrollView>
+
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoid}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => { Keyboard.dismiss(); }}>
+            <Pressable style={styles.modalContent} onPress={() => {}}>
+              <View style={styles.modalHandle} />
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {editingId ? 'Promotion bearbeiten' : 'Neue Promotion'}
+                </Text>
+                <Pressable onPress={() => { Keyboard.dismiss(); resetForm(); }} hitSlop={10}>
+                  <X size={22} color="rgba(232,220,200,0.5)" />
+                </Pressable>
+              </View>
+              <ScrollView
+                style={styles.modalBody}
+                contentContainerStyle={styles.modalBodyContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+              >
+                <Text style={styles.label}>Typ</Text>
+                <View style={styles.typeRow}>
+                  {PROMOTION_TYPES.map((t) => (
+                    <Pressable
+                      key={t.value}
+                      style={[styles.typeBtn, promoType === t.value && styles.typeBtnActive]}
+                      onPress={() => setPromoType(t.value)}
+                    >
+                      <Text style={[styles.typeBtnText, promoType === t.value && styles.typeBtnTextActive]}>
+                        {t.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {promoType === 'sponsor' && sponsors.length > 0 && (
+                  <>
+                    <Text style={styles.label}>Sponsor</Text>
+                    <View style={styles.sponsorPicker}>
+                      {sponsors.map((s) => (
+                        <Pressable
+                          key={s.id}
+                          style={[styles.sponsorChip, sponsorId === s.id && styles.sponsorChipActive]}
+                          onPress={() => setSponsorId(s.id)}
+                        >
+                          <Text style={[styles.sponsorChipText, sponsorId === s.id && styles.sponsorChipTextActive]}>
+                            {s.name}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </>
+                )}
+
+                <Text style={styles.label}>Titel *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder="Promotion Titel"
+                  placeholderTextColor="rgba(191,163,93,0.3)"
+                />
+
+                <Text style={styles.label}>Beschreibung</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={content}
+                  onChangeText={setContent}
+                  placeholder="Beschreibung..."
+                  placeholderTextColor="rgba(191,163,93,0.3)"
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+
+                <AdminImagePicker
+                  images={imageUrls}
+                  onImagesChange={setImageUrls}
+                  maxImages={1}
+                  bucket="admin-uploads"
+                  folder="promotions"
+                  label="Promotion Bild"
+                />
+
+                <View style={styles.rowInputs}>
+                  <View style={styles.halfInput}>
+                    <Text style={styles.label}>CTA Label</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={ctaLabel}
+                      onChangeText={setCtaLabel}
+                      placeholder="Mehr erfahren"
+                      placeholderTextColor="rgba(191,163,93,0.3)"
+                    />
+                  </View>
+                  <View style={styles.halfInput}>
+                    <Text style={styles.label}>CTA URL</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={ctaUrl}
+                      onChangeText={setCtaUrl}
+                      placeholder="https://..."
+                      placeholderTextColor="rgba(191,163,93,0.3)"
+                      autoCapitalize="none"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.rowInputs}>
+                  <View style={styles.halfInput}>
+                    <Text style={styles.label}>Feed Position</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={feedPosition}
+                      onChangeText={setFeedPosition}
+                      placeholder="5"
+                      placeholderTextColor="rgba(191,163,93,0.3)"
+                      keyboardType="number-pad"
+                    />
+                  </View>
+                  <View style={styles.halfInput}>
+                    <Text style={styles.label}>Startdatum</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={startDate}
+                      onChangeText={setStartDate}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor="rgba(191,163,93,0.3)"
+                    />
+                  </View>
+                </View>
+
+                <Text style={styles.label}>Enddatum *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={endDate}
+                  onChangeText={setEndDate}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="rgba(191,163,93,0.3)"
+                />
+
+                <View style={{ height: 20 }} />
+              </ScrollView>
+
+              <Pressable
+                style={[styles.saveBtn, isSavingPromotion && styles.saveBtnDisabled]}
+                onPress={handleSave}
+                disabled={isSavingPromotion}
+                testID="save-promotion-btn"
+              >
+                {isSavingPromotion ? (
+                  <ActivityIndicator size="small" color="#1c1c1e" />
+                ) : (
+                  <Text style={styles.saveBtnText}>{editingId ? 'Aktualisieren' : 'Erstellen'}</Text>
+                )}
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -464,149 +523,97 @@ const styles = StyleSheet.create({
     backgroundColor: '#141416',
   },
   scrollContent: {
-    padding: 16,
     paddingBottom: 40,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+  heroSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+    position: 'relative' as const,
+    overflow: 'hidden' as const,
   },
-  headerTitle: {
-    fontSize: 22,
+  heroPattern: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  heroLine: {
+    position: 'absolute' as const,
+    left: -40,
+    right: -40,
+    height: 1,
+    backgroundColor: '#BFA35D',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#1e1e20',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    marginBottom: 20,
+    marginLeft: 4,
+  },
+  heroIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    alignSelf: 'center' as const,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.15)',
+  },
+  heroTitle: {
+    fontSize: 24,
     fontWeight: '800' as const,
     color: '#E8DCC8',
+    textAlign: 'center' as const,
+    marginBottom: 8,
   },
-  headerSub: {
-    fontSize: 12,
-    color: 'rgba(191,163,93,0.5)',
-    marginTop: 2,
+  heroSubtitle: {
+    fontSize: 14,
+    color: 'rgba(232,220,200,0.5)',
+    textAlign: 'center' as const,
+    lineHeight: 20,
+  },
+  toolbar: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 8,
     backgroundColor: '#BFA35D',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 12,
   },
   addBtnText: {
     color: '#1c1c1e',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700' as const,
   },
-  formCard: {
-    backgroundColor: '#1e1e20',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.1)',
-  },
-  formHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  formTitle: {
-    fontSize: 17,
-    fontWeight: '700' as const,
-    color: '#E8DCC8',
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: 'rgba(191,163,93,0.6)',
-    marginBottom: 6,
-    marginTop: 10,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
-  },
-  input: {
-    backgroundColor: 'rgba(191,163,93,0.06)',
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 14,
-    color: '#E8DCC8',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.1)',
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top' as const,
-  },
-  typeRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  typeBtn: {
+  countBadge: {
+    backgroundColor: 'rgba(191,163,93,0.12)',
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(191,163,93,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.1)',
-  },
-  typeBtnActive: {
-    backgroundColor: 'rgba(191,163,93,0.15)',
-    borderColor: '#BFA35D',
-  },
-  typeBtnText: {
-    color: 'rgba(191,163,93,0.5)',
-    fontSize: 13,
-    fontWeight: '600' as const,
-  },
-  typeBtnTextActive: {
-    color: '#BFA35D',
-  },
-  sponsorPicker: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  sponsorChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-    backgroundColor: 'rgba(191,163,93,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.1)',
-  },
-  sponsorChipActive: {
-    backgroundColor: 'rgba(191,163,93,0.15)',
-    borderColor: '#BFA35D',
-  },
-  sponsorChipText: {
-    color: 'rgba(191,163,93,0.5)',
-    fontSize: 13,
-    fontWeight: '600' as const,
-  },
-  sponsorChipTextActive: {
-    color: '#BFA35D',
-  },
-  rowInputs: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  halfInput: {
-    flex: 1,
-  },
-  saveBtn: {
-    backgroundColor: '#BFA35D',
+    paddingVertical: 10,
     borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.15)',
   },
-  saveBtnDisabled: {
-    opacity: 0.6,
-  },
-  saveBtnText: {
-    color: '#1c1c1e',
+  countText: {
+    color: '#BFA35D',
     fontSize: 15,
     fontWeight: '700' as const,
   },
@@ -614,6 +621,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e1e20',
     borderRadius: 14,
     marginBottom: 8,
+    marginHorizontal: 16,
     borderWidth: 1,
     borderColor: 'rgba(191,163,93,0.06)',
     overflow: 'hidden',
@@ -721,5 +729,142 @@ const styles = StyleSheet.create({
   emptySub: {
     color: 'rgba(191,163,93,0.4)',
     fontSize: 13,
+  },
+  keyboardAvoid: {
+    flex: 1,
+    justifyContent: 'flex-end' as const,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end' as const,
+  },
+  modalContent: {
+    backgroundColor: '#1e1e20',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%' as const,
+    paddingTop: 10,
+  },
+  modalHandle: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(150,150,150,0.4)',
+    alignSelf: 'center' as const,
+    marginBottom: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: '#E8DCC8',
+  },
+  modalBody: {
+    paddingHorizontal: 20,
+    flexGrow: 0,
+  },
+  modalBodyContent: {
+    paddingBottom: 10,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: 'rgba(191,163,93,0.6)',
+    marginBottom: 6,
+    marginTop: 10,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+  },
+  input: {
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: '#E8DCC8',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top' as const,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  typeBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
+  typeBtnActive: {
+    backgroundColor: 'rgba(191,163,93,0.15)',
+    borderColor: '#BFA35D',
+  },
+  typeBtnText: {
+    color: 'rgba(191,163,93,0.5)',
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  typeBtnTextActive: {
+    color: '#BFA35D',
+  },
+  sponsorPicker: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  sponsorChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
+  sponsorChipActive: {
+    backgroundColor: 'rgba(191,163,93,0.15)',
+    borderColor: '#BFA35D',
+  },
+  sponsorChipText: {
+    color: 'rgba(191,163,93,0.5)',
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  sponsorChipTextActive: {
+    color: '#BFA35D',
+  },
+  rowInputs: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  halfInput: {
+    flex: 1,
+  },
+  saveBtn: {
+    backgroundColor: '#BFA35D',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center' as const,
+    margin: 20,
+  },
+  saveBtnDisabled: {
+    opacity: 0.6,
+  },
+  saveBtnText: {
+    color: '#1c1c1e',
+    fontSize: 16,
+    fontWeight: '700' as const,
   },
 });

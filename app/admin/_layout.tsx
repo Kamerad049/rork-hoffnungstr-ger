@@ -7,7 +7,6 @@ import { ModerationProvider } from '@/providers/ModerationProvider';
 import { PromotionProvider } from '@/providers/PromotionProvider';
 
 export default function AdminLayout() {
-  const { colors } = useTheme();
   const router = useRouter();
 
   const subPageOptions = {
@@ -67,8 +66,8 @@ export default function AdminLayout() {
       <Stack.Screen name="reports" options={{ title: '', headerShown: false }} />
       <Stack.Screen name="moderators" options={{ title: '', headerShown: false }} />
       <Stack.Screen name="submissions" options={{ title: '', headerShown: false }} />
-      <Stack.Screen name="promotions" options={{ title: 'Promotions', ...subPageOptions }} />
-      <Stack.Screen name="sponsors" options={{ title: 'Sponsoren', ...subPageOptions }} />
+      <Stack.Screen name="promotions" options={{ title: '', headerShown: false }} />
+      <Stack.Screen name="sponsors" options={{ title: '', headerShown: false }} />
       <Stack.Screen name="promotion-analytics" options={{ title: 'Analytics', ...subPageOptions }} />
     </Stack>
     </PromotionProvider>
