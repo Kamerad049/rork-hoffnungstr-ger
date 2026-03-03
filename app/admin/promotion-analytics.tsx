@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,21 +6,28 @@ import {
   ScrollView,
   ActivityIndicator,
   Animated,
+  Pressable,
+  Alert,
+  Platform,
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Eye, MousePointer2, Users, Repeat, TrendingUp, Calendar } from 'lucide-react-native';
+import { Eye, MousePointer2, Users, Repeat, TrendingUp, Calendar, Download, RefreshCw, CheckCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { usePromotions } from '@/providers/PromotionProvider';
 import type { PromotionAnalytics } from '@/constants/types';
 
 export default function PromotionAnalyticsScreen() {
   const { promotionId } = useLocalSearchParams<{ promotionId: string }>();
-  const { getPromotionAnalytics, promotions, getSponsorById } = usePromotions();
+  const { getPromotionAnalytics, promotions, getSponsorById, triggerAggregation, exportAnalyticsCsv } = usePromotions();
   const [analytics, setAnalytics] = useState<PromotionAnalytics | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isAggregating, setIsAggregating] = useState<boolean>(false);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const cardAnims = useRef([
+    new Animated.Value(0),
     new Animated.Value(0),
     new Animated.Value(0),
     new Animated.Value(0),
@@ -30,21 +37,22 @@ export default function PromotionAnalyticsScreen() {
   const promotion = promotions.find((p) => p.id === promotionId);
   const sponsor = promotion?.sponsorId ? getSponsorById(promotion.sponsorId) : undefined;
 
-  useEffect(() => {
+  const loadAnalytics = useCallback(async () => {
     if (!promotionId) return;
-    const load = async () => {
-      try {
-        const data = await getPromotionAnalytics(promotionId);
-        setAnalytics(data);
-        console.log('[ANALYTICS] Loaded for', promotionId, ':', JSON.stringify(data));
-      } catch (e) {
-        console.log('[ANALYTICS] Load error:', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    try {
+      const data = await getPromotionAnalytics(promotionId);
+      setAnalytics(data);
+      console.log('[ANALYTICS] Loaded for', promotionId);
+    } catch (e) {
+      console.log('[ANALYTICS] Load error:', e);
+    } finally {
+      setLoading(false);
+    }
   }, [promotionId, getPromotionAnalytics]);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
 
   useEffect(() => {
     if (!loading && analytics) {
@@ -66,7 +74,52 @@ export default function PromotionAnalyticsScreen() {
         ),
       ).start();
     }
-  }, [loading, analytics]);
+  }, [loading, analytics, fadeAnim, cardAnims]);
+
+  const handleAggregate = useCallback(async () => {
+    setIsAggregating(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await triggerAggregation(today);
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      await triggerAggregation(yesterday);
+      await loadAnalytics();
+      Alert.alert('Aggregation', 'Daily Stats wurden aktualisiert.');
+    } catch (e: any) {
+      Alert.alert('Fehler', e?.message ?? 'Aggregation fehlgeschlagen');
+    } finally {
+      setIsAggregating(false);
+    }
+  }, [triggerAggregation, loadAnalytics]);
+
+  const handleExportCsv = useCallback(async () => {
+    if (!promotionId) return;
+    setIsExporting(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const csvContent = await exportAnalyticsCsv(promotionId);
+      if (Platform.OS === 'web') {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `promotion_${promotionId}_analytics.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+        Alert.alert('Export', 'CSV wurde heruntergeladen.');
+      } else {
+        Alert.alert(
+          'CSV Export',
+          'CSV-Daten generiert. Sharing ist noch nicht implementiert.\n\nVorschau:\n' + csvContent.split('\n').slice(0, 5).join('\n') + '\n...',
+        );
+      }
+    } catch (e: any) {
+      Alert.alert('Fehler', e?.message ?? 'Export fehlgeschlagen');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [promotionId, exportAnalyticsCsv]);
 
   if (loading) {
     return (
@@ -120,6 +173,13 @@ export default function PromotionAnalyticsScreen() {
       sub: 'Ø Ansichten/Nutzer',
       color: '#FF9800',
     },
+    {
+      icon: CheckCircle,
+      label: 'Qualified',
+      value: analytics.qualifiedImpressions.toLocaleString('de-DE'),
+      sub: 'Impressions ≥1s',
+      color: '#9C27B0',
+    },
   ];
 
   const maxImpressions = Math.max(...analytics.dailyStats.map((d) => d.totalImpressions), 1);
@@ -137,22 +197,57 @@ export default function PromotionAnalyticsScreen() {
             <Text style={styles.heroSub}>
               {sponsor?.name ?? promotion.promotionType.toUpperCase()} · {promotion.startDate.split('T')[0]} → {promotion.endDate.split('T')[0]}
             </Text>
+
+            <View style={styles.actionRow}>
+              <Pressable
+                style={[styles.actionButton, isAggregating && styles.actionButtonDisabled]}
+                onPress={handleAggregate}
+                disabled={isAggregating}
+                testID="aggregate-button"
+              >
+                {isAggregating ? (
+                  <ActivityIndicator size="small" color="#BFA35D" />
+                ) : (
+                  <RefreshCw size={14} color="#BFA35D" />
+                )}
+                <Text style={styles.actionButtonText}>
+                  {isAggregating ? 'Aggregiere...' : 'Stats aktualisieren'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.actionButton, isExporting && styles.actionButtonDisabled]}
+                onPress={handleExportCsv}
+                disabled={isExporting}
+                testID="export-csv-button"
+              >
+                {isExporting ? (
+                  <ActivityIndicator size="small" color="#BFA35D" />
+                ) : (
+                  <Download size={14} color="#BFA35D" />
+                )}
+                <Text style={styles.actionButtonText}>
+                  {isExporting ? 'Exportiere...' : 'CSV Export'}
+                </Text>
+              </Pressable>
+            </View>
           </LinearGradient>
         </Animated.View>
 
         <View style={styles.kpiGrid}>
           {kpiCards.map((kpi, idx) => {
             const IconComp = kpi.icon;
+            const animIdx = Math.min(idx, cardAnims.length - 1);
             return (
               <Animated.View
                 key={kpi.label}
                 style={[
                   styles.kpiCard,
                   {
-                    opacity: cardAnims[idx],
+                    opacity: cardAnims[animIdx],
                     transform: [
                       {
-                        translateY: cardAnims[idx].interpolate({
+                        translateY: cardAnims[animIdx].interpolate({
                           inputRange: [0, 1],
                           outputRange: [20, 0],
                         }),
@@ -207,6 +302,7 @@ export default function PromotionAnalyticsScreen() {
               <Text style={[styles.tableCell, styles.tableDateCell]}>Datum</Text>
               <Text style={styles.tableCell}>Views</Text>
               <Text style={styles.tableCell}>Unique</Text>
+              <Text style={styles.tableCell}>Qual.</Text>
               <Text style={styles.tableCell}>Klicks</Text>
               <Text style={styles.tableCell}>CTR</Text>
             </View>
@@ -219,6 +315,7 @@ export default function PromotionAnalyticsScreen() {
                   <Text style={[styles.tableCellValue, styles.tableDateCell]}>{day.date.slice(5)}</Text>
                   <Text style={styles.tableCellValue}>{day.totalImpressions}</Text>
                   <Text style={styles.tableCellValue}>{day.uniqueImpressions}</Text>
+                  <Text style={styles.tableCellValue}>{day.qualifiedImpressions}</Text>
                   <Text style={styles.tableCellValue}>{day.totalClicks}</Text>
                   <Text style={[styles.tableCellValue, { color: '#4CAF50' }]}>{dayCtr}%</Text>
                 </View>
@@ -276,6 +373,30 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(191,163,93,0.5)',
     fontWeight: '500' as const,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.2)',
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
+  },
+  actionButtonText: {
+    color: '#BFA35D',
+    fontSize: 12,
+    fontWeight: '600' as const,
   },
   kpiGrid: {
     flexDirection: 'row',

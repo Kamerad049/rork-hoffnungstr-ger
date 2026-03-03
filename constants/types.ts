@@ -444,6 +444,7 @@ export interface PromotionDailyStats {
   uniqueImpressions: number;
   totalClicks: number;
   uniqueClicks: number;
+  qualifiedImpressions: number;
 }
 
 export interface PromotionAnalytics {
@@ -452,6 +453,7 @@ export interface PromotionAnalytics {
   uniqueReach: number;
   totalClicks: number;
   uniqueClicks: number;
+  qualifiedImpressions: number;
   ctr: number;
   avgFrequency: number;
   dailyStats: PromotionDailyStats[];

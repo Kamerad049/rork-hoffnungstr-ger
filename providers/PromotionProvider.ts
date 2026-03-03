@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useEffect, useRef } from 'react';
+import { AppState, Platform } from 'react-native';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
@@ -10,6 +11,10 @@ import type {
   PromotionDailyStats,
   PromotionAnalytics,
 } from '@/constants/types';
+
+const MAX_IMPRESSIONS_PER_DAY = 3;
+const FLUSH_INTERVAL_MS = 5000;
+const IMPRESSION_DEDUP_KEY_PREFIX = 'promo_imp_';
 
 function mapDbSponsor(s: any): Sponsor {
   return {
@@ -49,6 +54,7 @@ function mapDbDailyStats(d: any): PromotionDailyStats {
     uniqueImpressions: d.unique_impressions ?? 0,
     totalClicks: d.total_clicks ?? 0,
     uniqueClicks: d.unique_clicks ?? 0,
+    qualifiedImpressions: d.qualified_impressions ?? 0,
   };
 }
 
@@ -56,16 +62,17 @@ function getTodayDate(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-const IMPRESSION_DEDUP_KEY_PREFIX = 'promo_imp_';
-
 export const [PromotionProvider, usePromotions] = createContextHook(() => {
   const { user } = useAuth();
   const userId = user?.id ?? '';
   const queryClient = useQueryClient();
 
   const todayImpressionSet = useRef<Set<string>>(new Set());
+  const sessionImpressionSet = useRef<Set<string>>(new Set());
+  const dailyImpressionCount = useRef<Map<string, number>>(new Map());
   const pendingImpressions = useRef<{ promotionId: string; durationMs: number }[]>([]);
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFlushing = useRef<boolean>(false);
 
   const sponsorsQuery = useQuery({
     queryKey: queryKeys.sponsors(),
@@ -115,7 +122,9 @@ export const [PromotionProvider, usePromotions] = createContextHook(() => {
   const activePromotions = useMemo(() => activePromotionsQuery.data ?? [], [activePromotionsQuery.data]);
 
   const flushImpressions = useCallback(async () => {
-    if (pendingImpressions.current.length === 0) return;
+    if (pendingImpressions.current.length === 0 || isFlushing.current) return;
+    isFlushing.current = true;
+
     const batch = [...pendingImpressions.current];
     pendingImpressions.current = [];
 
@@ -131,38 +140,89 @@ export const [PromotionProvider, usePromotions] = createContextHook(() => {
     console.log('[PROMO] Flushing', rows.length, 'impressions');
     const { error } = await supabase.from('promotion_impressions').insert(rows);
     if (error) {
-      console.log('[PROMO] Impression insert error:', error.message);
-      pendingImpressions.current.push(...batch);
+      if (error.code === '23505') {
+        console.log('[PROMO] Some impressions deduplicated by DB constraint (expected)');
+      } else {
+        console.log('[PROMO] Impression insert error:', error.message);
+        pendingImpressions.current.push(...batch);
+      }
     }
+    isFlushing.current = false;
   }, [userId]);
 
   useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        console.log('[PROMO] App going to background — flushing impressions');
+        if (flushTimer.current) {
+          clearTimeout(flushTimer.current);
+          flushTimer.current = null;
+        }
+        flushImpressions();
+      }
+    });
+
     return () => {
+      subscription.remove();
       if (flushTimer.current) clearTimeout(flushTimer.current);
       flushImpressions();
     };
+  }, [flushImpressions]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const handleBeforeUnload = () => {
+        flushImpressions();
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          flushImpressions();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
+    return undefined;
   }, [flushImpressions]);
 
   const trackImpression = useCallback(
     (promotionId: string, durationMs: number) => {
       if (!userId) return;
       const today = getTodayDate();
-      const dedupKey = `${IMPRESSION_DEDUP_KEY_PREFIX}${promotionId}_${today}`;
 
+      if (sessionImpressionSet.current.has(promotionId)) {
+        console.log('[PROMO] Skipping duplicate session impression for', promotionId);
+        return;
+      }
+
+      const dayCount = dailyImpressionCount.current.get(promotionId) ?? 0;
+      if (dayCount >= MAX_IMPRESSIONS_PER_DAY) {
+        console.log('[PROMO] Frequency cap reached for', promotionId, '(', dayCount, '/', MAX_IMPRESSIONS_PER_DAY, ')');
+        return;
+      }
+
+      const dedupKey = `${IMPRESSION_DEDUP_KEY_PREFIX}${promotionId}_${today}`;
       if (todayImpressionSet.current.has(dedupKey)) {
         console.log('[PROMO] Skipping duplicate unique impression for', promotionId, 'today');
       } else {
         todayImpressionSet.current.add(dedupKey);
       }
 
+      sessionImpressionSet.current.add(promotionId);
+      dailyImpressionCount.current.set(promotionId, dayCount + 1);
+
       pendingImpressions.current.push({ promotionId, durationMs });
 
       if (flushTimer.current) clearTimeout(flushTimer.current);
       flushTimer.current = setTimeout(() => {
         flushImpressions();
-      }, 5000);
+      }, FLUSH_INTERVAL_MS);
 
-      console.log('[PROMO] Impression tracked:', promotionId, 'duration:', durationMs, 'ms');
+      console.log('[PROMO] Impression tracked:', promotionId, 'duration:', durationMs, 'ms', 'dayCount:', dayCount + 1);
     },
     [userId, flushImpressions],
   );
@@ -178,9 +238,26 @@ export const [PromotionProvider, usePromotions] = createContextHook(() => {
         clicked_at: new Date().toISOString(),
         date: today,
       });
-      if (error) console.log('[PROMO] Click insert error:', error.message);
+      if (error) {
+        if (error.code === '23505') {
+          console.log('[PROMO] Click deduplicated by DB constraint (user already clicked today)');
+        } else {
+          console.log('[PROMO] Click insert error:', error.message);
+        }
+      }
     },
     [userId],
+  );
+
+  const shouldShowPromotion = useCallback(
+    (promotionId: string): boolean => {
+      if (sessionImpressionSet.current.has(promotionId)) {
+        return false;
+      }
+      const dayCount = dailyImpressionCount.current.get(promotionId) ?? 0;
+      return dayCount < MAX_IMPRESSIONS_PER_DAY;
+    },
+    [],
   );
 
   const addSponsorMutation = useMutation({
@@ -316,12 +393,14 @@ export const [PromotionProvider, usePromotions] = createContextHook(() => {
       let uniqueReach = 0;
       let totalClicks = 0;
       let uniqueClicks = 0;
+      let qualifiedImpressions = 0;
 
       for (const day of dailyStats) {
         totalImpressions += day.totalImpressions;
         uniqueReach += day.uniqueImpressions;
         totalClicks += day.totalClicks;
         uniqueClicks += day.uniqueClicks;
+        qualifiedImpressions += day.qualifiedImpressions;
       }
 
       const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
@@ -333,10 +412,69 @@ export const [PromotionProvider, usePromotions] = createContextHook(() => {
         uniqueReach,
         totalClicks,
         uniqueClicks,
+        qualifiedImpressions,
         ctr,
         avgFrequency,
         dailyStats,
       };
+    },
+    [],
+  );
+
+  const triggerAggregation = useCallback(
+    async (targetDate?: string) => {
+      const dateArg = targetDate ?? getTodayDate();
+      console.log('[PROMO] Triggering aggregation for', dateArg);
+      const { error } = await supabase.rpc('aggregate_promotion_daily_stats', {
+        target_date: dateArg,
+      });
+      if (error) {
+        console.log('[PROMO] Aggregation error:', error.message);
+        throw new Error(error.message);
+      }
+      console.log('[PROMO] Aggregation completed for', dateArg);
+    },
+    [],
+  );
+
+  const exportAnalyticsCsv = useCallback(
+    async (promotionId: string): Promise<string> => {
+      console.log('[PROMO] Exporting CSV for', promotionId);
+
+      const { data: dailyData, error } = await supabase
+        .from('promotion_daily_stats')
+        .select('*')
+        .eq('promotion_id', promotionId)
+        .order('date', { ascending: true });
+
+      if (error) {
+        console.log('[PROMO] CSV export error:', error.message);
+        throw new Error(error.message);
+      }
+
+      const stats = (dailyData ?? []).map(mapDbDailyStats);
+
+      const header = 'Datum,Impressions,Unique Impressions,Qualified Impressions,Klicks,Unique Klicks,CTR,Frequency';
+      const rows = stats.map((day) => {
+        const ctr = day.totalImpressions > 0
+          ? ((day.totalClicks / day.totalImpressions) * 100).toFixed(2)
+          : '0.00';
+        const freq = day.uniqueImpressions > 0
+          ? (day.totalImpressions / day.uniqueImpressions).toFixed(1)
+          : '0.0';
+        return [
+          day.date,
+          day.totalImpressions,
+          day.uniqueImpressions,
+          day.qualifiedImpressions,
+          day.totalClicks,
+          day.uniqueClicks,
+          `${ctr}%`,
+          freq,
+        ].join(',');
+      });
+
+      return [header, ...rows].join('\n');
     },
     [],
   );
@@ -355,6 +493,7 @@ export const [PromotionProvider, usePromotions] = createContextHook(() => {
     isLoading: sponsorsQuery.isLoading || promotionsQuery.isLoading,
     trackImpression,
     trackClick,
+    shouldShowPromotion,
     addSponsor: addSponsorMutation.mutateAsync,
     updateSponsor: (id: string, updates: Partial<Sponsor>) => updateSponsorMutation.mutateAsync({ id, updates }),
     deleteSponsor: deleteSponsorMutation.mutateAsync,
@@ -362,6 +501,8 @@ export const [PromotionProvider, usePromotions] = createContextHook(() => {
     updatePromotion: (id: string, updates: Partial<Promotion>) => updatePromotionMutation.mutateAsync({ id, updates }),
     deletePromotion: deletePromotionMutation.mutateAsync,
     getPromotionAnalytics,
+    triggerAggregation,
+    exportAnalyticsCsv,
     getSponsorById,
     isSavingSponsor: addSponsorMutation.isPending || updateSponsorMutation.isPending,
     isSavingPromotion: addPromotionMutation.isPending || updatePromotionMutation.isPending,
