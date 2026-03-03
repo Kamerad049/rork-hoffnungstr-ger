@@ -1,15 +1,12 @@
 import React, { useMemo, useCallback, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, FlatList, Pressable, Animated, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, FlatList, Pressable, Platform, Dimensions } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
-import { ChevronRight, Bell } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
+import { ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import RankIcon from '@/components/RankIcon';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useAuth } from '@/providers/AuthProvider';
-import { useStampPass } from '@/hooks/useStampPass';
 import { useContent } from '@/hooks/useContent';
 import { getLeitsatzDesTages } from '@/mocks/leitsaetze';
 import PlaceCard from '@/components/PlaceCard';
@@ -26,10 +23,6 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
-  const stampPass = useStampPass();
-  const stamps = stampPass?.stamps ?? [];
-  const rank = stampPass?.rank ?? { name: 'Neuling', minStamps: 0, icon: 'Eye' };
-  const progress = stampPass?.progress ?? 0;
   const contentCtx = useContent();
   const news = contentCtx?.news ?? [];
   const insets = useSafeAreaInsets();
@@ -39,8 +32,6 @@ export default function HomeScreen() {
   const placesRef = useRef<FlatList>(null);
   const restaurantsRef = useRef<FlatList>(null);
   const leitsatz = useMemo(() => getLeitsatzDesTages(), []);
-  const unreadActivityCount = 0;
-
   useEffect(() => {
     if (pathname === '/' || pathname === '/(tabs)/(home)') {
       try {
@@ -51,16 +42,6 @@ export default function HomeScreen() {
       }
     }
   }, [pathname]);
-
-  const bellScale = React.useRef(new Animated.Value(1)).current;
-  const handleBellPress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Animated.sequence([
-      Animated.timing(bellScale, { toValue: 0.85, duration: 80, useNativeDriver: true }),
-      Animated.spring(bellScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 12 }),
-    ]).start();
-    router.push('/(tabs)/(home)/activity' as any);
-  }, [bellScale, router]);
 
   const isContentLoading = contentCtx?.isLoading ?? false;
   const places = contentCtx?.places ?? [];
@@ -125,24 +106,7 @@ export default function HomeScreen() {
                 {user?.name ?? 'Entdecker'}
               </Text>
             </View>
-            <View style={styles.headerRight}>
-              <Pressable onPress={handleBellPress} hitSlop={12} testID="bell-button">
-                <Animated.View style={[styles.bellWrap, { transform: [{ scale: bellScale }] }]}>
-                  <Bell size={22} color="#E8DCC8" />
-                  {unreadActivityCount > 0 && (
-                    <View style={styles.bellBadge}>
-                      <Text style={styles.bellBadgeText}>
-                        {unreadActivityCount > 9 ? '9+' : unreadActivityCount}
-                      </Text>
-                    </View>
-                  )}
-                </Animated.View>
-              </Pressable>
-              <View style={styles.rankBadge}>
-                <RankIcon icon={rank.icon} size={16} color="#BFA35D" />
-                <Text style={styles.rankName}>{rank.name}</Text>
-              </View>
-            </View>
+
           </View>
         </View>
 
@@ -264,55 +228,7 @@ const styles = StyleSheet.create({
     fontWeight: '800' as const,
     color: '#E8DCC8',
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  bellWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(191,163,93,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  bellBadge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#E85D75',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 2,
-    borderColor: '#1e1d1a',
-  },
-  bellBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '800' as const,
-  },
-  rankBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(191,163,93,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.12)',
-  },
-  rankName: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-    color: '#BFA35D',
-  },
+
   contentArea: {
     paddingHorizontal: 18,
     paddingTop: 16,
