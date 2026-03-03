@@ -7,8 +7,12 @@ import {
   Pressable,
   Animated,
   Image,
+  RefreshControl,
+  Platform,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Heart,
   MessageCircle,
@@ -17,6 +21,7 @@ import {
   Share2,
   Bell,
   CheckCheck,
+  ChevronLeft,
   ChevronRight,
   Swords,
 } from 'lucide-react-native';
@@ -191,7 +196,10 @@ const ActivityRow = React.memo(function ActivityRow({ item }: { item: ActivityIt
 });
 
 export default function ActivityScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
   const sections = useMemo(() => groupByTime(activities), [activities]);
   const unreadCount = useMemo(() => activities.filter((a) => !a.read).length, [activities]);
@@ -200,6 +208,19 @@ export default function ActivityScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setActivities((prev) => prev.map((a) => ({ ...a, read: true })));
   }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 800);
+  }, []);
+
+  const handleBack = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.back();
+  }, [router]);
 
   const flatData = useMemo(() => {
     const result: (ActivityItem | { type: 'header'; title: string; id: string })[] = [];
@@ -230,36 +251,103 @@ export default function ActivityScreen() {
 
   const keyExtractor = useCallback((item: any) => item.id, []);
 
+  const ListHeaderComponent = useCallback(() => (
+    <View>
+      <LinearGradient
+        colors={['#1e1d1a', '#1a1918', '#141416']}
+        locations={[0, 0.5, 1]}
+        style={styles.heroGradient}
+      >
+        <View style={styles.heroPattern}>
+          {[...Array(8)].map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.heroLine,
+                {
+                  top: 10 + i * 18,
+                  opacity: 0.03 + i * 0.005,
+                  transform: [{ rotate: '-12deg' }],
+                },
+              ]}
+            />
+          ))}
+        </View>
+      </LinearGradient>
+
+      <View style={[styles.customHeader, { paddingTop: insets.top + 8 }]}>
+        <Pressable
+          onPress={handleBack}
+          style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
+          hitSlop={12}
+        >
+          <ChevronLeft size={22} color="#BFA35D" />
+        </Pressable>
+
+        <Text style={styles.headerTitle}>Aktivitäten</Text>
+
+        {unreadCount > 0 ? (
+          <Pressable onPress={markAllRead} hitSlop={12} style={styles.markAllBtn}>
+            <CheckCheck size={20} color="#BFA35D" />
+          </Pressable>
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
+      </View>
+    </View>
+  ), [insets.top, unreadCount, handleBack, markAllRead]);
+
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: 'Aktivitäten',
-          headerRight: unreadCount > 0
-            ? () => (
-                <Pressable onPress={markAllRead} hitSlop={12} style={styles.markAllBtn}>
-                  <CheckCheck size={20} color="#BFA35D" />
-                </Pressable>
-              )
-            : undefined,
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
       {activities.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <Bell size={48} color="rgba(191,163,93,0.25)" />
-          <Text style={styles.emptyTitle}>Keine Aktivitäten</Text>
-          <Text style={styles.emptySubtitle}>
-            Hier siehst du Likes, Kommentare, Follower und mehr.
-          </Text>
+        <View style={styles.container}>
+          <ListHeaderComponent />
+          <FlatList
+            data={[]}
+            renderItem={() => null}
+            ListEmptyComponent={
+              <View style={styles.emptyWrap}>
+                <View style={styles.emptyIconWrap}>
+                  <Bell size={48} color="rgba(191,163,93,0.25)" />
+                </View>
+                <Text style={styles.emptyTitle}>Keine Aktivitäten</Text>
+                <Text style={styles.emptySubtitle}>
+                  Hier siehst du Likes, Kommentare, Follower und mehr.
+                </Text>
+              </View>
+            }
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#BFA35D"
+                colors={['#BFA35D']}
+                progressBackgroundColor="#1e1d1a"
+              />
+            }
+            contentContainerStyle={styles.emptyListContent}
+            showsVerticalScrollIndicator={false}
+          />
         </View>
       ) : (
         <FlatList
           data={flatData}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
+          ListHeaderComponent={ListHeaderComponent}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#BFA35D"
+              colors={['#BFA35D']}
+              progressBackgroundColor="#1e1d1a"
+            />
+          }
         />
       )}
     </View>
@@ -271,12 +359,69 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#141416',
   },
+  heroGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 180,
+  },
+  heroPattern: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  heroLine: {
+    position: 'absolute',
+    left: -40,
+    right: -40,
+    height: 1,
+    backgroundColor: '#BFA35D',
+  },
+  customHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.15)',
+  },
+  backButtonPressed: {
+    backgroundColor: 'rgba(191,163,93,0.2)',
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: '#E8DCC8',
+    letterSpacing: 0.3,
+  },
+  headerSpacer: {
+    width: 38,
+  },
   listContent: {
     paddingBottom: 40,
   },
+  emptyListContent: {
+    flexGrow: 1,
+  },
   markAllBtn: {
-    marginRight: 4,
-    padding: 6,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.15)',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -323,7 +468,7 @@ const styles = StyleSheet.create({
   avatarWrap: {
     width: 50,
     height: 50,
-    position: 'relative',
+    position: 'relative' as const,
   },
   avatar: {
     width: 50,
@@ -331,8 +476,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'rgba(191,163,93,0.1)',
     borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   avatarText: {
     fontSize: 16,
@@ -340,14 +485,14 @@ const styles = StyleSheet.create({
     color: '#E8DCC8',
   },
   iconBubble: {
-    position: 'absolute',
+    position: 'absolute' as const,
     bottom: -2,
     right: -2,
     width: 22,
     height: 22,
     borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     borderWidth: 2,
     borderColor: '#141416',
   },
@@ -392,6 +537,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
     paddingHorizontal: 40,
+    paddingTop: 120,
+  },
+  emptyIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   emptyTitle: {
     fontSize: 18,
