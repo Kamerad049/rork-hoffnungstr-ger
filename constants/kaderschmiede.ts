@@ -6,6 +6,7 @@ export interface TrainingActivity {
   title: string;
   description: string;
   city: string;
+  plz?: string;
   bundesland: string;
   latitude: number;
   longitude: number;
@@ -33,6 +34,7 @@ export interface TruppMeeting {
   dateTime: string;
   location: string;
   city: string;
+  plz?: string;
   attendeeIds: string[];
 }
 
@@ -42,6 +44,7 @@ export interface Trupp {
   motto: string;
   sport: SportCategory;
   city: string;
+  plz?: string;
   bundesland: string;
   leaderId: string;
   memberIds: string[];

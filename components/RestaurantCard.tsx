@@ -51,7 +51,7 @@ export default React.memo(function RestaurantCard({ restaurant, compact = false 
             </Text>
             <View style={styles.locationRow}>
               <Text style={[styles.compactCity, { color: colors.secondaryText }]} numberOfLines={1}>
-                {restaurant.city} · {getPriceLabel(restaurant.priceRange)}
+                {restaurant.plz ? `${restaurant.plz} ${restaurant.city}` : restaurant.city} · {getPriceLabel(restaurant.priceRange)}
               </Text>
             </View>
           </View>
@@ -83,7 +83,7 @@ export default React.memo(function RestaurantCard({ restaurant, compact = false 
           <View style={styles.locationRow}>
             <MapPin size={13} color={colors.secondaryText} />
             <Text style={[styles.city, { color: colors.secondaryText }]}>
-              {restaurant.city}, {restaurant.bundesland}
+              {restaurant.plz ? `${restaurant.plz} ${restaurant.city}` : restaurant.city}, {restaurant.bundesland}
             </Text>
           </View>
           <View style={styles.cuisineRow}>

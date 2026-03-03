@@ -22,7 +22,9 @@ function mapDbUser(u: any): SocialUser {
     flagHoistedAt: u.flag_hoisted_at ?? null,
     values: [],
     birthplace: u.birthplace ?? '',
+    birthplacePlz: u.birthplace_plz ?? '',
     residence: u.residence ?? '',
+    residencePlz: u.residence_plz ?? '',
     bundesland: u.bundesland ?? '',
   };
 }

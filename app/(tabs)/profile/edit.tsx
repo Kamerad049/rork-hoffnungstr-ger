@@ -97,7 +97,9 @@ export default function EditProfileScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string>(profile.avatarUrl ?? '');
   const [selectedValues, setSelectedValues] = useState<string[]>(profile.values ?? []);
   const [birthplace, setBirthplace] = useState<string>(profile.birthplace ?? '');
+  const [birthplacePlz, setBirthplacePlz] = useState<string>(profile.birthplacePlz ?? '');
   const [residence, setResidence] = useState<string>(profile.residence ?? '');
+  const [residencePlz, setResidencePlz] = useState<string>(profile.residencePlz ?? '');
   const [gender, setGender] = useState<Gender>(profile.gender ?? '');
   const [religion, setReligion] = useState<Religion>(profile.religion ?? '');
   const [crossStyle, setCrossStyle] = useState<CrossStyle>(profile.crossStyle ?? 'none');
@@ -238,7 +240,9 @@ export default function EditProfileScreen() {
       avatarUrl: avatarUrl.trim() || null,
       values: selectedValues,
       birthplace: birthplace.trim(),
+      birthplacePlz: birthplacePlz.trim(),
       residence: residence.trim(),
+      residencePlz: residencePlz.trim(),
       bundesland: detectedBundesland,
       gender,
       religion,
@@ -248,7 +252,7 @@ export default function EditProfileScreen() {
       showSunDial,
     });
     router.back();
-  }, [displayName, bio, avatarUrl, selectedValues, birthplace, residence, detectedBundesland, gender, religion, crossStyle, showGender, showReligion, showSunDial, updateProfile, router]);
+  }, [displayName, bio, avatarUrl, selectedValues, birthplace, birthplacePlz, residence, residencePlz, detectedBundesland, gender, religion, crossStyle, showGender, showReligion, showSunDial, updateProfile, router]);
 
   const initial = (displayName || user?.name || 'U').charAt(0).toUpperCase();
 
@@ -362,26 +366,50 @@ export default function EditProfileScreen() {
         </View>
 
         <Text style={styles.editLabel}>Geburtsort</Text>
-        <TextInput
-          style={styles.editInput}
-          value={birthplace}
-          onChangeText={setBirthplace}
-          maxLength={80}
-          placeholder="z.B. München, Berlin..."
-          placeholderTextColor="rgba(191,163,93,0.3)"
-          testID="edit-birthplace-input"
-        />
+        <View style={styles.cityPlzRow}>
+          <TextInput
+            style={[styles.editInput, styles.cityInput]}
+            value={birthplace}
+            onChangeText={setBirthplace}
+            maxLength={80}
+            placeholder="z.B. München, Berlin..."
+            placeholderTextColor="rgba(191,163,93,0.3)"
+            testID="edit-birthplace-input"
+          />
+          <TextInput
+            style={[styles.editInput, styles.plzInput]}
+            value={birthplacePlz}
+            onChangeText={(t) => setBirthplacePlz(t.replace(/[^0-9]/g, '').slice(0, 5))}
+            maxLength={5}
+            keyboardType="number-pad"
+            placeholder="PLZ"
+            placeholderTextColor="rgba(191,163,93,0.3)"
+            testID="edit-birthplace-plz-input"
+          />
+        </View>
 
         <Text style={styles.editLabel}>Wohnort</Text>
-        <TextInput
-          style={styles.editInput}
-          value={residence}
-          onChangeText={setResidence}
-          maxLength={80}
-          placeholder="z.B. Hamburg, Köln..."
-          placeholderTextColor="rgba(191,163,93,0.3)"
-          testID="edit-residence-input"
-        />
+        <View style={styles.cityPlzRow}>
+          <TextInput
+            style={[styles.editInput, styles.cityInput]}
+            value={residence}
+            onChangeText={setResidence}
+            maxLength={80}
+            placeholder="z.B. Hamburg, Köln..."
+            placeholderTextColor="rgba(191,163,93,0.3)"
+            testID="edit-residence-input"
+          />
+          <TextInput
+            style={[styles.editInput, styles.plzInput]}
+            value={residencePlz}
+            onChangeText={(t) => setResidencePlz(t.replace(/[^0-9]/g, '').slice(0, 5))}
+            maxLength={5}
+            keyboardType="number-pad"
+            placeholder="PLZ"
+            placeholderTextColor="rgba(191,163,93,0.3)"
+            testID="edit-residence-plz-input"
+          />
+        </View>
 
         {detectedBundesland ? (
           <View style={styles.bundeslandTag}>
@@ -763,6 +791,16 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginTop: 4,
     color: 'rgba(191,163,93,0.3)',
+  },
+  cityPlzRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  cityInput: {
+    flex: 1,
+  },
+  plzInput: {
+    width: 80,
   },
   locationSection: {
     marginTop: 24,

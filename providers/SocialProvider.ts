@@ -45,7 +45,9 @@ interface SocialProfile {
   avatarUrl: string | null;
   values: string[];
   birthplace: string;
+  birthplacePlz: string;
   residence: string;
+  residencePlz: string;
   bundesland: string;
   gender: Gender;
   religion: Religion;
@@ -73,7 +75,9 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
     avatarUrl: null,
     values: [],
     birthplace: '',
+    birthplacePlz: '',
     residence: '',
+    residencePlz: '',
     bundesland: '',
     gender: '',
     religion: '',
@@ -102,7 +106,9 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
         avatarUrl: null,
         values: [],
         birthplace: '',
+        birthplacePlz: '',
         residence: '',
+        residencePlz: '',
         bundesland: '',
         gender: '',
         religion: '',
@@ -123,7 +129,9 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
           avatarUrl: p.avatar_url ?? null,
           values: vals,
           birthplace: p.birthplace ?? '',
+          birthplacePlz: p.birthplace_plz ?? '',
           residence: p.residence ?? '',
+          residencePlz: p.residence_plz ?? '',
           bundesland: p.bundesland ?? '',
           gender: (p.gender as Gender) ?? '',
           religion: (p.religion as Religion) ?? '',
@@ -148,7 +156,9 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
           flagHoistedAt: p.flag_hoisted_at ?? null,
           values: vals,
           birthplace: p.birthplace ?? '',
+          birthplacePlz: p.birthplace_plz ?? '',
           residence: p.residence ?? '',
+          residencePlz: p.residence_plz ?? '',
           bundesland: p.bundesland ?? '',
         });
       }
@@ -196,7 +206,9 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
       if (updates.bio !== undefined) dbUpdates.bio = updates.bio;
       if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
       if (updates.birthplace !== undefined) dbUpdates.birthplace = updates.birthplace;
+      if (updates.birthplacePlz !== undefined) dbUpdates.birthplace_plz = updates.birthplacePlz;
       if (updates.residence !== undefined) dbUpdates.residence = updates.residence;
+      if (updates.residencePlz !== undefined) dbUpdates.residence_plz = updates.residencePlz;
       if (updates.bundesland !== undefined) dbUpdates.bundesland = updates.bundesland;
       if (updates.gender !== undefined) dbUpdates.gender = updates.gender;
       if (updates.religion !== undefined) dbUpdates.religion = updates.religion;

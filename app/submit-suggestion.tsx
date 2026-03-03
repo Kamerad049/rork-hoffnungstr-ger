@@ -54,6 +54,7 @@ export default function SubmitSuggestionScreen() {
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [city, setCity] = useState<string>('');
+  const [plz, setPlz] = useState<string>('');
   const [bundesland, setBundesland] = useState<string>('');
   const [address, setAddress] = useState<string>('');
   const [whyRecommend, setWhyRecommend] = useState<string>('');
@@ -91,6 +92,7 @@ export default function SubmitSuggestionScreen() {
         name: name.trim(),
         description: description.trim(),
         city: city.trim(),
+        plz: plz.trim(),
         bundesland,
         images: [],
         place_category: isRestaurant ? null : placeCategory,
@@ -309,14 +311,26 @@ export default function SubmitSuggestionScreen() {
 
             <View style={styles.section}>
               <Text style={[styles.label, { color: colors.primaryText }]}>Stadt *</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.surface, color: colors.primaryText, borderColor: colors.border }]}
-                placeholder="z.B. München"
-                placeholderTextColor={colors.tertiaryText}
-                value={city}
-                onChangeText={setCity}
-                testID="suggestion-city"
-              />
+              <View style={styles.cityPlzRow}>
+                <TextInput
+                  style={[styles.input, styles.cityInput, { backgroundColor: colors.surface, color: colors.primaryText, borderColor: colors.border }]}
+                  placeholder="z.B. München"
+                  placeholderTextColor={colors.tertiaryText}
+                  value={city}
+                  onChangeText={setCity}
+                  testID="suggestion-city"
+                />
+                <TextInput
+                  style={[styles.input, styles.plzInput, { backgroundColor: colors.surface, color: colors.primaryText, borderColor: colors.border }]}
+                  placeholder="PLZ"
+                  placeholderTextColor={colors.tertiaryText}
+                  value={plz}
+                  onChangeText={(t) => setPlz(t.replace(/[^0-9]/g, '').slice(0, 5))}
+                  maxLength={5}
+                  keyboardType="number-pad"
+                  testID="suggestion-plz"
+                />
+              </View>
             </View>
 
             <View style={styles.section}>
@@ -467,6 +481,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     fontWeight: '500' as const,
+  },
+  cityPlzRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  cityInput: {
+    flex: 1,
+  },
+  plzInput: {
+    width: 80,
   },
   section: {
     marginBottom: 18,

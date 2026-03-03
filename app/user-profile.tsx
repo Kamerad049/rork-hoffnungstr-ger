@@ -270,7 +270,9 @@ export default function UserProfileScreen() {
         friendCount: friends.length,
         values: socialProfile.values ?? [],
         birthplace: socialProfile.birthplace ?? '',
+        birthplacePlz: socialProfile.birthplacePlz ?? '',
         residence: socialProfile.residence ?? '',
+        residencePlz: socialProfile.residencePlz ?? '',
         bundesland: socialProfile.bundesland ?? '',
         gender: socialProfile.gender,
         religion: socialProfile.religion,
@@ -733,13 +735,13 @@ export default function UserProfileScreen() {
                   {showBirth ? (
                     <View style={styles.locationChip}>
                       <MapPin size={11} color="rgba(191,163,93,0.6)" />
-                      <Text style={styles.locationChipText}>{profile.birthplace}</Text>
+                      <Text style={styles.locationChipText}>{profile.birthplacePlz ? `${profile.birthplacePlz} ${profile.birthplace}` : profile.birthplace}</Text>
                     </View>
                   ) : null}
                   {showRes ? (
                     <View style={styles.locationChip}>
                       <Home size={11} color="rgba(191,163,93,0.6)" />
-                      <Text style={styles.locationChipText}>{profile.residence}</Text>
+                      <Text style={styles.locationChipText}>{profile.residencePlz ? `${profile.residencePlz} ${profile.residence}` : profile.residence}</Text>
                     </View>
                   ) : null}
                   {showBl ? (

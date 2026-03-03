@@ -34,6 +34,7 @@ function mapDbPlace(p: any): Place {
     title: p.title,
     description: p.description ?? '',
     city: p.city,
+    plz: p.plz ?? '',
     bundesland: p.bundesland,
     images: p.images ?? [],
     category: p.category,
@@ -50,6 +51,7 @@ function mapDbRestaurant(r: any): Restaurant {
     name: r.name,
     description: r.description ?? '',
     city: r.city,
+    plz: r.plz ?? '',
     bundesland: r.bundesland,
     images: r.images ?? [],
     cuisine: r.cuisine ?? [],
@@ -100,7 +102,9 @@ function mapDbUser(u: any): SocialUser {
     friendCount: u.friend_count ?? 0,
     flagHoistedAt: u.flag_hoisted_at ?? null,
     birthplace: u.birthplace ?? '',
+    birthplacePlz: u.birthplace_plz ?? '',
     residence: u.residence ?? '',
+    residencePlz: u.residence_plz ?? '',
     bundesland: u.bundesland ?? '',
   };
 }
@@ -233,6 +237,7 @@ export const [AdminProvider, useAdmin] = createContextHook(() => {
         title: place.title,
         description: place.description,
         city: place.city,
+        plz: place.plz,
         bundesland: place.bundesland,
         images: place.images,
         category: place.category,
@@ -255,6 +260,7 @@ export const [AdminProvider, useAdmin] = createContextHook(() => {
     if (updates.title !== undefined) dbUpdates.title = updates.title;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.city !== undefined) dbUpdates.city = updates.city;
+    if (updates.plz !== undefined) dbUpdates.plz = updates.plz;
     if (updates.bundesland !== undefined) dbUpdates.bundesland = updates.bundesland;
     if (updates.images !== undefined) dbUpdates.images = updates.images;
     if (updates.category !== undefined) dbUpdates.category = updates.category;
@@ -285,6 +291,7 @@ export const [AdminProvider, useAdmin] = createContextHook(() => {
         name: restaurant.name,
         description: restaurant.description,
         city: restaurant.city,
+        plz: restaurant.plz,
         bundesland: restaurant.bundesland,
         images: restaurant.images,
         cuisine: restaurant.cuisine,
@@ -308,6 +315,7 @@ export const [AdminProvider, useAdmin] = createContextHook(() => {
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.city !== undefined) dbUpdates.city = updates.city;
+    if (updates.plz !== undefined) dbUpdates.plz = updates.plz;
     if (updates.bundesland !== undefined) dbUpdates.bundesland = updates.bundesland;
     if (updates.images !== undefined) dbUpdates.images = updates.images;
     if (updates.cuisine !== undefined) dbUpdates.cuisine = updates.cuisine;

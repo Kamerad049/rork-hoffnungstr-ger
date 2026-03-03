@@ -3,6 +3,7 @@ export interface Place {
   title: string;
   description: string;
   city: string;
+  plz?: string;
   bundesland: string;
   images: string[];
   category: PlaceCategory;
@@ -19,6 +20,7 @@ export interface Restaurant {
   name: string;
   description: string;
   city: string;
+  plz?: string;
   bundesland: string;
   images: string[];
   priceRange: 1 | 2 | 3;
@@ -179,7 +181,9 @@ export interface SocialUser {
   flagHoistedAt?: string | null;
   values?: string[];
   birthplace?: string;
+  birthplacePlz?: string;
   residence?: string;
+  residencePlz?: string;
   bundesland?: string;
   gender?: Gender;
   religion?: Religion;
@@ -396,6 +400,7 @@ export interface Submission {
   name: string;
   description: string;
   city: string;
+  plz?: string;
   bundesland: string;
   images: string[];
   placeCategory?: PlaceCategory;

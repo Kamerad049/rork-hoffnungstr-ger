@@ -32,6 +32,7 @@ function mapDbActivity(a: any, participants: string[]): TrainingActivity {
     title: a.title,
     description: a.description ?? '',
     city: a.city,
+    plz: a.plz ?? '',
     bundesland: a.bundesland,
     latitude: a.latitude ?? 0,
     longitude: a.longitude ?? 0,
@@ -57,6 +58,7 @@ function mapDbTrupp(
     description: t.description ?? '',
     sport: t.sport as SportCategory,
     city: t.city,
+    plz: t.plz ?? '',
     bundesland: t.bundesland,
     leaderId: t.leader_id,
     memberIds,
@@ -1160,7 +1162,7 @@ export const [KaderschmiedeProvider, useKaderschmiede] = createContextHook(() =>
         if (!truppMeetingMap[m.trupp_id]) truppMeetingMap[m.trupp_id] = [];
         truppMeetingMap[m.trupp_id].push({
           id: m.id, truppId: m.trupp_id, title: m.title, description: m.description ?? '',
-          dateTime: m.date_time, location: m.location ?? '', city: m.city ?? '',
+          dateTime: m.date_time, location: m.location ?? '', city: m.city ?? '', plz: m.plz ?? '',
           attendeeIds: meetingAttendeeMap[m.id] ?? [],
         });
       }

@@ -48,7 +48,7 @@ export default React.memo(function PlaceCard({ place, compact = false }: PlaceCa
             <View style={styles.locationRow}>
               <MapPin size={11} color={colors.secondaryText} />
               <Text style={[styles.compactCity, { color: colors.secondaryText }]} numberOfLines={1}>
-                {place.city}
+                {place.plz ? `${place.plz} ${place.city}` : place.city}
               </Text>
             </View>
           </View>
@@ -80,7 +80,7 @@ export default React.memo(function PlaceCard({ place, compact = false }: PlaceCa
           <View style={styles.locationRow}>
             <MapPin size={13} color={colors.secondaryText} />
             <Text style={[styles.city, { color: colors.secondaryText }]}>
-              {place.city}, {place.bundesland}
+              {place.plz ? `${place.plz} ${place.city}` : place.city}, {place.bundesland}
             </Text>
           </View>
           <View style={styles.ratingRow}>
