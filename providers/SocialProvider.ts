@@ -256,16 +256,26 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
   const hoistFlag = useCallback(async () => {
     const now = new Date().toISOString();
     setFlagHoistedAt(now);
+    const profileKey = [...queryKeys.socialProfile(userId), user?.name];
+    queryClient.setQueryData<ProfileQueryData | null>(profileKey, (old) => {
+      if (!old) return old;
+      return { ...old, flagHoistedAt: now };
+    });
     if (!userId) return;
     await supabase.from('users').update({ flag_hoisted_at: now }).eq('id', userId);
-  }, [userId]);
+  }, [userId, queryClient, user?.name]);
 
   const lowerFlag = useCallback(async () => {
     setFlagHoistedAt(null);
+    const profileKey = [...queryKeys.socialProfile(userId), user?.name];
+    queryClient.setQueryData<ProfileQueryData | null>(profileKey, (old) => {
+      if (!old) return old;
+      return { ...old, flagHoistedAt: null };
+    });
     if (!userId) return;
     await supabase.from('users').update({ flag_hoisted_at: null }).eq('id', userId);
     queryClient.invalidateQueries({ queryKey: ['active-flag-count'] });
-  }, [userId, queryClient]);
+  }, [userId, queryClient, user?.name]);
 
   const isFlagActive = useMemo((): boolean => {
     if (!flagHoistedAtState) return false;
