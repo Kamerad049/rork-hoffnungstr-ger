@@ -36,12 +36,12 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
-const CARD_W = 56;
-const CARD_H = 80;
-const CARD_SMALL_W = 36;
-const CARD_SMALL_H = 52;
-const CARD_BACK_W = 32;
-const CARD_BACK_H = 46;
+const CARD_W = 82;
+const CARD_H = 118;
+const CARD_SMALL_W = 50;
+const CARD_SMALL_H = 72;
+const CARD_BACK_W = 52;
+const CARD_BACK_H = 76;
 
 const GOLD = '#BFA35D';
 const GOLD_DIM = 'rgba(191,163,93,0.4)';
@@ -77,17 +77,35 @@ const SUIT_SYMBOLS: Record<CardSuit | 'shadow', string> = {
 function CardBack({ style }: { style?: any }) {
   return (
     <View style={[cardStyles.back, style]}>
+      <LinearGradient
+        colors={['#1e1c17', '#16140f', '#1a1814']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={cardStyles.backGradient}
+      />
       <View style={cardStyles.backInner}>
-        <View style={cardStyles.backOrnamentOuter}>
-          <View style={cardStyles.backOrnamentInner}>
-            <View style={cardStyles.backDiamond} />
+        <View style={cardStyles.backBorderFrame}>
+          <View style={cardStyles.backOrnamentOuter}>
+            <View style={cardStyles.backOrnamentRing} />
+            <View style={cardStyles.backOrnamentInner}>
+              <View style={cardStyles.backDiamond} />
+            </View>
           </View>
+          <View style={cardStyles.backLineTop} />
+          <View style={cardStyles.backLineBottom} />
+          <View style={cardStyles.backLineLeft} />
+          <View style={cardStyles.backLineRight} />
         </View>
         <View style={cardStyles.backCornerTL} />
         <View style={cardStyles.backCornerTR} />
         <View style={cardStyles.backCornerBL} />
         <View style={cardStyles.backCornerBR} />
+        <View style={cardStyles.backCornerDotTL} />
+        <View style={cardStyles.backCornerDotTR} />
+        <View style={cardStyles.backCornerDotBL} />
+        <View style={cardStyles.backCornerDotBR} />
       </View>
+      <View style={cardStyles.backShineTop} />
       <View style={cardStyles.backEdgeTop} />
       <View style={cardStyles.backEdgeBottom} />
     </View>
@@ -97,31 +115,53 @@ function CardBack({ style }: { style?: any }) {
 function CardFace({ card, size = 'normal' }: { card: ShadowCard; size?: 'normal' | 'small' }) {
   const w = size === 'small' ? CARD_SMALL_W : CARD_W;
   const h = size === 'small' ? CARD_SMALL_H : CARD_H;
-  const bgColor = card.isShadow ? '#1a0e20' : SUIT_COLORS[card.suit];
-  const borderColor = card.isShadow ? '#6B3A7D' : 'rgba(255,255,255,0.12)';
+  const isShadow = card.isShadow;
+  const suitColor = isShadow ? '#6B3A7D' : SUIT_COLORS[card.suit];
+  const bgBase = isShadow ? '#140a1a' : '#12110e';
+  const borderColor = isShadow ? 'rgba(107,58,125,0.5)' : 'rgba(191,163,93,0.2)';
+  const symbolSize = size === 'small' ? 24 : 34;
+  const valueSize = size === 'small' ? 11 : 15;
+  const cornerSize = size === 'small' ? 8 : 10;
 
   return (
-    <View style={[cardStyles.face, { width: w, height: h, backgroundColor: bgColor, borderColor }]}>
+    <View style={[cardStyles.face, { width: w, height: h, borderColor }]}>
+      <LinearGradient
+        colors={[bgBase, isShadow ? '#1c0f24' : '#1a1814', isShadow ? '#0e0612' : '#14120e']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
       <View style={cardStyles.faceShine} />
-      <Text style={[cardStyles.faceSymbol, size === 'small' && { fontSize: 18 }]}>
-        {card.isShadow ? SHADOW_CARD_SYMBOL : SUIT_SYMBOLS[card.suit]}
-      </Text>
-      {!card.isShadow && (
-        <Text style={[cardStyles.faceValue, size === 'small' && { fontSize: 9 }]}>{card.value}</Text>
-      )}
-      {card.isShadow && (
-        <Text style={[cardStyles.faceShadowLabel, size === 'small' && { fontSize: 6 }]}>SCHATTEN</Text>
-      )}
+      <View style={[cardStyles.faceSuitStripe, { backgroundColor: suitColor }]} />
+      <View style={cardStyles.faceInnerBorder} />
+      <View style={cardStyles.faceContent}>
+        <Text style={[cardStyles.faceSymbol, { fontSize: symbolSize }]}>
+          {isShadow ? SHADOW_CARD_SYMBOL : SUIT_SYMBOLS[card.suit]}
+        </Text>
+        {!isShadow && (
+          <Text style={[cardStyles.faceValue, { fontSize: valueSize, color: suitColor }]}>{card.value}</Text>
+        )}
+        {isShadow && (
+          <Text style={[cardStyles.faceShadowLabel, size === 'small' && { fontSize: 7 }]}>SCHATTEN</Text>
+        )}
+      </View>
       <View style={cardStyles.faceCornerTL}>
-        <Text style={[cardStyles.faceCornerText, size === 'small' && { fontSize: 7 }]}>
-          {card.isShadow ? '✦' : card.value}
+        <Text style={[cardStyles.faceCornerSymbol, { fontSize: cornerSize }]}>
+          {isShadow ? '✦' : SUIT_SYMBOLS[card.suit]}
+        </Text>
+        <Text style={[cardStyles.faceCornerText, { fontSize: cornerSize, color: isShadow ? '#8B5AA0' : suitColor }]}>
+          {isShadow ? '?' : card.value}
         </Text>
       </View>
       <View style={cardStyles.faceCornerBR}>
-        <Text style={[cardStyles.faceCornerText, { transform: [{ rotate: '180deg' }] }, size === 'small' && { fontSize: 7 }]}>
-          {card.isShadow ? '✦' : card.value}
+        <Text style={[cardStyles.faceCornerSymbol, { fontSize: cornerSize, transform: [{ rotate: '180deg' }] }]}>
+          {isShadow ? '✦' : SUIT_SYMBOLS[card.suit]}
+        </Text>
+        <Text style={[cardStyles.faceCornerText, { fontSize: cornerSize, color: isShadow ? '#8B5AA0' : suitColor, transform: [{ rotate: '180deg' }] }]}>
+          {isShadow ? '?' : card.value}
         </Text>
       </View>
+      <View style={[cardStyles.faceEdgeAccent, { backgroundColor: suitColor }]} />
     </View>
   );
 }
@@ -130,175 +170,313 @@ const cardStyles = StyleSheet.create({
   back: {
     width: CARD_BACK_W,
     height: CARD_BACK_H,
-    borderRadius: 6,
+    borderRadius: 8,
     backgroundColor: '#1c1a16',
     borderWidth: 1.5,
-    borderColor: 'rgba(191,163,93,0.18)',
+    borderColor: 'rgba(191,163,93,0.22)',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.55,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  backGradient: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 7,
   },
   backInner: {
     ...StyleSheet.absoluteFillObject,
-    margin: 3,
-    borderRadius: 4,
+    margin: 4,
+    borderRadius: 5,
     borderWidth: 0.5,
     borderColor: 'rgba(191,163,93,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  backOrnamentOuter: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+  backBorderFrame: {
+    width: '78%',
+    height: '78%',
+    borderRadius: 4,
     borderWidth: 0.5,
-    borderColor: 'rgba(191,163,93,0.15)',
+    borderColor: 'rgba(191,163,93,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  backOrnamentOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backOrnamentRing: {
+    position: 'absolute' as const,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.08)',
   },
   backOrnamentInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     borderWidth: 0.5,
-    borderColor: 'rgba(191,163,93,0.1)',
+    borderColor: 'rgba(191,163,93,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(191,163,93,0.03)',
   },
   backDiamond: {
-    width: 5,
-    height: 5,
-    backgroundColor: 'rgba(191,163,93,0.12)',
+    width: 6,
+    height: 6,
+    backgroundColor: 'rgba(191,163,93,0.2)',
     transform: [{ rotate: '45deg' }],
+  },
+  backLineTop: {
+    position: 'absolute' as const,
+    top: 0,
+    left: '20%' as any,
+    right: '20%' as any,
+    height: 0.5,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+  },
+  backLineBottom: {
+    position: 'absolute' as const,
+    bottom: 0,
+    left: '20%' as any,
+    right: '20%' as any,
+    height: 0.5,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+  },
+  backLineLeft: {
+    position: 'absolute' as const,
+    left: 0,
+    top: '20%' as any,
+    bottom: '20%' as any,
+    width: 0.5,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+  },
+  backLineRight: {
+    position: 'absolute' as const,
+    right: 0,
+    top: '20%' as any,
+    bottom: '20%' as any,
+    width: 0.5,
+    backgroundColor: 'rgba(191,163,93,0.08)',
   },
   backCornerTL: {
     position: 'absolute' as const,
-    top: 2,
-    left: 2,
-    width: 4,
-    height: 4,
+    top: 3,
+    left: 3,
+    width: 7,
+    height: 7,
     borderTopWidth: 0.5,
     borderLeftWidth: 0.5,
-    borderColor: 'rgba(191,163,93,0.1)',
+    borderColor: 'rgba(191,163,93,0.15)',
   },
   backCornerTR: {
     position: 'absolute' as const,
-    top: 2,
-    right: 2,
-    width: 4,
-    height: 4,
+    top: 3,
+    right: 3,
+    width: 7,
+    height: 7,
     borderTopWidth: 0.5,
     borderRightWidth: 0.5,
-    borderColor: 'rgba(191,163,93,0.1)',
+    borderColor: 'rgba(191,163,93,0.15)',
   },
   backCornerBL: {
     position: 'absolute' as const,
-    bottom: 2,
-    left: 2,
-    width: 4,
-    height: 4,
+    bottom: 3,
+    left: 3,
+    width: 7,
+    height: 7,
     borderBottomWidth: 0.5,
     borderLeftWidth: 0.5,
-    borderColor: 'rgba(191,163,93,0.1)',
+    borderColor: 'rgba(191,163,93,0.15)',
   },
   backCornerBR: {
     position: 'absolute' as const,
-    bottom: 2,
-    right: 2,
-    width: 4,
-    height: 4,
+    bottom: 3,
+    right: 3,
+    width: 7,
+    height: 7,
     borderBottomWidth: 0.5,
     borderRightWidth: 0.5,
-    borderColor: 'rgba(191,163,93,0.1)',
+    borderColor: 'rgba(191,163,93,0.15)',
+  },
+  backCornerDotTL: {
+    position: 'absolute' as const,
+    top: 5,
+    left: 5,
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(191,163,93,0.12)',
+  },
+  backCornerDotTR: {
+    position: 'absolute' as const,
+    top: 5,
+    right: 5,
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(191,163,93,0.12)',
+  },
+  backCornerDotBL: {
+    position: 'absolute' as const,
+    bottom: 5,
+    left: 5,
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(191,163,93,0.12)',
+  },
+  backCornerDotBR: {
+    position: 'absolute' as const,
+    bottom: 5,
+    right: 5,
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(191,163,93,0.12)',
+  },
+  backShineTop: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '35%' as any,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderTopLeftRadius: 7,
+    borderTopRightRadius: 7,
   },
   backEdgeTop: {
     position: 'absolute' as const,
     top: 0,
-    left: 6,
-    right: 6,
+    left: 8,
+    right: 8,
     height: 1,
-    backgroundColor: 'rgba(191,163,93,0.06)',
+    backgroundColor: 'rgba(191,163,93,0.08)',
   },
   backEdgeBottom: {
     position: 'absolute' as const,
     bottom: 0,
-    left: 6,
-    right: 6,
+    left: 8,
+    right: 8,
     height: 1,
-    backgroundColor: 'rgba(191,163,93,0.06)',
+    backgroundColor: 'rgba(191,163,93,0.08)',
   },
   face: {
     width: CARD_W,
     height: CARD_H,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
   },
   faceShine: {
     position: 'absolute' as const,
     top: 0,
     left: 0,
     right: 0,
-    height: '40%' as any,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    height: '45%' as any,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  faceSuitStripe: {
+    position: 'absolute' as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    opacity: 0.5,
+  },
+  faceInnerBorder: {
+    position: 'absolute' as const,
+    top: 5,
+    left: 5,
+    right: 5,
+    bottom: 5,
+    borderRadius: 8,
+    borderWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.08)',
+  },
+  faceContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
   faceSymbol: {
-    fontSize: 24,
+    fontSize: 34,
   },
   faceValue: {
-    fontSize: 11,
-    fontWeight: '800' as const,
-    color: 'rgba(255,255,255,0.75)',
-    marginTop: 2,
+    fontSize: 15,
+    fontWeight: '900' as const,
+    marginTop: 3,
+    letterSpacing: 1,
   },
   faceShadowLabel: {
-    fontSize: 7,
-    fontWeight: '800' as const,
-    color: '#8B4A9D',
-    letterSpacing: 1,
-    marginTop: 2,
+    fontSize: 9,
+    fontWeight: '900' as const,
+    color: '#8B5AA0',
+    letterSpacing: 2,
+    marginTop: 3,
   },
   faceCornerTL: {
     position: 'absolute' as const,
-    top: 4,
-    left: 5,
+    top: 7,
+    left: 7,
+    alignItems: 'center',
   },
   faceCornerBR: {
     position: 'absolute' as const,
-    bottom: 4,
-    right: 5,
+    bottom: 7,
+    right: 7,
+    alignItems: 'center',
+  },
+  faceCornerSymbol: {
+    fontSize: 10,
+    marginBottom: 1,
   },
   faceCornerText: {
-    fontSize: 8,
-    fontWeight: '700' as const,
-    color: 'rgba(255,255,255,0.45)',
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: 'rgba(255,255,255,0.5)',
+  },
+  faceEdgeAccent: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 10,
+    right: 10,
+    height: 2,
+    opacity: 0.3,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
   },
 });
 
 function FannedCardBacks({ count, maxFan, interactive, onTapCard }: { count: number; maxFan?: number; interactive?: boolean; onTapCard?: (index: number) => void }) {
   const displayCount = Math.min(count, maxFan ?? 8);
-  const fanAngle = displayCount <= 1 ? 0 : Math.min(displayCount * 6, 40);
+  const fanAngle = displayCount <= 1 ? 0 : Math.min(displayCount * 5, 36);
   const halfAngle = fanAngle / 2;
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const overlap = -18;
 
   return (
     <View style={fannedStyles.container}>
       {Array.from({ length: displayCount }).map((_, i) => {
         const angle = displayCount <= 1 ? 0 : -halfAngle + (i / (displayCount - 1)) * fanAngle;
-        const yOff = Math.abs(angle) * 0.25;
+        const yOff = Math.abs(angle) * 0.3;
         const isHovered = hoveredIdx === i;
-        const liftY = isHovered ? -8 : 0;
+        const liftY = isHovered ? -10 : 0;
 
         if (interactive && onTapCard) {
           return (
@@ -321,7 +499,7 @@ function FannedCardBacks({ count, maxFan, interactive, onTapCard }: { count: num
                     { translateY: yOff + liftY },
                     { scale: isHovered ? 1.12 : 1 },
                   ],
-                  marginLeft: i === 0 ? 0 : -14,
+                  marginLeft: i === 0 ? 0 : overlap,
                   zIndex: isHovered ? 100 : i,
                 },
               ]}
@@ -340,7 +518,7 @@ function FannedCardBacks({ count, maxFan, interactive, onTapCard }: { count: num
               fannedStyles.cardWrap,
               {
                 transform: [{ rotate: `${angle}deg` }, { translateY: yOff }],
-                marginLeft: i === 0 ? 0 : -14,
+                marginLeft: i === 0 ? 0 : overlap,
                 zIndex: i,
               },
             ]}
@@ -361,23 +539,23 @@ const fannedStyles = StyleSheet.create({
   },
   cardWrap: {
     shadowColor: '#000',
-    shadowOffset: { width: 1, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 1, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
+    elevation: 5,
   },
   cardBackHighlight: {
-    borderColor: 'rgba(191,163,93,0.5)',
+    borderColor: 'rgba(191,163,93,0.55)',
   },
   cardHoverGlow: {
     position: 'absolute' as const,
-    top: -2,
-    left: -2,
-    right: -2,
-    bottom: -2,
-    borderRadius: 8,
+    top: -3,
+    left: -3,
+    right: -3,
+    bottom: -3,
+    borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: 'rgba(191,163,93,0.4)',
+    borderColor: 'rgba(191,163,93,0.45)',
     backgroundColor: 'rgba(191,163,93,0.06)',
   },
 });
@@ -445,7 +623,7 @@ function OpponentHand({
     );
   }
 
-  const isRotated = position === 'left' || position === 'right';
+  const rotationForPosition = position === 'left' ? '90deg' : position === 'right' ? '-90deg' : '180deg';
 
   return (
     <Animated.View style={[opStyles.container, opStyles[position], { transform: [{ scale: pulseAnim }] }]}>
@@ -468,8 +646,7 @@ function OpponentHand({
         </View>
 
         <Animated.View style={[
-          isRotated && { transform: [{ rotate: position === 'left' ? '90deg' : '-90deg' }] },
-          { transform: [{ scale: scaleAnim }] },
+          { transform: [{ rotate: rotationForPosition }, { scale: scaleAnim }] },
         ]}>
           <FannedCardBacks
             count={playerState.handCount}
@@ -497,27 +674,27 @@ const opStyles = StyleSheet.create({
   },
   left: {
     left: 4,
-    top: '30%' as any,
+    top: '25%' as any,
   },
   top: {
     top: 4,
     alignSelf: 'center' as const,
     left: '50%' as any,
-    marginLeft: -70,
+    marginLeft: -80,
   },
   right: {
     right: 4,
-    top: '30%' as any,
+    top: '25%' as any,
   },
   handWrap: {
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: 'rgba(26,25,22,0.85)',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: 'rgba(26,25,22,0.88)',
     borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.06)',
-    minWidth: 90,
+    borderColor: 'rgba(191,163,93,0.08)',
+    minWidth: 100,
   },
   handWrapTarget: {
     borderColor: 'rgba(191,163,93,0.3)',
@@ -644,7 +821,7 @@ function DraggableCard({
     startIndexRef.current = index;
   }, [index]);
 
-  const cardSpacing = Math.min(CARD_W - 10, (SCREEN_W - 60) / Math.max(totalCards, 1));
+  const cardSpacing = Math.min(CARD_W - 14, (SCREEN_W - 60) / Math.max(totalCards, 1));
 
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
@@ -686,10 +863,10 @@ function DraggableCard({
   }), [totalCards, cardSpacing]);
 
   const rotation = totalCards > 1
-    ? ((index - (totalCards - 1) / 2) / Math.max(totalCards - 1, 1)) * 14
+    ? ((index - (totalCards - 1) / 2) / Math.max(totalCards - 1, 1)) * 16
     : 0;
-  const yOffset = Math.abs(index - (totalCards - 1) / 2) * 3;
-  const spacing = Math.min(-8, -(CARD_W - cardSpacing));
+  const yOffset = Math.abs(index - (totalCards - 1) / 2) * 3.5;
+  const spacing = Math.min(-12, -(CARD_W - cardSpacing));
 
   return (
     <Animated.View
@@ -724,7 +901,7 @@ const myCardStyles = StyleSheet.create({
   },
   dragShadow: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 10,
+    borderRadius: 12,
     backgroundColor: 'rgba(191,163,93,0.12)',
     shadowColor: GOLD,
     shadowOffset: { width: 0, height: 0 },
@@ -870,8 +1047,8 @@ const handStyles = StyleSheet.create({
   },
   fanContainer: {
     alignItems: 'center',
-    minHeight: CARD_H + 30,
-    paddingVertical: 8,
+    minHeight: CARD_H + 36,
+    paddingVertical: 10,
   },
   fan: {
     flexDirection: 'row' as const,
