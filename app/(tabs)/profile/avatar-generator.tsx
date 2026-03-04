@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
-  Platform,
   Animated,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -17,10 +16,11 @@ import { ChevronLeft, Wand2, RefreshCw, Sparkles, Check } from 'lucide-react-nat
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 
-import { File as ExpoFile, Paths, Directory } from 'expo-file-system';
 import { useMutation } from '@tanstack/react-query';
 import { useAlert } from '@/providers/AlertProvider';
 import { useSocial } from '@/providers/SocialProvider';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface AvatarStyle {
   id: string;
@@ -85,6 +85,7 @@ export default function AvatarGeneratorScreen() {
   const insets = useSafeAreaInsets();
   const { showAlert } = useAlert();
   const { updateProfile, profile } = useSocial();
+  const { user } = useAuth();
   const { imageUri } = useLocalSearchParams<{ imageUri?: string }>();
 
   const [sourceImage, setSourceImage] = useState<string>(imageUri || profile.avatarUrl || '');
@@ -133,23 +134,18 @@ export default function AvatarGeneratorScreen() {
   }, [showAlert]);
 
   const convertImageToBase64 = useCallback(async (uri: string): Promise<string> => {
-    if (Platform.OS === 'web') {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          const base64 = result.split(',')[1] || result;
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    }
-    const srcFile = new ExpoFile(uri);
-    const base64 = await srcFile.base64();
-    return base64;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        const base64 = result.split(',')[1] || result;
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
   }, []);
 
   const generateMutation = useMutation({
@@ -200,22 +196,33 @@ export default function AvatarGeneratorScreen() {
     mutationFn: async () => {
       if (!generatedBase64) throw new Error('Kein Avatar vorhanden');
 
-      let permanentUri = generatedAvatar;
+      const userId = user?.id;
+      if (!userId) throw new Error('Nicht angemeldet');
 
-      if (Platform.OS !== 'web') {
-        const avatarDir = new Directory(Paths.document, 'avatars');
-        if (!avatarDir.exists) {
-          avatarDir.create({ intermediates: true });
-        }
-        const fileName = `ai_avatar_${Date.now()}.png`;
-        const destFile = new ExpoFile(avatarDir, fileName);
-        destFile.write(generatedBase64, { encoding: 'base64' });
-        permanentUri = destFile.uri;
-        console.log('[AVATAR] Saved to:', permanentUri);
+      console.log('[AVATAR] Uploading to Supabase Storage...');
+      const fileName = `avatars/${userId}/ai_avatar_${Date.now()}.png`;
+
+      const binaryString = atob(generatedBase64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
       }
 
-      updateProfile({ avatarUrl: permanentUri });
-      return permanentUri;
+      const { data, error } = await supabase.storage
+        .from('admin-uploads')
+        .upload(fileName, bytes.buffer, { contentType: 'image/png', upsert: true });
+
+      if (error) {
+        console.log('[AVATAR] Upload error:', error.message);
+        throw new Error('Upload fehlgeschlagen: ' + error.message);
+      }
+
+      const { data: urlData } = supabase.storage.from('admin-uploads').getPublicUrl(data.path);
+      const publicUrl = urlData.publicUrl;
+      console.log('[AVATAR] Uploaded, public URL:', publicUrl);
+
+      await updateProfile({ avatarUrl: publicUrl });
+      return publicUrl;
     },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
