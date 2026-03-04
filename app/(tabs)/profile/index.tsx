@@ -51,7 +51,6 @@ import {
   Globe,
   Pencil,
   MessageCircleOff,
-  Share2,
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -903,27 +902,6 @@ export default function ProfileScreen() {
         <NowPlayingWidget track={currentTrack!} isOwnProfile />
       ) : null}
 
-      <Pressable
-        style={styles.inviteBanner}
-        onPress={async () => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          const message = `Ich bin Hoffnungsträger \u2013 Du auch schon?\n\nFolg mir doch gerne, falls noch nicht. Wir werden täglich mehr.\n\nEine werteorientierte Interessengemeinschaft zum kulturellen Erhalt unserer Heimat samt Sitten, Bräuchen und Traditionen.\n\nWerde jetzt Teil der Bewegung!`;
-          try {
-            await Share.share(
-              Platform.OS === 'ios'
-                ? { message }
-                : { message, title: 'Hoffnungsträger' }
-            );
-          } catch (e) {
-            console.log('[INVITE] Share failed:', e);
-          }
-        }}
-        testID="profile-invite-friends"
-      >
-        <Share2 size={16} color="#BFA35D" />
-        <Text style={styles.inviteBannerText}>Freunde einladen</Text>
-      </Pressable>
-
       <View style={styles.statsBar}>
         {[
           { label: 'Beiträge', value: ownPostCount, icon: FileText, onPress: () => handleTabChange('posts') },
@@ -1403,26 +1381,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600' as const,
   },
-  inviteBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: 'rgba(191,163,93,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.15)',
-  },
-  inviteBannerText: {
-    color: '#BFA35D',
-    fontSize: 14,
-    fontWeight: '700' as const,
-  },
+
   statsBar: {
     flexDirection: 'row',
     marginHorizontal: 16,

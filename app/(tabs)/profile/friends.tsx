@@ -9,7 +9,7 @@ import {
   Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Search, UserPlus, UserCheck, X, Users, ChevronLeft } from 'lucide-react-native';
+import { Search, UserPlus, UserCheck, X, Users, ChevronLeft, Mail } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import RankIcon from '@/components/RankIcon';
@@ -17,6 +17,7 @@ import { Stack, useRouter as useExpoRouter } from 'expo-router';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useFriends } from '@/providers/FriendsProvider';
 import type { SocialUser } from '@/constants/types';
+import { Share, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 type Tab = 'friends' | 'requests' | 'search';
@@ -38,6 +39,20 @@ export default function FriendsScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<Tab>('friends');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const handleInvite = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const message = `Ich bin Hoffnungsträger \u2013 Du auch schon?\n\nFolg mir doch gerne, falls noch nicht. Wir werden täglich mehr.\n\nEine werteorientierte Interessengemeinschaft zum kulturellen Erhalt unserer Heimat samt Sitten, Bräuchen und Traditionen.\n\nWerde jetzt Teil der Bewegung!`;
+    try {
+      await Share.share(
+        Platform.OS === 'ios'
+          ? { message }
+          : { message, title: 'Hoffnungsträger' }
+      );
+    } catch (e) {
+      console.log('[INVITE] Share failed:', e);
+    }
+  }, []);
 
   const searchResults = searchQuery.trim().length > 0
     ? leaderboard.filter(
@@ -237,6 +252,19 @@ export default function FriendsScreen() {
         <Users size={32} color="#BFA35D" />
       </View>
       <Text style={styles.heroTitle}>Freunde</Text>
+      <Pressable
+        style={({ pressed }) => [
+          styles.inviteBtn,
+          { opacity: pressed ? 0.75 : 1 },
+        ]}
+        onPress={handleInvite}
+        testID="friends-invite-btn"
+      >
+        <View style={styles.inviteIconCircle}>
+          <Mail size={16} color="#BFA35D" />
+        </View>
+        <Text style={styles.inviteBtnText}>Freunde einladen</Text>
+      </Pressable>
     </LinearGradient>
   ), [insets.top, router]);
 
@@ -401,6 +429,32 @@ const styles = StyleSheet.create({
     fontWeight: '800' as const,
     color: '#E8DCC8',
     textAlign: 'center',
+  },
+  inviteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 10,
+    marginTop: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 24,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.2)',
+  },
+  inviteIconCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(191,163,93,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inviteBtnText: {
+    color: '#BFA35D',
+    fontSize: 14,
+    fontWeight: '700' as const,
   },
   tabBar: {
     flexDirection: 'row',
