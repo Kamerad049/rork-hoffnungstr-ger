@@ -286,16 +286,53 @@ const cardStyles = StyleSheet.create({
   },
 });
 
-function FannedCardBacks({ count, maxFan }: { count: number; maxFan?: number }) {
+function FannedCardBacks({ count, maxFan, interactive, onTapCard }: { count: number; maxFan?: number; interactive?: boolean; onTapCard?: (index: number) => void }) {
   const displayCount = Math.min(count, maxFan ?? 8);
   const fanAngle = displayCount <= 1 ? 0 : Math.min(displayCount * 6, 40);
   const halfAngle = fanAngle / 2;
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   return (
     <View style={fannedStyles.container}>
       {Array.from({ length: displayCount }).map((_, i) => {
         const angle = displayCount <= 1 ? 0 : -halfAngle + (i / (displayCount - 1)) * fanAngle;
         const yOff = Math.abs(angle) * 0.25;
+        const isHovered = hoveredIdx === i;
+        const liftY = isHovered ? -8 : 0;
+
+        if (interactive && onTapCard) {
+          return (
+            <Pressable
+              key={i}
+              onPressIn={() => {
+                setHoveredIdx(i);
+                if (Platform.OS !== 'web') Haptics.selectionAsync();
+              }}
+              onPressOut={() => setHoveredIdx(null)}
+              onPress={() => {
+                if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                onTapCard(i);
+              }}
+              style={[
+                fannedStyles.cardWrap,
+                {
+                  transform: [
+                    { rotate: `${angle}deg` },
+                    { translateY: yOff + liftY },
+                    { scale: isHovered ? 1.12 : 1 },
+                  ],
+                  marginLeft: i === 0 ? 0 : -14,
+                  zIndex: isHovered ? 100 : i,
+                },
+              ]}
+              testID={`opponent-card-${i}`}
+            >
+              <CardBack style={isHovered ? fannedStyles.cardBackHighlight : undefined} />
+              {isHovered && <View style={fannedStyles.cardHoverGlow} />}
+            </Pressable>
+          );
+        }
+
         return (
           <View
             key={i}
@@ -329,6 +366,20 @@ const fannedStyles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
+  cardBackHighlight: {
+    borderColor: 'rgba(191,163,93,0.5)',
+  },
+  cardHoverGlow: {
+    position: 'absolute' as const,
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(191,163,93,0.4)',
+    backgroundColor: 'rgba(191,163,93,0.06)',
+  },
 });
 
 function OpponentHand({
@@ -344,7 +395,7 @@ function OpponentHand({
   isCurrentTurn: boolean;
   isDrawTarget: boolean;
   position: 'left' | 'top' | 'right';
-  onDrawFrom: () => void;
+  onDrawFrom: (cardIndex: number) => void;
 }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
@@ -398,12 +449,8 @@ function OpponentHand({
 
   return (
     <Animated.View style={[opStyles.container, opStyles[position], { transform: [{ scale: pulseAnim }] }]}>
-      <Pressable
+      <View
         style={[opStyles.handWrap, isDrawTarget && opStyles.handWrapTarget]}
-        onPress={isDrawTarget ? onDrawFrom : undefined}
-        onPressIn={isDrawTarget ? () => Animated.spring(scaleAnim, { toValue: 0.95, useNativeDriver: true }).start() : undefined}
-        onPressOut={isDrawTarget ? () => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start() : undefined}
-        disabled={!isDrawTarget}
         testID={`opponent-${position}`}
       >
         {isDrawTarget && (
@@ -424,16 +471,21 @@ function OpponentHand({
           isRotated && { transform: [{ rotate: position === 'left' ? '90deg' : '-90deg' }] },
           { transform: [{ scale: scaleAnim }] },
         ]}>
-          <FannedCardBacks count={playerState.handCount} maxFan={7} />
+          <FannedCardBacks
+            count={playerState.handCount}
+            maxFan={7}
+            interactive={isDrawTarget}
+            onTapCard={isDrawTarget ? (cardIndex) => onDrawFrom(cardIndex) : undefined}
+          />
         </Animated.View>
 
         {isDrawTarget && (
           <View style={opStyles.drawHintWrap}>
             <Sparkles size={10} color={GOLD} />
-            <Text style={opStyles.drawHint}>ZIEHEN</Text>
+            <Text style={opStyles.drawHint}>WÄHLE EINE KARTE</Text>
           </View>
         )}
-      </Pressable>
+      </View>
     </Animated.View>
   );
 }
@@ -1180,10 +1232,10 @@ export default function ShadowCardsScreen() {
 
   const positions: ('left' | 'top' | 'right')[] = ['left', 'top', 'right'];
 
-  const handleDrawFromOpponent = useCallback(() => {
+  const handleDrawFromOpponent = useCallback((cardIndex: number) => {
     if (!isMyTurn) return;
-    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    drawCard();
+    console.log('[SHADOW-UI] Player chose card at index:', cardIndex);
+    drawCard(cardIndex);
   }, [isMyTurn, drawCard]);
 
   const handleRematch = useCallback(async () => {

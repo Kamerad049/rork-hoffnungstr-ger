@@ -142,7 +142,7 @@ export const [ShadowCardsProvider, useShadowCards] = createContextHook(() => {
   const handleAutoPlay = useCallback(() => {
     setGameState(prev => {
       if (!prev || prev.phase !== 'playing') return prev;
-      return performDraw(prev, prev.currentTurnUserId, settings);
+      return performDraw(prev, prev.currentTurnUserId, settings, undefined);
     });
   }, [settings]);
 
@@ -154,12 +154,12 @@ export const [ShadowCardsProvider, useShadowCards] = createContextHook(() => {
         if (!prev || prev.phase !== 'playing') return prev;
         if (!prev.currentTurnUserId.startsWith('bot_')) return prev;
         console.log('[SHADOW] Bot playing:', prev.currentTurnUserId);
-        return performDraw(prev, prev.currentTurnUserId, settings);
+        return performDraw(prev, prev.currentTurnUserId, settings, undefined);
       });
     }, delay);
   }, [settings]);
 
-  const performDraw = useCallback((state: ShadowGameState, drawingUserId: string, gameSettings: GameSettings): ShadowGameState => {
+  const performDraw = useCallback((state: ShadowGameState, drawingUserId: string, gameSettings: GameSettings, chosenCardIndex?: number): ShadowGameState => {
     const drawFrom = state.players.find(p => p.userId === state.drawFromUserId);
     const drawingPlayer = state.players.find(p => p.userId === drawingUserId);
     if (!drawFrom || !drawingPlayer || drawFrom.hand.length === 0) {
@@ -174,13 +174,16 @@ export const [ShadowCardsProvider, useShadowCards] = createContextHook(() => {
       };
     }
 
-    const randomIdx = Math.floor(Math.random() * drawFrom.hand.length);
-    const drawnCard = drawFrom.hand[randomIdx];
+    const cardIdx = (chosenCardIndex !== undefined && chosenCardIndex >= 0 && chosenCardIndex < drawFrom.hand.length)
+      ? chosenCardIndex
+      : Math.floor(Math.random() * drawFrom.hand.length);
+    const drawnCard = drawFrom.hand[cardIdx];
+    console.log('[SHADOW] Card drawn at index', cardIdx, chosenCardIndex !== undefined ? '(player chose)' : '(random)');
 
     console.log('[SHADOW] Draw:', drawingUserId.slice(0, 8), 'draws from', state.drawFromUserId.slice(0, 8), '→', drawnCard.suit, drawnCard.value);
 
     const newFromHand = [...drawFrom.hand];
-    newFromHand.splice(randomIdx, 1);
+    newFromHand.splice(cardIdx, 1);
 
     const newDrawingHand = [...drawingPlayer.hand, drawnCard];
 
@@ -276,7 +279,7 @@ export const [ShadowCardsProvider, useShadowCards] = createContextHook(() => {
     return newState;
   }, [startTurnTimer, scheduleBotAction]);
 
-  const drawCard = useCallback(() => {
+  const drawCard = useCallback((chosenCardIndex?: number) => {
     if (!gameState || gameState.phase !== 'playing' || isProcessing) return;
     if (gameState.currentTurnUserId !== userId) {
       console.log('[SHADOW] Not your turn');
@@ -284,11 +287,11 @@ export const [ShadowCardsProvider, useShadowCards] = createContextHook(() => {
     }
 
     setIsProcessing(true);
-    console.log('[SHADOW] Player drawing card');
+    console.log('[SHADOW] Player drawing card at index:', chosenCardIndex);
 
     setGameState(prev => {
       if (!prev) return prev;
-      const newState = performDraw(prev, userId, settings);
+      const newState = performDraw(prev, userId, settings, chosenCardIndex);
 
       if (newState.phase === 'finished' && newState.loserUserId) {
         const winnerIds = newState.finishOrder.filter(id => id !== newState.loserUserId);
