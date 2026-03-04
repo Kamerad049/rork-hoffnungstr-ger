@@ -1347,6 +1347,155 @@ const bgStyles = StyleSheet.create({
   },
 });
 
+function PairMatchOverlay({
+  pair,
+  onComplete,
+}: {
+  pair: [ShadowCard, ShadowCard];
+  onComplete: () => void;
+}) {
+  const bgOpacity = useRef(new Animated.Value(0)).current;
+  const card1X = useRef(new Animated.Value(-SCREEN_W * 0.4)).current;
+  const card2X = useRef(new Animated.Value(SCREEN_W * 0.4)).current;
+  const card1Rotate = useRef(new Animated.Value(-25)).current;
+  const card2Rotate = useRef(new Animated.Value(25)).current;
+  const cardsScale = useRef(new Animated.Value(0.5)).current;
+  const cardsY = useRef(new Animated.Value(30)).current;
+  const glowScale = useRef(new Animated.Value(0)).current;
+  const glowOpacity = useRef(new Animated.Value(0)).current;
+  const labelOpacity = useRef(new Animated.Value(0)).current;
+  const exitScale = useRef(new Animated.Value(1)).current;
+  const exitY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(bgOpacity, { toValue: 0.85, duration: 200, useNativeDriver: true }),
+        Animated.spring(card1X, { toValue: -38, friction: 7, tension: 80, useNativeDriver: true }),
+        Animated.spring(card2X, { toValue: 38, friction: 7, tension: 80, useNativeDriver: true }),
+        Animated.spring(card1Rotate, { toValue: -8, friction: 6, tension: 90, useNativeDriver: true }),
+        Animated.spring(card2Rotate, { toValue: 8, friction: 6, tension: 90, useNativeDriver: true }),
+        Animated.spring(cardsScale, { toValue: 1.15, friction: 5, tension: 100, useNativeDriver: true }),
+        Animated.spring(cardsY, { toValue: 0, friction: 6, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.spring(glowScale, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }),
+        Animated.timing(glowOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(labelOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+      ]),
+      Animated.delay(800),
+      Animated.parallel([
+        Animated.timing(exitScale, { toValue: 0.3, duration: 400, useNativeDriver: true }),
+        Animated.timing(exitY, { toValue: 60, duration: 400, useNativeDriver: true }),
+        Animated.timing(bgOpacity, { toValue: 0, duration: 350, useNativeDriver: true }),
+        Animated.timing(glowOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+        Animated.timing(labelOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.spring(card1X, { toValue: 0, friction: 8, useNativeDriver: true }),
+        Animated.spring(card2X, { toValue: 0, friction: 8, useNativeDriver: true }),
+        Animated.spring(card1Rotate, { toValue: 0, friction: 8, useNativeDriver: true }),
+        Animated.spring(card2Rotate, { toValue: 0, friction: 8, useNativeDriver: true }),
+      ]),
+    ]).start(() => {
+      onComplete();
+    });
+  }, []);
+
+  const suitColor = SUIT_COLORS[pair[0].suit] ?? GOLD;
+
+  return (
+    <Animated.View style={[pairStyles.overlay, { opacity: bgOpacity }]} pointerEvents="none">
+      <Animated.View style={[pairStyles.cardsContainer, {
+        transform: [
+          { scale: Animated.multiply(cardsScale, exitScale) },
+          { translateY: Animated.add(cardsY, exitY) },
+        ],
+      }]}>
+        <Animated.View style={[pairStyles.glowRing, {
+          opacity: glowOpacity,
+          transform: [{ scale: glowScale }],
+          borderColor: suitColor,
+          shadowColor: suitColor,
+        }]} />
+
+        <Animated.View style={[pairStyles.cardSlot, {
+          transform: [
+            { translateX: card1X },
+            { rotate: card1Rotate.interpolate({ inputRange: [-30, 30], outputRange: ['-30deg', '30deg'] }) },
+          ],
+        }]}>
+          <CardFace card={pair[0]} />
+        </Animated.View>
+
+        <Animated.View style={[pairStyles.cardSlot, {
+          transform: [
+            { translateX: card2X },
+            { rotate: card2Rotate.interpolate({ inputRange: [-30, 30], outputRange: ['-30deg', '30deg'] }) },
+          ],
+        }]}>
+          <CardFace card={pair[1]} />
+        </Animated.View>
+      </Animated.View>
+
+      <Animated.View style={[pairStyles.labelWrap, { opacity: labelOpacity }]}>
+        <Text style={[pairStyles.labelEmoji]}>{SUIT_SYMBOLS[pair[0].suit]}</Text>
+        <Text style={[pairStyles.labelText, { color: suitColor }]}>PAAR!</Text>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+const pairStyles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 160,
+    backgroundColor: 'rgba(8,8,6,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: CARD_W * 3,
+    height: CARD_H * 2,
+  },
+  glowRing: {
+    position: 'absolute' as const,
+    width: CARD_W * 2.5,
+    height: CARD_W * 2.5,
+    borderRadius: CARD_W * 1.25,
+    borderWidth: 2,
+    backgroundColor: 'rgba(191,163,93,0.04)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 40,
+    elevation: 15,
+  },
+  cardSlot: {
+    position: 'absolute' as const,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  labelWrap: {
+    position: 'absolute' as const,
+    bottom: '28%' as any,
+    alignItems: 'center',
+    gap: 4,
+  },
+  labelEmoji: {
+    fontSize: 28,
+  },
+  labelText: {
+    fontSize: 28,
+    fontWeight: '900' as const,
+    letterSpacing: 6,
+  },
+});
+
 function PullCardOverlay({
   card,
   onCommitDraw,
@@ -1641,6 +1790,8 @@ export default function ShadowCardsScreen() {
 
 
   const [pullState, setPullState] = useState<{ cardIndex: number; card: ShadowCard } | null>(null);
+  const [pairToAnimate, setPairToAnimate] = useState<[ShadowCard, ShadowCard] | null>(null);
+  const prevPairsCountRef = useRef<number>(0);
 
   const handleDrawFromOpponent = useCallback((cardIndex: number) => {
     if (!isMyTurn || !gameState) return;
@@ -1650,6 +1801,24 @@ export default function ShadowCardsScreen() {
     if (Platform.OS !== 'web') Haptics.selectionAsync();
     setPullState({ cardIndex, card: drawFrom.hand[cardIndex] });
   }, [isMyTurn, gameState]);
+
+  useEffect(() => {
+    if (!gameState) return;
+    const currentCount = gameState.removedPairs.length;
+    if (currentCount > prevPairsCountRef.current && prevPairsCountRef.current > 0) {
+      const lastPair = gameState.removedPairs[currentCount - 1];
+      if (lastPair) {
+        console.log('[SHADOW-UI] Pair detected! Showing animation for', lastPair.pair[0].suit, lastPair.pair[0].value);
+        setPairToAnimate(lastPair.pair);
+      }
+    }
+    prevPairsCountRef.current = currentCount;
+  }, [gameState?.removedPairs.length]);
+
+  const handlePairAnimComplete = useCallback(() => {
+    console.log('[SHADOW-UI] Pair animation complete');
+    setPairToAnimate(null);
+  }, []);
 
   const handlePullComplete = useCallback(() => {
     if (!pullState) return;
@@ -1700,6 +1869,13 @@ export default function ShadowCardsScreen() {
   return (
     <View style={styles.container}>
       <BackgroundPattern />
+
+      {pairToAnimate && (
+        <PairMatchOverlay
+          pair={pairToAnimate}
+          onComplete={handlePairAnimComplete}
+        />
+      )}
 
       {pullState && (
         <PullCardOverlay
