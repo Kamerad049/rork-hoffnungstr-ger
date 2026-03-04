@@ -49,7 +49,7 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type LobbyPhase = 'setup' | 'waiting' | 'countdown' | 'go' | 'racing' | 'surrendered' | 'victory_by_surrender' | 'finished';
+type LobbyPhase = 'setup' | 'waiting' | 'countdown' | 'go' | 'racing' | 'surrendered' | 'victory_by_surrender' | 'race_won' | 'race_lost' | 'finished';
 type SpectatorRole = 'racer' | 'spectator';
 type ChallengeMode = '1v1' | 'team';
 type DistanceOption = 1000 | 2000 | 5000;
@@ -546,6 +546,328 @@ function SurrenderConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void;
     </Animated.View>
   );
 }
+
+function RaceResultScreen({
+  isWinner,
+  myTime,
+  opponentTime,
+  opponentName,
+  distance,
+  onDismiss,
+}: {
+  isWinner: boolean;
+  myTime: number;
+  opponentTime: number;
+  opponentName: string;
+  distance: DistanceOption;
+  onDismiss: () => void;
+}) {
+  const bgAnim = useRef(new Animated.Value(0)).current;
+  const iconScale = useRef(new Animated.Value(0)).current;
+  const iconRotate = useRef(new Animated.Value(-0.1)).current;
+  const textSlide = useRef(new Animated.Value(60)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const statsSlide = useRef(new Animated.Value(40)).current;
+  const statsOpacity = useRef(new Animated.Value(0)).current;
+  const btnOpacity = useRef(new Animated.Value(0)).current;
+  const ringScale = useRef(new Animated.Value(0.3)).current;
+  const ringOpacity = useRef(new Animated.Value(0.8)).current;
+  const glowPulse = useRef(new Animated.Value(0.4)).current;
+  const sparkle1 = useRef(new Animated.Value(0)).current;
+  const sparkle2 = useRef(new Animated.Value(0)).current;
+  const sparkle3 = useRef(new Animated.Value(0)).current;
+
+  const formatRaceTime = (t: number) => {
+    const mins = Math.floor(t / 60);
+    const secs = Math.floor(t % 60);
+    const cs = Math.floor((t % 1) * 100);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;
+  };
+
+  const timeDiff = Math.abs(myTime - opponentTime);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      if (isWinner) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+    }
+
+    Animated.sequence([
+      Animated.timing(bgAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.spring(iconScale, { toValue: 1, friction: 3, tension: 150, useNativeDriver: true }),
+        Animated.spring(iconRotate, { toValue: 0, friction: 4, tension: 100, useNativeDriver: true }),
+        Animated.timing(ringScale, { toValue: 3, duration: 800, useNativeDriver: true }),
+        Animated.timing(ringOpacity, { toValue: 0, duration: 800, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.spring(textSlide, { toValue: 0, friction: 6, tension: 80, useNativeDriver: true }),
+        Animated.timing(textOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.spring(statsSlide, { toValue: 0, friction: 6, tension: 80, useNativeDriver: true }),
+        Animated.timing(statsOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ]),
+      ...(isWinner ? [Animated.stagger(150, [
+        Animated.timing(sparkle1, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(sparkle2, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(sparkle3, { toValue: 1, duration: 300, useNativeDriver: true }),
+      ])] : []),
+      Animated.timing(btnOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+
+    if (isWinner) {
+      const glowLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowPulse, { toValue: 1, duration: 1200, useNativeDriver: true }),
+          Animated.timing(glowPulse, { toValue: 0.4, duration: 1200, useNativeDriver: true }),
+        ]),
+      );
+      glowLoop.start();
+      return () => glowLoop.stop();
+    }
+  }, []);
+
+  const accentColor = isWinner ? '#BFA35D' : '#C06060';
+
+  return (
+    <Animated.View style={[raceResultStyles.overlay, { opacity: bgAnim }]}>
+      <Animated.View style={[raceResultStyles.ring, { opacity: ringOpacity, borderColor: accentColor, transform: [{ scale: ringScale }] }]} />
+
+      {isWinner && <Animated.View style={[raceResultStyles.glow, { opacity: glowPulse }]} />}
+
+      <Animated.View style={[
+        raceResultStyles.iconWrap,
+        { transform: [{ scale: iconScale }, { rotate: iconRotate.interpolate({ inputRange: [-0.1, 0], outputRange: ['-15deg', '0deg'] }) }] },
+      ]}>
+        <View style={[raceResultStyles.iconInner, { borderColor: isWinner ? 'rgba(191,163,93,0.4)' : 'rgba(192,96,96,0.3)' }]}>
+          {isWinner ? (
+            <Trophy size={56} color="#BFA35D" strokeWidth={2.5} />
+          ) : (
+            <Flag size={48} color="#C06060" strokeWidth={2} />
+          )}
+        </View>
+      </Animated.View>
+
+      {isWinner && (
+        <View style={raceResultStyles.sparkles}>
+          {[sparkle1, sparkle2, sparkle3].map((anim, i) => (
+            <Animated.View
+              key={i}
+              style={[
+                raceResultStyles.sparkle,
+                {
+                  opacity: anim,
+                  transform: [{ scale: anim }, { rotate: `${i * 45 + 15}deg` }],
+                  left: i === 0 ? '20%' : i === 1 ? '50%' : '75%',
+                  top: i === 0 ? '25%' : i === 1 ? '15%' : '28%',
+                },
+              ]}
+            >
+              <Text style={raceResultStyles.sparkleText}>{i === 1 ? '⭐' : '✦'}</Text>
+            </Animated.View>
+          ))}
+        </View>
+      )}
+
+      <Animated.View style={[raceResultStyles.textWrap, { transform: [{ translateY: textSlide }], opacity: textOpacity }]}>
+        <Text style={[raceResultStyles.mainLabel, { color: accentColor }]}>
+          {isWinner ? 'SIEG!' : 'NIEDERLAGE'}
+        </Text>
+        <Text style={raceResultStyles.subLabel}>
+          {(distance / 1000).toFixed(0)}K CHALLENGE
+        </Text>
+      </Animated.View>
+
+      <Animated.View style={[raceResultStyles.statsCard, { transform: [{ translateY: statsSlide }], opacity: statsOpacity }]}>
+        <View style={raceResultStyles.statsRow}>
+          <View style={raceResultStyles.statBlock}>
+            <Text style={raceResultStyles.statLabel}>DEINE ZEIT</Text>
+            <Text style={[raceResultStyles.statValue, { color: isWinner ? '#BFA35D' : '#E8DCC8' }]}>
+              {formatRaceTime(myTime)}
+            </Text>
+          </View>
+          <View style={raceResultStyles.statDivider} />
+          <View style={raceResultStyles.statBlock}>
+            <Text style={raceResultStyles.statLabel}>{opponentName.toUpperCase()}</Text>
+            <Text style={[raceResultStyles.statValue, { color: !isWinner ? '#BFA35D' : '#E8DCC8' }]}>
+              {formatRaceTime(opponentTime)}
+            </Text>
+          </View>
+        </View>
+
+        <View style={raceResultStyles.gapRow}>
+          <Text style={raceResultStyles.gapLabel}>VORSPRUNG</Text>
+          <Text style={[raceResultStyles.gapValue, { color: accentColor }]}>
+            {isWinner ? '-' : '+'}{formatRaceTime(timeDiff)}
+          </Text>
+        </View>
+      </Animated.View>
+
+      <Animated.View style={[raceResultStyles.btnWrap, { opacity: btnOpacity }]}>
+        <Pressable
+          style={raceResultStyles.btn}
+          onPress={() => {
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
+            onDismiss();
+          }}
+        >
+          <LinearGradient
+            colors={isWinner ? ['#BFA35D', '#A08A45'] : ['#2a2a2e', '#222224']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={raceResultStyles.btnGradient}
+          >
+            <Text style={[raceResultStyles.btnText, { color: isWinner ? '#141416' : '#E8DCC8' }]}>WEITER</Text>
+          </LinearGradient>
+        </Pressable>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+const raceResultStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0a0a0c',
+    padding: 24,
+  },
+  ring: {
+    position: 'absolute' as const,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 3,
+  },
+  glow: {
+    position: 'absolute' as const,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+  },
+  iconWrap: {
+    marginBottom: 24,
+  },
+  iconInner: {
+    width: 110,
+    height: 110,
+    borderRadius: 32,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sparkles: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
+  },
+  sparkle: {
+    position: 'absolute' as const,
+  },
+  sparkleText: {
+    fontSize: 24,
+    color: '#BFA35D',
+  },
+  textWrap: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  mainLabel: {
+    fontSize: 48,
+    fontWeight: '900' as const,
+    letterSpacing: 6,
+  },
+  subLabel: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: 'rgba(232,220,200,0.4)',
+    letterSpacing: 3,
+    marginTop: 6,
+  },
+  statsCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#1a1a1c',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.12)',
+    marginBottom: 28,
+  },
+  statsRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+  },
+  statBlock: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  statLabel: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    color: 'rgba(232,220,200,0.35)',
+    letterSpacing: 1.5,
+  },
+  statValue: {
+    fontSize: 22,
+    fontWeight: '900' as const,
+    fontVariant: ['tabular-nums'] as any,
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(191,163,93,0.12)',
+    marginHorizontal: 12,
+  },
+  gapRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(191,163,93,0.08)',
+  },
+  gapLabel: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: 'rgba(232,220,200,0.3)',
+    letterSpacing: 1.5,
+  },
+  gapValue: {
+    fontSize: 18,
+    fontWeight: '900' as const,
+    fontVariant: ['tabular-nums'] as any,
+  },
+  btnWrap: {
+    width: '100%',
+    maxWidth: 340,
+  },
+  btn: {
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  btnGradient: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+  },
+  btnText: {
+    fontSize: 18,
+    fontWeight: '900' as const,
+    letterSpacing: 3,
+  },
+});
 
 function VictoryBySurrenderScreen({ opponentName, onDismiss }: { opponentName: string; onDismiss: () => void }) {
   const bgAnim = useRef(new Animated.Value(0)).current;
@@ -1302,7 +1624,12 @@ export default function LobbyScreen() {
   const [cheers, setCheers] = useState<CheerMessage[]>([]);
   const [racerPositions, setRacerPositions] = useState<RacerPosition[]>([]);
   const [raceElapsed, setRaceElapsed] = useState(0);
+  const [finishTimes, setFinishTimes] = useState<Record<string, number>>({});
+  const [winnerUserId, setWinnerUserId] = useState<string | null>(null);
+  const [allFinished, setAllFinished] = useState(false);
   const raceStartTime = useRef<number>(0);
+  const finishTimesRef = useRef<Record<string, number>>({});
+  const raceEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cheerTimeoutRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -1424,21 +1751,46 @@ export default function LobbyScreen() {
       const elapsed = (Date.now() - raceStartTime.current) / 1000;
       setRaceElapsed(elapsed);
 
-      setRacerPositions(prev => prev.map((rp, idx) => {
-        if (rp.isFinished || rp.hasSurrendered) return rp;
-        const baseSpeed = idx === 0 ? 3.2 : 2.8;
-        const jitter = (Math.random() - 0.5) * 0.4;
-        const speed = baseSpeed + jitter + Math.sin(elapsed * 0.1 + idx) * 0.3;
-        const newDist = Math.min(rp.distanceCovered + speed, distance);
-        const pace = elapsed > 0 ? (elapsed / 60) / (newDist / 1000) : 0;
-        return {
-          ...rp,
-          distanceCovered: newDist,
-          pace: Math.round(pace * 10) / 10,
-          timestamp: Date.now(),
-          isFinished: newDist >= distance,
-        };
-      }));
+      setRacerPositions(prev => {
+        const updated = prev.map((rp, idx) => {
+          if (rp.isFinished || rp.hasSurrendered) return rp;
+          const baseSpeed = idx === 0 ? 3.2 : 2.8;
+          const jitter = (Math.random() - 0.5) * 0.4;
+          const speed = baseSpeed + jitter + Math.sin(elapsed * 0.1 + idx) * 0.3;
+          const newDist = Math.min(rp.distanceCovered + speed, distance);
+          const justFinished = newDist >= distance && !rp.isFinished;
+          const pace = elapsed > 0 ? (elapsed / 60) / (newDist / 1000) : 0;
+
+          if (justFinished) {
+            const ft = elapsed;
+            finishTimesRef.current[rp.userId] = ft;
+            setFinishTimes(prev2 => ({ ...prev2, [rp.userId]: ft }));
+            console.log('[LOBBY] Racer finished:', rp.name, 'Time:', ft.toFixed(2));
+
+            if (!winnerUserId && Object.keys(finishTimesRef.current).length === 0) {
+              setWinnerUserId(rp.userId);
+              if (Platform.OS !== 'web') {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }
+            }
+          }
+
+          return {
+            ...rp,
+            distanceCovered: newDist,
+            pace: Math.round(pace * 10) / 10,
+            timestamp: Date.now(),
+            isFinished: newDist >= distance,
+          };
+        });
+
+        const allDone = updated.every(rp => rp.isFinished || rp.hasSurrendered);
+        if (allDone && !allFinished) {
+          setAllFinished(true);
+        }
+
+        return updated;
+      });
     }, RACE_GPS_INTERVAL_MS);
 
     if (allowSpectators) {
@@ -1481,8 +1833,34 @@ export default function LobbyScreen() {
   }, [userId, user]);
 
   useEffect(() => {
+    if (allFinished && phase === 'racing') {
+      console.log('[LOBBY] All racers finished! Showing results...');
+      if (gpsIntervalRef.current) clearInterval(gpsIntervalRef.current);
+
+      raceEndTimerRef.current = setTimeout(() => {
+        const myFinishTime = finishTimesRef.current[userId];
+        const opponentId = players.find(p => p.id !== userId)?.id ?? '';
+        const opFinishTime = finishTimesRef.current[opponentId];
+
+        if (myFinishTime != null && opFinishTime != null) {
+          if (myFinishTime <= opFinishTime) {
+            setPhase('race_won');
+          } else {
+            setPhase('race_lost');
+          }
+        } else if (myFinishTime != null) {
+          setPhase('race_won');
+        } else {
+          setPhase('race_lost');
+        }
+      }, 2000);
+    }
+  }, [allFinished, phase, userId, players]);
+
+  useEffect(() => {
     return () => {
       if (gpsIntervalRef.current) clearInterval(gpsIntervalRef.current);
+      if (raceEndTimerRef.current) clearTimeout(raceEndTimerRef.current);
       cheerTimeoutRef.current.forEach(t => clearTimeout(t));
     };
   }, []);
@@ -1537,6 +1915,10 @@ export default function LobbyScreen() {
     router.back();
   }, [router]);
 
+  const handleRaceResultDismiss = useCallback(() => {
+    router.back();
+  }, [router]);
+
   const slots = useMemo(() => {
     const result: Array<{ player: LobbyPlayer | null; isEmpty: boolean }> = [];
     for (let i = 0; i < maxPlayers; i++) {
@@ -1579,12 +1961,36 @@ export default function LobbyScreen() {
     );
   }
 
+  if (phase === 'race_won' || phase === 'race_lost') {
+    const opponent = players.find(p => p.id !== userId);
+    const opponentName = opponent?.name ?? 'Gegner';
+    const opponentId = opponent?.id ?? '';
+    const myTime = finishTimes[userId] ?? raceElapsed;
+    const opponentTime = finishTimes[opponentId] ?? raceElapsed;
+    return (
+      <View style={styles.fullScreenOverlay}>
+        <RaceResultScreen
+          isWinner={phase === 'race_won'}
+          myTime={myTime}
+          opponentTime={opponentTime}
+          opponentName={opponentName}
+          distance={distance}
+          onDismiss={handleRaceResultDismiss}
+        />
+      </View>
+    );
+  }
+
   if (phase === 'racing') {
     const formatElapsed = (s: number) => {
       const mins = Math.floor(s / 60);
       const secs = Math.floor(s % 60);
-      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      const cs = Math.floor((s % 1) * 100);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;
     };
+
+    const firstFinisherId = Object.keys(finishTimes)[0] ?? null;
+    const firstFinishTime = firstFinisherId ? finishTimes[firstFinisherId] : null;
 
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -1633,14 +2039,34 @@ export default function LobbyScreen() {
                         <Text style={styles.racingPlayerName}>{rp.name}</Text>
                         {rp.isFinished && <Text style={styles.racingFinishedBadge}>{"\ud83c\udfc1"}</Text>}
                         {rp.hasSurrendered && <Text style={styles.racingSurrenderedBadge}>\u274C</Text>}
+                        {rp.isFinished && finishTimes[rp.userId] != null && firstFinisherId === rp.userId && (
+                          <View style={styles.winnerBadge}>
+                            <Text style={styles.winnerBadgeText}>1.</Text>
+                          </View>
+                        )}
                       </View>
                       <View style={styles.racingProgressOuter}>
                         <View style={[styles.racingProgressInner, { width: `${progress * 100}%`, backgroundColor: color }]} />
                       </View>
                       <View style={styles.racingPlayerStats}>
-                        <Text style={styles.racingPaceText}>
-                          {rp.pace > 0 ? `${rp.pace.toFixed(1)} min/km` : '--'}
-                        </Text>
+                        {rp.isFinished && finishTimes[rp.userId] != null ? (
+                          <Text style={[styles.racingTimeText, { color }]}>
+                            {formatElapsed(finishTimes[rp.userId])}
+                            {firstFinishTime != null && finishTimes[rp.userId] !== firstFinishTime && (
+                              <Text style={styles.racingTimeDiff}>
+                                {' +' + formatElapsed(finishTimes[rp.userId] - firstFinishTime)}
+                              </Text>
+                            )}
+                          </Text>
+                        ) : firstFinishTime != null && !rp.isFinished ? (
+                          <Text style={styles.racingGapText}>
+                            +{formatElapsed(raceElapsed - firstFinishTime)}
+                          </Text>
+                        ) : (
+                          <Text style={styles.racingPaceText}>
+                            {rp.pace > 0 ? `${rp.pace.toFixed(1)} min/km` : '--'}
+                          </Text>
+                        )}
                       </View>
                     </View>
                     <Text style={[styles.racingPlayerDist, { color }]}>
@@ -2594,6 +3020,35 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600' as const,
     color: 'rgba(191,163,93,0.4)',
+  },
+  racingTimeText: {
+    fontSize: 12,
+    fontWeight: '800' as const,
+    fontVariant: ['tabular-nums'] as any,
+  },
+  racingTimeDiff: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: 'rgba(192,96,96,0.7)',
+  },
+  racingGapText: {
+    fontSize: 12,
+    fontWeight: '800' as const,
+    color: '#C06060',
+    fontVariant: ['tabular-nums'] as any,
+  },
+  winnerBadge: {
+    backgroundColor: 'rgba(191,163,93,0.2)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.3)',
+  },
+  winnerBadgeText: {
+    fontSize: 10,
+    fontWeight: '900' as const,
+    color: '#BFA35D',
   },
   racingLiveBadge: {
     flexDirection: 'row' as const,
