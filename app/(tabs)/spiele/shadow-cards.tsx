@@ -1347,6 +1347,262 @@ const bgStyles = StyleSheet.create({
   },
 });
 
+function PullCardOverlay({
+  card,
+  onCommitDraw,
+  onCancel,
+}: {
+  card: ShadowCard;
+  onCommitDraw: () => void;
+  onCancel: () => void;
+}) {
+  const [phase, setPhase] = useState<'pulling' | 'revealing'>('pulling');
+  const panY = useRef(new Animated.Value(0)).current;
+  const flipAnim = useRef(new Animated.Value(0)).current;
+  const cardScale = useRef(new Animated.Value(0.65)).current;
+  const bgOpacity = useRef(new Animated.Value(0)).current;
+  const glowOpacity = useRef(new Animated.Value(0)).current;
+  const labelOpacity = useRef(new Animated.Value(0)).current;
+  const hintOpacity = useRef(new Animated.Value(0)).current;
+  const committedRef = useRef<boolean>(false);
+
+  const isShadow = card.isShadow;
+  const PULL_THRESHOLD = 160;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(bgOpacity, { toValue: 0.65, duration: 250, useNativeDriver: true }),
+      Animated.spring(cardScale, { toValue: 0.9, friction: 8, useNativeDriver: true }),
+      Animated.timing(hintOpacity, { toValue: 1, duration: 400, delay: 250, useNativeDriver: true }),
+    ]).start();
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
+  const doReveal = useCallback(() => {
+    if (committedRef.current) return;
+    committedRef.current = true;
+    setPhase('revealing');
+    if (Platform.OS !== 'web') {
+      if (isShadow) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }
+    }
+    Animated.parallel([
+      Animated.timing(flipAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.spring(cardScale, { toValue: 1.4, friction: 5, useNativeDriver: true }),
+      Animated.spring(panY, { toValue: 50, friction: 7, useNativeDriver: true }),
+      Animated.timing(bgOpacity, { toValue: isShadow ? 0.93 : 0.8, duration: 400, useNativeDriver: true }),
+      Animated.timing(hintOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+    ]).start();
+
+    if (isShadow) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+          Animated.timing(glowOpacity, { toValue: 0.25, duration: 500, useNativeDriver: true }),
+        ]),
+      ).start();
+    } else {
+      Animated.sequence([
+        Animated.timing(glowOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(glowOpacity, { toValue: 0.4, duration: 600, useNativeDriver: true }),
+      ]).start();
+    }
+
+    Animated.timing(labelOpacity, { toValue: 1, duration: 400, delay: 250, useNativeDriver: true }).start();
+
+    const dismissDelay = isShadow ? 2200 : 1300;
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(bgOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(cardScale, { toValue: 0.2, duration: 350, useNativeDriver: true }),
+        Animated.timing(glowOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+        Animated.timing(labelOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start(() => {
+        onCommitDraw();
+      });
+    }, dismissDelay);
+  }, [isShadow, onCommitDraw]);
+
+  const doCancel = useCallback(() => {
+    if (committedRef.current) return;
+    Animated.parallel([
+      Animated.spring(panY, { toValue: 0, friction: 6, useNativeDriver: true }),
+      Animated.timing(flipAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.spring(cardScale, { toValue: 0.4, friction: 6, useNativeDriver: true }),
+      Animated.timing(bgOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(hintOpacity, { toValue: 0, duration: 100, useNativeDriver: true }),
+    ]).start(() => {
+      onCancel();
+    });
+  }, [onCancel]);
+
+  const panResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderMove: (_, gs) => {
+      if (committedRef.current) return;
+      const dy = Math.max(0, gs.dy);
+      panY.setValue(dy);
+      const progress = Math.min(1, dy / PULL_THRESHOLD);
+      flipAnim.setValue(progress);
+      cardScale.setValue(0.9 + progress * 0.35);
+    },
+    onPanResponderRelease: (_, gs) => {
+      if (committedRef.current) return;
+      if (gs.dy >= PULL_THRESHOLD * 0.6) {
+        doReveal();
+      } else {
+        doCancel();
+      }
+    },
+    onPanResponderTerminate: () => {
+      if (!committedRef.current) doCancel();
+    },
+  }), [doReveal, doCancel]);
+
+  const backRotate = flipAnim.interpolate({
+    inputRange: [0, 0.5],
+    outputRange: ['0deg', '90deg'],
+    extrapolate: 'clamp',
+  });
+  const frontRotate = flipAnim.interpolate({
+    inputRange: [0.5, 1],
+    outputRange: ['-90deg', '0deg'],
+    extrapolate: 'clamp',
+  });
+  const backFaceOpacity = flipAnim.interpolate({
+    inputRange: [0, 0.49, 0.5, 1],
+    outputRange: [1, 1, 0, 0],
+  });
+  const frontFaceOpacity = flipAnim.interpolate({
+    inputRange: [0, 0.49, 0.5, 1],
+    outputRange: [0, 0, 1, 1],
+  });
+
+  const BACK_SCALE_FACTOR = CARD_W / CARD_BACK_W;
+
+  return (
+    <Animated.View style={pullStyles.container} {...panResponder.panHandlers}>
+      <Animated.View
+        style={[pullStyles.bg, {
+          opacity: bgOpacity,
+          backgroundColor: isShadow && phase === 'revealing' ? '#08021a' : '#050505',
+        }]}
+      />
+
+      <Animated.View
+        style={[pullStyles.cardArea, {
+          transform: [{ translateY: panY }, { scale: cardScale }],
+        }]}
+      >
+        <Animated.View style={[pullStyles.glow, {
+          opacity: glowOpacity,
+          backgroundColor: isShadow ? 'rgba(107,58,125,0.12)' : 'rgba(191,163,93,0.08)',
+          shadowColor: isShadow ? '#8B5AA0' : GOLD,
+        }]} />
+
+        <Animated.View style={[pullStyles.cardSide, {
+          opacity: backFaceOpacity,
+          transform: [{ perspective: 1000 }, { rotateY: backRotate }],
+        }]}>
+          <View style={{ transform: [{ scale: BACK_SCALE_FACTOR }] }}>
+            <CardBack />
+          </View>
+        </Animated.View>
+
+        <Animated.View style={[pullStyles.cardSide, {
+          opacity: frontFaceOpacity,
+          transform: [{ perspective: 1000 }, { rotateY: frontRotate }],
+        }]}>
+          <CardFace card={card} />
+        </Animated.View>
+      </Animated.View>
+
+      <Animated.View style={[pullStyles.hintWrap, { opacity: hintOpacity }]} pointerEvents="none">
+        <Text style={pullStyles.hintText}>↓ ZIEHE DIE KARTE ZU DIR ↓</Text>
+      </Animated.View>
+
+      {phase === 'revealing' && (
+        <Animated.View style={[pullStyles.revealWrap, { opacity: labelOpacity }]} pointerEvents="none">
+          <Text style={[pullStyles.revealText, isShadow && pullStyles.revealTextShadow]}>
+            {isShadow ? '🌑 DER SCHATTEN!' : `${SUIT_SYMBOLS[card.suit]} ${card.value}`}
+          </Text>
+          {isShadow && (
+            <Text style={pullStyles.revealSubText}>Du hast den Schatten gezogen...</Text>
+          )}
+        </Animated.View>
+      )}
+    </Animated.View>
+  );
+}
+
+const pullStyles = StyleSheet.create({
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 150,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bg: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  cardArea: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: CARD_W + 60,
+    height: CARD_H + 60,
+    marginTop: -40,
+  },
+  cardSide: {
+    position: 'absolute' as const,
+  },
+  glow: {
+    position: 'absolute' as const,
+    width: CARD_W * 3,
+    height: CARD_H * 3,
+    borderRadius: CARD_W * 1.5,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 50,
+    elevation: 20,
+  },
+  hintWrap: {
+    position: 'absolute' as const,
+    bottom: '30%' as any,
+    alignItems: 'center',
+  },
+  hintText: {
+    fontSize: 13,
+    fontWeight: '800' as const,
+    color: 'rgba(232,220,200,0.45)',
+    letterSpacing: 2,
+  },
+  revealWrap: {
+    position: 'absolute' as const,
+    bottom: '24%' as any,
+    alignItems: 'center',
+  },
+  revealText: {
+    fontSize: 24,
+    fontWeight: '900' as const,
+    color: GOLD,
+    letterSpacing: 3,
+  },
+  revealTextShadow: {
+    color: '#A06CC0',
+    fontSize: 26,
+  },
+  revealSubText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: 'rgba(160,108,192,0.6)',
+    marginTop: 8,
+  },
+});
+
 export default function ShadowCardsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -1384,11 +1640,28 @@ export default function ShadowCardsScreen() {
 
 
 
+  const [pullState, setPullState] = useState<{ cardIndex: number; card: ShadowCard } | null>(null);
+
   const handleDrawFromOpponent = useCallback((cardIndex: number) => {
-    if (!isMyTurn) return;
-    console.log('[SHADOW-UI] Player chose card at index:', cardIndex);
-    drawCard(cardIndex);
-  }, [isMyTurn, drawCard]);
+    if (!isMyTurn || !gameState) return;
+    const drawFrom = gameState.players.find(p => p.userId === gameState.drawFromUserId);
+    if (!drawFrom || !drawFrom.hand[cardIndex]) return;
+    console.log('[SHADOW-UI] Starting pull for card at index:', cardIndex);
+    if (Platform.OS !== 'web') Haptics.selectionAsync();
+    setPullState({ cardIndex, card: drawFrom.hand[cardIndex] });
+  }, [isMyTurn, gameState]);
+
+  const handlePullComplete = useCallback(() => {
+    if (!pullState) return;
+    console.log('[SHADOW-UI] Pull complete, committing draw at index:', pullState.cardIndex);
+    drawCard(pullState.cardIndex);
+    setPullState(null);
+  }, [pullState, drawCard]);
+
+  const handlePullCancel = useCallback(() => {
+    console.log('[SHADOW-UI] Pull cancelled');
+    setPullState(null);
+  }, []);
 
   const handleRematch = useCallback(async () => {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -1427,6 +1700,14 @@ export default function ShadowCardsScreen() {
   return (
     <View style={styles.container}>
       <BackgroundPattern />
+
+      {pullState && (
+        <PullCardOverlay
+          card={pullState.card}
+          onCommitDraw={handlePullComplete}
+          onCancel={handlePullCancel}
+        />
+      )}
 
       {isFinished && gameState.finishOrder.length > 0 && (
         <GameOverScreen
