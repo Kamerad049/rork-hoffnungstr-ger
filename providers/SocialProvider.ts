@@ -280,12 +280,15 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
       if (!old) return old;
       return { ...old, flagHoistedAt: null };
     });
-    if (!userId) return;
+    if (!userId) {
+      setFlagLocalOverride(false);
+      return;
+    }
     await supabase.from('users').update({ flag_hoisted_at: null }).eq('id', userId);
     console.log('[SOCIAL] Flag lowered in DB');
+    await queryClient.invalidateQueries({ queryKey: ['active-flag-count'] });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.socialProfile(userId) });
     setFlagLocalOverride(false);
-    queryClient.invalidateQueries({ queryKey: ['active-flag-count'] });
-    queryClient.invalidateQueries({ queryKey: queryKeys.socialProfile(userId) });
   }, [userId, queryClient, user?.name]);
 
   const isFlagActive = useMemo((): boolean => {
