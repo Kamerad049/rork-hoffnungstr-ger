@@ -34,7 +34,7 @@ export const GAME_DEFINITIONS: GameDefinition[] = [
     maxPlayers: 2,
     icon: 'grid',
     estimatedDuration: '3–5 Min.',
-    available: false,
+    available: true,
   },
   {
     type: 'schiffe_versenken',

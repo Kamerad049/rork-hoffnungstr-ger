@@ -23,10 +23,12 @@ import {
   Play,
   Bot,
   Ghost,
+  Grid3x3,
   X,
 } from 'lucide-react-native';
 import { useLobbyEngine } from '@/providers/LobbyEngine';
 import { useShadowCards } from '@/providers/ShadowCardsEngine';
+import { useConnectFour } from '@/providers/ConnectFourEngine';
 import type { LobbyMember } from '@/constants/games';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -216,14 +218,20 @@ export default function GameLobbyScreen() {
     canStart,
     currentSession,
   } = useLobbyEngine();
-  const { initGame } = useShadowCards();
+  const { initGame: initShadowCards } = useShadowCards();
+  const { initGame: initConnectFour } = useConnectFour();
   const [codeCopied, setCodeCopied] = useState<boolean>(false);
 
   useEffect(() => {
     if (currentSession && !isCountingDown) {
-      console.log('[LOBBY-UI] Session started, navigating to game');
-      initGame();
-      router.push('/(tabs)/spiele/shadow-cards' as any);
+      console.log('[LOBBY-UI] Session started, navigating to game:', currentRoom?.gameType);
+      if (currentRoom?.gameType === 'vier_gewinnt') {
+        initConnectFour();
+        router.push('/(tabs)/spiele/connect-four' as any);
+      } else {
+        initShadowCards();
+        router.push('/(tabs)/spiele/shadow-cards' as any);
+      }
     }
   }, [currentSession, isCountingDown]);
 
@@ -279,8 +287,10 @@ export default function GameLobbyScreen() {
           <X size={20} color="#E8DCC8" />
         </Pressable>
         <View style={styles.headerCenter}>
-          <Ghost size={18} color="#BFA35D" />
-          <Text style={styles.headerTitle}>{currentRoom.gameType === 'shadow_cards' ? 'DER SCHATTEN' : 'LOBBY'}</Text>
+          {currentRoom.gameType === 'vier_gewinnt' ? <Grid3x3 size={18} color="#BFA35D" /> : <Ghost size={18} color="#BFA35D" />}
+          <Text style={styles.headerTitle}>
+            {currentRoom.gameType === 'shadow_cards' ? 'DER SCHATTEN' : currentRoom.gameType === 'vier_gewinnt' ? 'VIER GEWINNT' : 'LOBBY'}
+          </Text>
         </View>
         <View style={{ width: 44 }} />
       </LinearGradient>

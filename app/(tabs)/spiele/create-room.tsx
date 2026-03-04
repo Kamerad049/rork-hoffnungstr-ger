@@ -18,6 +18,7 @@ import {
   Timer,
   ArrowRight,
   Ghost,
+  Grid3x3,
   Shuffle,
   CheckCircle,
   Settings,
@@ -34,8 +35,10 @@ export default function CreateRoomScreen() {
 
   const gameType = (gameTypeParam as GameType) || 'shadow_cards';
   const gameDef = GAME_DEFINITIONS.find(g => g.type === gameType);
+  const isShadowCards = gameType === 'shadow_cards';
+  const isVierGewinnt = gameType === 'vier_gewinnt';
 
-  const [playerCount, setPlayerCount] = useState<number>(3);
+  const [playerCount, setPlayerCount] = useState<number>(isVierGewinnt ? 2 : 3);
   const [turnTimer, setTurnTimer] = useState<number>(DEFAULT_GAME_SETTINGS.turnTimerSeconds);
   const [drawDirection, setDrawDirection] = useState<DrawDirection>('left');
   const [isCreating, setIsCreating] = useState<boolean>(false);
@@ -88,36 +91,55 @@ export default function CreateRoomScreen() {
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
           <View style={styles.gamePreview}>
             <View style={styles.gamePreviewIcon}>
-              <Ghost size={36} color="#BFA35D" />
+              {isVierGewinnt ? <Grid3x3 size={36} color="#BFA35D" /> : <Ghost size={36} color="#BFA35D" />}
             </View>
             <Text style={styles.gamePreviewTitle}>{gameDef?.name ?? gameType}</Text>
             <Text style={styles.gamePreviewDesc}>{gameDef?.description ?? ''}</Text>
           </View>
 
-          <View style={styles.settingSection}>
-            <View style={styles.settingHeader}>
-              <Users size={16} color="#BFA35D" />
-              <Text style={styles.settingLabel}>SPIELERANZAHL</Text>
+          {isShadowCards && (
+            <View style={styles.settingSection}>
+              <View style={styles.settingHeader}>
+                <Users size={16} color="#BFA35D" />
+                <Text style={styles.settingLabel}>SPIELERANZAHL</Text>
+              </View>
+              <View style={styles.optionRow}>
+                {[3, 4].map(count => (
+                  <Pressable
+                    key={count}
+                    style={[styles.optionBtn, playerCount === count && styles.optionBtnActive]}
+                    onPress={() => {
+                      setPlayerCount(count);
+                      if (Platform.OS !== 'web') Haptics.selectionAsync();
+                    }}
+                    testID={`player-count-${count}`}
+                  >
+                    <Text style={[styles.optionBtnText, playerCount === count && styles.optionBtnTextActive]}>
+                      {count} Spieler
+                    </Text>
+                    {playerCount === count && <CheckCircle size={14} color="#141416" />}
+                  </Pressable>
+                ))}
+              </View>
             </View>
-            <View style={styles.optionRow}>
-              {[3, 4].map(count => (
-                <Pressable
-                  key={count}
-                  style={[styles.optionBtn, playerCount === count && styles.optionBtnActive]}
-                  onPress={() => {
-                    setPlayerCount(count);
-                    if (Platform.OS !== 'web') Haptics.selectionAsync();
-                  }}
-                  testID={`player-count-${count}`}
-                >
-                  <Text style={[styles.optionBtnText, playerCount === count && styles.optionBtnTextActive]}>
-                    {count} Spieler
-                  </Text>
-                  {playerCount === count && <CheckCircle size={14} color="#141416" />}
-                </Pressable>
-              ))}
+          )}
+
+          {isVierGewinnt && (
+            <View style={styles.settingSection}>
+              <View style={styles.settingHeader}>
+                <Users size={16} color="#BFA35D" />
+                <Text style={styles.settingLabel}>SPIELMODUS</Text>
+              </View>
+              <View style={styles.ruleCard}>
+                <View style={styles.ruleRow}>
+                  <Text style={styles.ruleLabel}>Spieler</Text>
+                  <View style={styles.ruleActive}>
+                    <Text style={styles.ruleActiveText}>1 VS 1</Text>
+                  </View>
+                </View>
+              </View>
             </View>
-          </View>
+          )}
 
           <View style={styles.settingSection}>
             <View style={styles.settingHeader}>
@@ -142,32 +164,34 @@ export default function CreateRoomScreen() {
             </View>
           </View>
 
-          <View style={styles.settingSection}>
-            <View style={styles.settingHeader}>
-              <Shuffle size={16} color="#BFA35D" />
-              <Text style={styles.settingLabel}>ZIEH-RICHTUNG</Text>
+          {isShadowCards && (
+            <View style={styles.settingSection}>
+              <View style={styles.settingHeader}>
+                <Shuffle size={16} color="#BFA35D" />
+                <Text style={styles.settingLabel}>ZIEH-RICHTUNG</Text>
+              </View>
+              <View style={styles.optionRow}>
+                {[
+                  { value: 'left' as const, label: 'Links (Standard)' },
+                  { value: 'right' as const, label: 'Rechts' },
+                ].map(opt => (
+                  <Pressable
+                    key={opt.value}
+                    style={[styles.optionBtn, drawDirection === opt.value && styles.optionBtnActive]}
+                    onPress={() => {
+                      setDrawDirection(opt.value);
+                      if (Platform.OS !== 'web') Haptics.selectionAsync();
+                    }}
+                  >
+                    <Text style={[styles.optionBtnText, drawDirection === opt.value && styles.optionBtnTextActive]}>
+                      {opt.label}
+                    </Text>
+                    {drawDirection === opt.value && <CheckCircle size={14} color="#141416" />}
+                  </Pressable>
+                ))}
+              </View>
             </View>
-            <View style={styles.optionRow}>
-              {[
-                { value: 'left' as const, label: 'Links (Standard)' },
-                { value: 'right' as const, label: 'Rechts' },
-              ].map(opt => (
-                <Pressable
-                  key={opt.value}
-                  style={[styles.optionBtn, drawDirection === opt.value && styles.optionBtnActive]}
-                  onPress={() => {
-                    setDrawDirection(opt.value);
-                    if (Platform.OS !== 'web') Haptics.selectionAsync();
-                  }}
-                >
-                  <Text style={[styles.optionBtnText, drawDirection === opt.value && styles.optionBtnTextActive]}>
-                    {opt.label}
-                  </Text>
-                  {drawDirection === opt.value && <CheckCircle size={14} color="#141416" />}
-                </Pressable>
-              ))}
-            </View>
-          </View>
+          )}
 
           <View style={styles.settingSection}>
             <View style={styles.settingHeader}>
@@ -175,12 +199,14 @@ export default function CreateRoomScreen() {
               <Text style={styles.settingLabel}>REGELN</Text>
             </View>
             <View style={styles.ruleCard}>
-              <View style={styles.ruleRow}>
-                <Text style={styles.ruleLabel}>Paare automatisch entfernen</Text>
-                <View style={styles.ruleActive}>
-                  <Text style={styles.ruleActiveText}>AN</Text>
+              {isShadowCards && (
+                <View style={styles.ruleRow}>
+                  <Text style={styles.ruleLabel}>Paare automatisch entfernen</Text>
+                  <View style={styles.ruleActive}>
+                    <Text style={styles.ruleActiveText}>AN</Text>
+                  </View>
                 </View>
-              </View>
+              )}
               <View style={styles.ruleRow}>
                 <Text style={styles.ruleLabel}>Raum-Typ</Text>
                 <View style={styles.ruleActive}>
