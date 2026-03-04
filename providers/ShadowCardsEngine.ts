@@ -322,6 +322,26 @@ export const [ShadowCardsProvider, useShadowCards] = createContextHook(() => {
     });
   }, [gameState, userId]);
 
+  const reorderMyHand = useCallback((fromIndex: number, toIndex: number) => {
+    if (!gameState) return;
+    console.log('[SHADOW] Reordering own hand:', fromIndex, '->', toIndex);
+    setGameState(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        players: prev.players.map(p => {
+          if (p.userId === userId) {
+            const newHand = [...p.hand];
+            const [moved] = newHand.splice(fromIndex, 1);
+            newHand.splice(toIndex, 0, moved);
+            return { ...p, hand: newHand };
+          }
+          return p;
+        }),
+      };
+    });
+  }, [gameState, userId]);
+
   const getMyHand = useCallback((): ShadowCard[] => {
     if (!gameState) return [];
     const me = gameState.players.find(p => p.userId === userId);
@@ -357,6 +377,7 @@ export const [ShadowCardsProvider, useShadowCards] = createContextHook(() => {
     initGame,
     drawCard,
     shuffleMyHand,
+    reorderMyHand,
     getMyHand,
     getPlayerHandCount,
     setAnimatingPair,

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useCallback, useRef, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,10 @@ import {
   Pressable,
   Animated,
   Platform,
-  ScrollView,
+  PanResponder,
+  Dimensions,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -19,6 +22,7 @@ import {
   Trophy,
   RotateCcw,
   ArrowLeft,
+  Sparkles,
 } from 'lucide-react-native';
 import { useShadowCards } from '@/providers/ShadowCardsEngine';
 import { useLobbyEngine } from '@/providers/LobbyEngine';
@@ -26,17 +30,38 @@ import { useAuth } from '@/providers/AuthProvider';
 import type { ShadowCard, CardSuit } from '@/constants/games';
 import { SHADOW_CARD_SYMBOL } from '@/constants/games';
 
-const CARD_WIDTH = 52;
-const CARD_HEIGHT = 74;
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const { width: SCREEN_W } = Dimensions.get('window');
+
+const CARD_W = 56;
+const CARD_H = 80;
+const CARD_SMALL_W = 36;
+const CARD_SMALL_H = 52;
+const CARD_BACK_W = 32;
+const CARD_BACK_H = 46;
+
+const GOLD = '#BFA35D';
+const GOLD_DIM = 'rgba(191,163,93,0.4)';
+const GOLD_FAINT = 'rgba(191,163,93,0.08)';
+const CREAM = '#E8DCC8';
+const CREAM_DIM = 'rgba(232,220,200,0.5)';
+const CREAM_FAINT = 'rgba(232,220,200,0.15)';
+const BG_DARK = '#0c0b09';
+
+const RED_ACCENT = '#C06050';
+const GREEN_ACCENT = '#4CAF50';
 
 const SUIT_COLORS: Record<CardSuit | 'shadow', string> = {
-  swords: '#8B9DC3',
-  shields: '#7BA37B',
+  swords: '#7B8FB8',
+  shields: '#6B9B6B',
   crowns: '#C9A94E',
   flames: '#C06050',
   mountains: '#8B7D6B',
   eagles: '#A08860',
-  shadow: '#2a1a2e',
+  shadow: '#3a1a40',
 };
 
 const SUIT_SYMBOLS: Record<CardSuit | 'shadow', string> = {
@@ -49,111 +74,260 @@ const SUIT_SYMBOLS: Record<CardSuit | 'shadow', string> = {
   shadow: '🌑',
 };
 
-function CardFaceUp({ card, size = 'normal' }: { card: ShadowCard; size?: 'normal' | 'small' }) {
-  const w = size === 'small' ? 40 : CARD_WIDTH;
-  const h = size === 'small' ? 56 : CARD_HEIGHT;
-  const bgColor = card.isShadow ? '#1a0e1e' : SUIT_COLORS[card.suit];
-  const borderColor = card.isShadow ? '#6B3A7D' : 'rgba(232,220,200,0.15)';
-
+function CardBack({ style }: { style?: any }) {
   return (
-    <View style={[cardStyles.card, { width: w, height: h, backgroundColor: bgColor, borderColor }]}>
-      <Text style={[cardStyles.symbol, size === 'small' && { fontSize: 16 }]}>
-        {card.isShadow ? SHADOW_CARD_SYMBOL : SUIT_SYMBOLS[card.suit]}
-      </Text>
-      {!card.isShadow && (
-        <Text style={[cardStyles.value, size === 'small' && { fontSize: 8 }]}>{card.value}</Text>
-      )}
-      {card.isShadow && (
-        <Text style={[cardStyles.shadowLabel, size === 'small' && { fontSize: 6 }]}>SCHATTEN</Text>
-      )}
+    <View style={[cardStyles.back, style]}>
+      <View style={cardStyles.backInner}>
+        <View style={cardStyles.backOrnamentOuter}>
+          <View style={cardStyles.backOrnamentInner}>
+            <View style={cardStyles.backDiamond} />
+          </View>
+        </View>
+        <View style={cardStyles.backCornerTL} />
+        <View style={cardStyles.backCornerTR} />
+        <View style={cardStyles.backCornerBL} />
+        <View style={cardStyles.backCornerBR} />
+      </View>
+      <View style={cardStyles.backEdgeTop} />
+      <View style={cardStyles.backEdgeBottom} />
     </View>
   );
 }
 
-function CardFaceDown({ count, size = 'normal' }: { count: number; size?: 'normal' | 'small' }) {
-  const w = size === 'small' ? 32 : 42;
-  const h = size === 'small' ? 44 : 58;
+function CardFace({ card, size = 'normal' }: { card: ShadowCard; size?: 'normal' | 'small' }) {
+  const w = size === 'small' ? CARD_SMALL_W : CARD_W;
+  const h = size === 'small' ? CARD_SMALL_H : CARD_H;
+  const bgColor = card.isShadow ? '#1a0e20' : SUIT_COLORS[card.suit];
+  const borderColor = card.isShadow ? '#6B3A7D' : 'rgba(255,255,255,0.12)';
 
   return (
-    <View style={[cardStyles.faceDown, { width: w, height: h }]}>
-      <View style={cardStyles.faceDownPattern}>
-        <View style={cardStyles.faceDownDiamond} />
-      </View>
-      {count > 1 && (
-        <View style={cardStyles.countBadge}>
-          <Text style={cardStyles.countText}>{count}</Text>
-        </View>
+    <View style={[cardStyles.face, { width: w, height: h, backgroundColor: bgColor, borderColor }]}>
+      <View style={cardStyles.faceShine} />
+      <Text style={[cardStyles.faceSymbol, size === 'small' && { fontSize: 18 }]}>
+        {card.isShadow ? SHADOW_CARD_SYMBOL : SUIT_SYMBOLS[card.suit]}
+      </Text>
+      {!card.isShadow && (
+        <Text style={[cardStyles.faceValue, size === 'small' && { fontSize: 9 }]}>{card.value}</Text>
       )}
+      {card.isShadow && (
+        <Text style={[cardStyles.faceShadowLabel, size === 'small' && { fontSize: 6 }]}>SCHATTEN</Text>
+      )}
+      <View style={cardStyles.faceCornerTL}>
+        <Text style={[cardStyles.faceCornerText, size === 'small' && { fontSize: 7 }]}>
+          {card.isShadow ? '✦' : card.value}
+        </Text>
+      </View>
+      <View style={cardStyles.faceCornerBR}>
+        <Text style={[cardStyles.faceCornerText, { transform: [{ rotate: '180deg' }] }, size === 'small' && { fontSize: 7 }]}>
+          {card.isShadow ? '✦' : card.value}
+        </Text>
+      </View>
     </View>
   );
 }
 
 const cardStyles = StyleSheet.create({
-  card: {
-    borderRadius: 8,
+  back: {
+    width: CARD_BACK_W,
+    height: CARD_BACK_H,
+    borderRadius: 6,
+    backgroundColor: '#1c1a16',
     borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: 'rgba(191,163,93,0.18)',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 4,
     elevation: 4,
   },
-  symbol: {
-    fontSize: 20,
-  },
-  value: {
-    fontSize: 10,
-    fontWeight: '800' as const,
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 2,
-  },
-  shadowLabel: {
-    fontSize: 7,
-    fontWeight: '800' as const,
-    color: '#6B3A7D',
-    letterSpacing: 1,
-    marginTop: 2,
-  },
-  faceDown: {
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: 'rgba(191,163,93,0.2)',
-    backgroundColor: '#1c1a18',
+  backInner: {
+    ...StyleSheet.absoluteFillObject,
+    margin: 3,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  faceDownPattern: {
-    ...StyleSheet.absoluteFillObject,
+  backOrnamentOuter: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  faceDownDiamond: {
-    width: 12,
-    height: 12,
-    backgroundColor: 'rgba(191,163,93,0.08)',
-    transform: [{ rotate: '45deg' }],
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.12)',
+  backOrnamentInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  countBadge: {
+  backDiamond: {
+    width: 5,
+    height: 5,
+    backgroundColor: 'rgba(191,163,93,0.12)',
+    transform: [{ rotate: '45deg' }],
+  },
+  backCornerTL: {
+    position: 'absolute' as const,
+    top: 2,
+    left: 2,
+    width: 4,
+    height: 4,
+    borderTopWidth: 0.5,
+    borderLeftWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
+  backCornerTR: {
+    position: 'absolute' as const,
+    top: 2,
+    right: 2,
+    width: 4,
+    height: 4,
+    borderTopWidth: 0.5,
+    borderRightWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
+  backCornerBL: {
+    position: 'absolute' as const,
+    bottom: 2,
+    left: 2,
+    width: 4,
+    height: 4,
+    borderBottomWidth: 0.5,
+    borderLeftWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
+  backCornerBR: {
     position: 'absolute' as const,
     bottom: 2,
     right: 2,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(191,163,93,0.2)',
+    width: 4,
+    height: 4,
+    borderBottomWidth: 0.5,
+    borderRightWidth: 0.5,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
+  backEdgeTop: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 6,
+    right: 6,
+    height: 1,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+  },
+  backEdgeBottom: {
+    position: 'absolute' as const,
+    bottom: 0,
+    left: 6,
+    right: 6,
+    height: 1,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+  },
+  face: {
+    width: CARD_W,
+    height: CARD_H,
+    borderRadius: 10,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 3,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
   },
-  countText: {
-    fontSize: 9,
+  faceShine: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '40%' as any,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  faceSymbol: {
+    fontSize: 24,
+  },
+  faceValue: {
+    fontSize: 11,
     fontWeight: '800' as const,
-    color: '#BFA35D',
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 2,
+  },
+  faceShadowLabel: {
+    fontSize: 7,
+    fontWeight: '800' as const,
+    color: '#8B4A9D',
+    letterSpacing: 1,
+    marginTop: 2,
+  },
+  faceCornerTL: {
+    position: 'absolute' as const,
+    top: 4,
+    left: 5,
+  },
+  faceCornerBR: {
+    position: 'absolute' as const,
+    bottom: 4,
+    right: 5,
+  },
+  faceCornerText: {
+    fontSize: 8,
+    fontWeight: '700' as const,
+    color: 'rgba(255,255,255,0.45)',
+  },
+});
+
+function FannedCardBacks({ count, maxFan }: { count: number; maxFan?: number }) {
+  const displayCount = Math.min(count, maxFan ?? 8);
+  const fanAngle = displayCount <= 1 ? 0 : Math.min(displayCount * 6, 40);
+  const halfAngle = fanAngle / 2;
+
+  return (
+    <View style={fannedStyles.container}>
+      {Array.from({ length: displayCount }).map((_, i) => {
+        const angle = displayCount <= 1 ? 0 : -halfAngle + (i / (displayCount - 1)) * fanAngle;
+        const yOff = Math.abs(angle) * 0.25;
+        return (
+          <View
+            key={i}
+            style={[
+              fannedStyles.cardWrap,
+              {
+                transform: [{ rotate: `${angle}deg` }, { translateY: yOff }],
+                marginLeft: i === 0 ? 0 : -14,
+                zIndex: i,
+              },
+            ]}
+          >
+            <CardBack />
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+const fannedStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardWrap: {
+    shadowColor: '#000',
+    shadowOffset: { width: 1, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
   },
 });
 
@@ -174,13 +348,14 @@ function OpponentHand({
 }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (isDrawTarget) {
       const loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(glowAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-          Animated.timing(glowAnim, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+          Animated.timing(glowAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+          Animated.timing(glowAnim, { toValue: 0.2, duration: 700, useNativeDriver: true }),
         ]),
       );
       loop.start();
@@ -194,8 +369,8 @@ function OpponentHand({
     if (isCurrentTurn) {
       const loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.05, duration: 800, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1.03, duration: 900, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
         ]),
       );
       loop.start();
@@ -209,7 +384,9 @@ function OpponentHand({
     return (
       <View style={[opStyles.container, opStyles[position]]}>
         <View style={opStyles.eliminatedWrap}>
-          <Text style={opStyles.eliminatedIcon}>✓</Text>
+          <View style={opStyles.eliminatedCheck}>
+            <Text style={opStyles.eliminatedCheckText}>✓</Text>
+          </View>
           <Text style={opStyles.eliminatedName} numberOfLines={1}>{displayName.split(' ')[0]}</Text>
           <Text style={opStyles.eliminatedLabel}>RAUS</Text>
         </View>
@@ -217,28 +394,44 @@ function OpponentHand({
     );
   }
 
+  const isRotated = position === 'left' || position === 'right';
+
   return (
     <Animated.View style={[opStyles.container, opStyles[position], { transform: [{ scale: pulseAnim }] }]}>
       <Pressable
         style={[opStyles.handWrap, isDrawTarget && opStyles.handWrapTarget]}
         onPress={isDrawTarget ? onDrawFrom : undefined}
+        onPressIn={isDrawTarget ? () => Animated.spring(scaleAnim, { toValue: 0.95, useNativeDriver: true }).start() : undefined}
+        onPressOut={isDrawTarget ? () => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start() : undefined}
         disabled={!isDrawTarget}
         testID={`opponent-${position}`}
       >
         {isDrawTarget && (
           <Animated.View style={[opStyles.targetGlow, { opacity: glowAnim }]} />
         )}
+
         <View style={opStyles.nameRow}>
+          {isCurrentTurn && <View style={opStyles.turnDot} />}
           <Text style={[opStyles.name, isCurrentTurn && opStyles.nameActive]} numberOfLines={1}>
             {displayName.split(' ')[0]}
           </Text>
-          {isCurrentTurn && <View style={opStyles.turnDot} />}
+          <View style={opStyles.countBadge}>
+            <Text style={opStyles.countText}>{playerState.handCount}</Text>
+          </View>
         </View>
-        <View style={opStyles.cardsRow}>
-          <CardFaceDown count={playerState.handCount} size="small" />
-        </View>
+
+        <Animated.View style={[
+          isRotated && { transform: [{ rotate: position === 'left' ? '90deg' : '-90deg' }] },
+          { transform: [{ scale: scaleAnim }] },
+        ]}>
+          <FannedCardBacks count={playerState.handCount} maxFan={7} />
+        </Animated.View>
+
         {isDrawTarget && (
-          <Text style={opStyles.drawHint}>ZIEHEN</Text>
+          <View style={opStyles.drawHintWrap}>
+            <Sparkles size={10} color={GOLD} />
+            <Text style={opStyles.drawHint}>ZIEHEN</Text>
+          </View>
         )}
       </Pressable>
     </Animated.View>
@@ -251,94 +444,242 @@ const opStyles = StyleSheet.create({
     zIndex: 10,
   },
   left: {
-    left: 8,
-    top: '35%' as any,
+    left: 4,
+    top: '30%' as any,
   },
   top: {
-    top: 8,
+    top: 4,
     alignSelf: 'center' as const,
     left: '50%' as any,
-    marginLeft: -50,
+    marginLeft: -70,
   },
   right: {
-    right: 8,
-    top: '35%' as any,
+    right: 4,
+    top: '30%' as any,
   },
   handWrap: {
     alignItems: 'center',
-    padding: 10,
-    borderRadius: 14,
-    backgroundColor: 'rgba(28,28,30,0.8)',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(26,25,22,0.85)',
     borderWidth: 1,
     borderColor: 'rgba(191,163,93,0.06)',
-    minWidth: 80,
+    minWidth: 90,
   },
   handWrapTarget: {
-    borderColor: 'rgba(191,163,93,0.35)',
-    backgroundColor: 'rgba(191,163,93,0.06)',
+    borderColor: 'rgba(191,163,93,0.3)',
+    backgroundColor: 'rgba(191,163,93,0.04)',
   },
   targetGlow: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 14,
-    backgroundColor: 'rgba(191,163,93,0.08)',
+    borderRadius: 16,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.15)',
   },
   nameRow: {
     flexDirection: 'row' as const,
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 6,
+    gap: 5,
+    marginBottom: 8,
   },
   name: {
     fontSize: 11,
     fontWeight: '700' as const,
-    color: 'rgba(232,220,200,0.5)',
-    maxWidth: 60,
+    color: CREAM_DIM,
+    maxWidth: 70,
   },
   nameActive: {
-    color: '#BFA35D',
+    color: GOLD,
   },
   turnDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#BFA35D',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: GOLD,
+    shadowColor: GOLD,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  cardsRow: {
+  countBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(191,163,93,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  countText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: GOLD,
+  },
+  drawHintWrap: {
     flexDirection: 'row' as const,
-    gap: -8,
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: 'rgba(191,163,93,0.1)',
   },
   drawHint: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '800' as const,
-    color: '#BFA35D',
+    color: GOLD,
     letterSpacing: 1.5,
-    marginTop: 4,
   },
   eliminatedWrap: {
     alignItems: 'center',
-    padding: 10,
-    borderRadius: 14,
-    backgroundColor: 'rgba(28,28,30,0.5)',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(26,25,22,0.5)',
     borderWidth: 1,
     borderColor: 'rgba(232,220,200,0.04)',
-    opacity: 0.5,
+    opacity: 0.45,
   },
-  eliminatedIcon: {
-    fontSize: 18,
+  eliminatedCheck: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  eliminatedCheckText: {
+    fontSize: 14,
     color: 'rgba(191,163,93,0.3)',
   },
   eliminatedName: {
     fontSize: 10,
     fontWeight: '600' as const,
-    color: 'rgba(232,220,200,0.25)',
-    marginTop: 2,
+    color: 'rgba(232,220,200,0.2)',
   },
   eliminatedLabel: {
     fontSize: 8,
     fontWeight: '800' as const,
-    color: 'rgba(232,220,200,0.15)',
+    color: CREAM_FAINT,
     letterSpacing: 1,
     marginTop: 2,
+  },
+});
+
+function DraggableCard({
+  card,
+  index,
+  totalCards,
+  onReorder,
+}: {
+  card: ShadowCard;
+  index: number;
+  totalCards: number;
+  onReorder: (from: number, to: number) => void;
+}) {
+  const pan = useRef(new Animated.ValueXY()).current;
+  const scaleVal = useRef(new Animated.Value(1)).current;
+  const zIndexVal = useRef(new Animated.Value(0)).current;
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const startIndexRef = useRef<number>(index);
+
+  useEffect(() => {
+    startIndexRef.current = index;
+  }, [index]);
+
+  const cardSpacing = Math.min(CARD_W - 10, (SCREEN_W - 60) / Math.max(totalCards, 1));
+
+  const panResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 5,
+    onPanResponderGrant: () => {
+      setIsDragging(true);
+      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Animated.parallel([
+        Animated.spring(scaleVal, { toValue: 1.15, friction: 6, useNativeDriver: true }),
+        Animated.timing(zIndexVal, { toValue: 100, duration: 0, useNativeDriver: true }),
+      ]).start();
+    },
+    onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
+    onPanResponderRelease: (_, gs) => {
+      setIsDragging(false);
+      const movedSlots = Math.round(gs.dx / cardSpacing);
+      const targetIndex = Math.max(0, Math.min(totalCards - 1, startIndexRef.current + movedSlots));
+
+      if (targetIndex !== startIndexRef.current) {
+        if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        onReorder(startIndexRef.current, targetIndex);
+      }
+
+      Animated.parallel([
+        Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: true }),
+        Animated.spring(scaleVal, { toValue: 1, friction: 5, useNativeDriver: true }),
+        Animated.timing(zIndexVal, { toValue: 0, duration: 100, useNativeDriver: true }),
+      ]).start();
+    },
+    onPanResponderTerminate: () => {
+      setIsDragging(false);
+      Animated.parallel([
+        Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: true }),
+        Animated.spring(scaleVal, { toValue: 1, friction: 5, useNativeDriver: true }),
+        Animated.timing(zIndexVal, { toValue: 0, duration: 100, useNativeDriver: true }),
+      ]).start();
+    },
+  }), [totalCards, cardSpacing]);
+
+  const rotation = totalCards > 1
+    ? ((index - (totalCards - 1) / 2) / Math.max(totalCards - 1, 1)) * 14
+    : 0;
+  const yOffset = Math.abs(index - (totalCards - 1) / 2) * 3;
+  const spacing = Math.min(-8, -(CARD_W - cardSpacing));
+
+  return (
+    <Animated.View
+      {...panResponder.panHandlers}
+      style={[
+        myCardStyles.cardWrap,
+        {
+          transform: [
+            { translateX: pan.x },
+            { translateY: Animated.add(pan.y, new Animated.Value(yOffset)) },
+            { rotate: `${rotation}deg` },
+            { scale: scaleVal },
+          ],
+          zIndex: isDragging ? 200 : index,
+          marginLeft: index === 0 ? 0 : spacing,
+        },
+      ]}
+    >
+      {isDragging && <View style={myCardStyles.dragShadow} />}
+      <CardFace card={card} />
+    </Animated.View>
+  );
+}
+
+const myCardStyles = StyleSheet.create({
+  cardWrap: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  dragShadow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 10,
+    backgroundColor: 'rgba(191,163,93,0.12)',
+    shadowColor: GOLD,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+    transform: [{ scale: 1.08 }],
   },
 });
 
@@ -346,72 +687,85 @@ function MyHand({
   cards,
   isMyTurn,
   onShuffle,
+  onReorder,
 }: {
   cards: ShadowCard[];
   isMyTurn: boolean;
   onShuffle: () => void;
+  onReorder: (from: number, to: number) => void;
 }) {
+  const turnGlowAnim = useRef(new Animated.Value(0)).current;
 
+  useEffect(() => {
+    if (isMyTurn) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(turnGlowAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
+          Animated.timing(turnGlowAnim, { toValue: 0.3, duration: 1200, useNativeDriver: true }),
+        ]),
+      );
+      loop.start();
+      return () => loop.stop();
+    } else {
+      turnGlowAnim.setValue(0);
+    }
+  }, [isMyTurn]);
 
   return (
-    <View style={myHandStyles.container}>
-      <View style={myHandStyles.header}>
-        <Text style={myHandStyles.label}>DEINE HAND ({cards.length})</Text>
+    <View style={handStyles.container}>
+      <View style={handStyles.header}>
+        <View style={handStyles.headerLeft}>
+          <Text style={handStyles.label}>DEINE HAND</Text>
+          <View style={handStyles.cardCountBadge}>
+            <Text style={handStyles.cardCountText}>{cards.length}</Text>
+          </View>
+        </View>
         <Pressable
-          style={myHandStyles.shuffleBtn}
+          style={handStyles.shuffleBtn}
           onPress={() => {
             if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             onShuffle();
           }}
           testID="shuffle-btn"
         >
-          <Shuffle size={14} color="#BFA35D" />
-          <Text style={myHandStyles.shuffleText}>Mischen</Text>
+          <Shuffle size={13} color={GOLD_DIM} />
+          <Text style={handStyles.shuffleText}>Mischen</Text>
         </Pressable>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={myHandStyles.cardsScroll}
-      >
-        {cards.map((card, i) => {
-          const rotation = cards.length > 1
-            ? ((i - (cards.length - 1) / 2) / Math.max(cards.length - 1, 1)) * 12
-            : 0;
-          const yOffset = Math.abs(i - (cards.length - 1) / 2) * 2;
-
-          return (
-            <Animated.View
+      <View style={handStyles.fanContainer}>
+        <View style={handStyles.fan}>
+          {cards.map((card, i) => (
+            <DraggableCard
               key={card.id}
-              style={[
-                myHandStyles.cardWrap,
-                {
-                  transform: [
-                    { rotate: `${rotation}deg` },
-                    { translateY: yOffset },
-                  ],
-                  zIndex: i,
-                  marginLeft: i === 0 ? 0 : -8,
-                },
-              ]}
-            >
-              <CardFaceUp card={card} />
-            </Animated.View>
-          );
-        })}
-      </ScrollView>
+              card={card}
+              index={i}
+              totalCards={cards.length}
+              onReorder={onReorder}
+            />
+          ))}
+        </View>
+        <Text style={handStyles.dragHint}>Halte & ziehe um Karten zu verschieben</Text>
+      </View>
 
       {isMyTurn && (
-        <View style={myHandStyles.turnIndicator}>
-          <Text style={myHandStyles.turnText}>DU BIST DRAN!</Text>
-        </View>
+        <Animated.View style={[handStyles.turnIndicator, { opacity: turnGlowAnim }]}>
+          <LinearGradient
+            colors={['rgba(191,163,93,0.15)', 'rgba(191,163,93,0.02)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={handStyles.turnGradient}
+          >
+            <Sparkles size={13} color={GOLD} />
+            <Text style={handStyles.turnText}>DU BIST DRAN!</Text>
+          </LinearGradient>
+        </Animated.View>
       )}
     </View>
   );
 }
 
-const myHandStyles = StyleSheet.create({
+const handStyles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
   },
@@ -419,51 +773,82 @@ const myHandStyles = StyleSheet.create({
     flexDirection: 'row' as const,
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
+  },
+  headerLeft: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 6,
   },
   label: {
     fontSize: 10,
     fontWeight: '800' as const,
-    color: 'rgba(191,163,93,0.4)',
+    color: GOLD_DIM,
     letterSpacing: 1.5,
+  },
+  cardCountBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: GOLD_FAINT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
+  cardCountText: {
+    fontSize: 11,
+    fontWeight: '800' as const,
+    color: GOLD,
   },
   shuffleBtn: {
     flexDirection: 'row' as const,
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: 'rgba(191,163,93,0.06)',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: GOLD_FAINT,
     borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.1)',
+    borderColor: 'rgba(191,163,93,0.12)',
   },
   shuffleText: {
     fontSize: 11,
     fontWeight: '600' as const,
-    color: 'rgba(191,163,93,0.5)',
+    color: GOLD_DIM,
   },
-  cardsScroll: {
-    alignItems: 'flex-end',
+  fanContainer: {
+    alignItems: 'center',
+    minHeight: CARD_H + 30,
     paddingVertical: 8,
-    paddingHorizontal: 4,
-    minHeight: CARD_HEIGHT + 20,
   },
-  cardWrap: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 6,
+  fan: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  dragHint: {
+    fontSize: 9,
+    fontWeight: '500' as const,
+    color: 'rgba(232,220,200,0.2)',
+    marginTop: 8,
   },
   turnIndicator: {
-    alignItems: 'center',
     marginTop: 6,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  turnGradient: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
   },
   turnText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800' as const,
-    color: '#BFA35D',
+    color: GOLD,
     letterSpacing: 2,
   },
 });
@@ -498,7 +883,6 @@ function GameOverScreen({
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     }
-
     Animated.sequence([
       Animated.timing(bgAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
       Animated.spring(iconScale, { toValue: 1, friction: 3, tension: 150, useNativeDriver: true }),
@@ -511,18 +895,21 @@ function GameOverScreen({
     ]).start();
   }, []);
 
-  const accentColor = amILoser ? '#C06060' : '#BFA35D';
+  const accentColor = amILoser ? RED_ACCENT : GOLD;
 
   return (
     <Animated.View style={[goStyles.overlay, { opacity: bgAnim }]}>
       <Animated.View style={[goStyles.iconWrap, { transform: [{ scale: iconScale }] }]}>
-        <View style={[goStyles.iconInner, { borderColor: amILoser ? 'rgba(192,96,96,0.3)' : 'rgba(191,163,93,0.3)' }]}>
+        <LinearGradient
+          colors={amILoser ? ['rgba(192,96,80,0.12)', 'rgba(192,96,80,0.03)'] : ['rgba(191,163,93,0.12)', 'rgba(191,163,93,0.03)']}
+          style={goStyles.iconGradient}
+        >
           {amILoser ? (
-            <Ghost size={52} color="#C06060" />
+            <Ghost size={56} color={RED_ACCENT} />
           ) : (
-            <Trophy size={52} color="#BFA35D" strokeWidth={2.5} />
+            <Trophy size={56} color={GOLD} strokeWidth={2.5} />
           )}
-        </View>
+        </LinearGradient>
       </Animated.View>
 
       <Animated.View style={[goStyles.textWrap, { transform: [{ translateY: textSlide }], opacity: textOpacity }]}>
@@ -540,13 +927,13 @@ function GameOverScreen({
           const place = i + 1;
           return (
             <View key={uid} style={[goStyles.resultRow, isLoser && goStyles.resultRowLoser]}>
-              <Text style={[goStyles.resultPlace, isLoser && goStyles.resultPlaceLoser]}>
+              <Text style={goStyles.resultPlace}>
                 {isLoser ? '💀' : place === 1 ? '🥇' : place === 2 ? '🥈' : '🥉'}
               </Text>
               <Text style={[goStyles.resultName, isLoser && goStyles.resultNameLoser]} numberOfLines={1}>
                 {memberNames[uid] ?? uid.slice(0, 8)}
               </Text>
-              {isLoser && <Ghost size={14} color="#C06060" />}
+              {isLoser && <Ghost size={14} color={RED_ACCENT} />}
             </View>
           );
         })}
@@ -555,17 +942,17 @@ function GameOverScreen({
       <Animated.View style={[goStyles.btnRow, { opacity: btnOpacity }]}>
         <Pressable style={goStyles.rematchBtn} onPress={onRematch}>
           <LinearGradient
-            colors={['#BFA35D', '#A08A45']}
+            colors={[GOLD, '#A08A45']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={goStyles.rematchBtnGrad}
           >
-            <RotateCcw size={16} color="#141416" />
+            <RotateCcw size={16} color={BG_DARK} />
             <Text style={goStyles.rematchBtnText}>REMATCH</Text>
           </LinearGradient>
         </Pressable>
         <Pressable style={goStyles.leaveBtn} onPress={onLeave}>
-          <ArrowLeft size={16} color="rgba(232,220,200,0.5)" />
+          <ArrowLeft size={16} color={CREAM_DIM} />
           <Text style={goStyles.leaveBtnText}>ZUR LOBBY</Text>
         </Pressable>
       </Animated.View>
@@ -577,73 +964,72 @@ const goStyles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 200,
-    backgroundColor: '#0a0a0c',
+    backgroundColor: 'rgba(10,10,12,0.97)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
   iconWrap: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  iconInner: {
-    width: 110,
-    height: 110,
-    borderRadius: 32,
-    backgroundColor: 'rgba(191,163,93,0.06)',
+  iconGradient: {
+    width: 120,
+    height: 120,
+    borderRadius: 36,
     borderWidth: 2,
+    borderColor: 'rgba(191,163,93,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   textWrap: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 28,
   },
   mainLabel: {
-    fontSize: 36,
+    fontSize: 38,
     fontWeight: '900' as const,
     letterSpacing: 4,
   },
   subLabel: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: 'rgba(232,220,200,0.4)',
+    color: CREAM_DIM,
     marginTop: 6,
   },
   resultList: {
     width: '100%',
     maxWidth: 320,
-    gap: 6,
-    marginBottom: 28,
+    gap: 8,
+    marginBottom: 32,
   },
   resultRow: {
     flexDirection: 'row' as const,
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 16,
     backgroundColor: 'rgba(42,42,46,0.4)',
     borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.06)',
+    borderColor: GOLD_FAINT,
   },
   resultRowLoser: {
-    backgroundColor: 'rgba(192,96,96,0.06)',
-    borderColor: 'rgba(192,96,96,0.15)',
+    backgroundColor: 'rgba(192,96,80,0.06)',
+    borderColor: 'rgba(192,96,80,0.15)',
   },
   resultPlace: {
-    fontSize: 20,
-    width: 32,
+    fontSize: 22,
+    width: 36,
     textAlign: 'center' as const,
   },
-  resultPlaceLoser: {},
   resultName: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700' as const,
-    color: '#E8DCC8',
+    color: CREAM,
   },
   resultNameLoser: {
-    color: '#C06060',
+    color: RED_ACCENT,
   },
   btnRow: {
     width: '100%',
@@ -651,7 +1037,7 @@ const goStyles = StyleSheet.create({
     gap: 10,
   },
   rematchBtn: {
-    borderRadius: 18,
+    borderRadius: 20,
     overflow: 'hidden',
   },
   rematchBtnGrad: {
@@ -664,7 +1050,7 @@ const goStyles = StyleSheet.create({
   rematchBtnText: {
     fontSize: 16,
     fontWeight: '900' as const,
-    color: '#141416',
+    color: BG_DARK,
     letterSpacing: 2,
   },
   leaveBtn: {
@@ -673,16 +1059,87 @@ const goStyles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     backgroundColor: 'rgba(42,42,46,0.4)',
     borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.06)',
+    borderColor: GOLD_FAINT,
   },
   leaveBtnText: {
     fontSize: 14,
     fontWeight: '700' as const,
-    color: 'rgba(232,220,200,0.5)',
+    color: CREAM_DIM,
     letterSpacing: 1,
+  },
+});
+
+function BackgroundPattern() {
+  return (
+    <View style={bgStyles.container} pointerEvents="none">
+      <LinearGradient
+        colors={['rgba(191,163,93,0.03)', 'transparent', 'rgba(191,163,93,0.02)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      {[...Array(6)].map((_, i) => (
+        <View
+          key={`h${i}`}
+          style={[bgStyles.gridLine, { top: `${15 + i * 14}%` as any }]}
+        />
+      ))}
+      {[...Array(4)].map((_, i) => (
+        <View
+          key={`v${i}`}
+          style={[bgStyles.gridLineV, { left: `${20 + i * 20}%` as any }]}
+        />
+      ))}
+      <View style={bgStyles.cornerOrnamentTL}>
+        <View style={bgStyles.cornerLine} />
+        <View style={[bgStyles.cornerLine, { transform: [{ rotate: '90deg' }] }]} />
+      </View>
+      <View style={bgStyles.cornerOrnamentBR}>
+        <View style={bgStyles.cornerLine} />
+        <View style={[bgStyles.cornerLine, { transform: [{ rotate: '90deg' }] }]} />
+      </View>
+    </View>
+  );
+}
+
+const bgStyles = StyleSheet.create({
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  gridLine: {
+    position: 'absolute' as const,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(191,163,93,0.02)',
+  },
+  gridLineV: {
+    position: 'absolute' as const,
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(191,163,93,0.02)',
+  },
+  cornerOrnamentTL: {
+    position: 'absolute' as const,
+    top: 60,
+    left: 16,
+    opacity: 0.1,
+  },
+  cornerOrnamentBR: {
+    position: 'absolute' as const,
+    bottom: 120,
+    right: 16,
+    opacity: 0.1,
+  },
+  cornerLine: {
+    width: 20,
+    height: 1,
+    backgroundColor: GOLD,
   },
 });
 
@@ -700,6 +1157,7 @@ export default function ShadowCardsScreen() {
     turnTimeLeft,
     drawCard,
     shuffleMyHand,
+    reorderMyHand,
     getMyHand,
   } = useShadowCards();
 
@@ -739,20 +1197,24 @@ export default function ShadowCardsScreen() {
     router.navigate('/(tabs)/spiele' as any);
   }, [leaveRoom, router]);
 
+  const handleReorder = useCallback((from: number, to: number) => {
+    reorderMyHand(from, to);
+  }, [reorderMyHand]);
+
   const timerProgress = useMemo(() => {
     const total = currentRoom?.settings?.turnTimerSeconds ?? 20;
     return Math.max(0, turnTimeLeft / total);
   }, [turnTimeLeft, currentRoom]);
 
-  const timerColor = turnTimeLeft <= 5 ? '#FF4444' : turnTimeLeft <= 10 ? '#E8A040' : '#BFA35D';
-
+  const timerColor = turnTimeLeft <= 5 ? '#FF4444' : turnTimeLeft <= 10 ? '#E8A040' : GOLD;
   const removedPairsCount = gameState?.removedPairs.length ?? 0;
   const turnNumber = gameState?.turnNumber ?? 0;
 
   if (!gameState) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Ghost size={40} color="rgba(191,163,93,0.3)" />
+        <BackgroundPattern />
+        <Ghost size={44} color="rgba(191,163,93,0.25)" />
         <Text style={styles.loadingText}>Spiel wird geladen...</Text>
       </View>
     );
@@ -760,6 +1222,8 @@ export default function ShadowCardsScreen() {
 
   return (
     <View style={styles.container}>
+      <BackgroundPattern />
+
       {isFinished && gameState.finishOrder.length > 0 && (
         <GameOverScreen
           finishOrder={gameState.finishOrder}
@@ -772,28 +1236,34 @@ export default function ShadowCardsScreen() {
       )}
 
       <LinearGradient
-        colors={['#141210', '#161414', '#141416']}
-        style={[styles.topBar, { paddingTop: insets.top + 4 }]}
+        colors={[BG_DARK, 'rgba(12,11,9,0.95)', 'transparent']}
+        style={[styles.topBar, { paddingTop: insets.top + 6 }]}
       >
         <View style={styles.topBarRow}>
           <View style={styles.turnInfo}>
-            <View style={styles.turnBadge}>
-              <Text style={styles.turnBadgeText}>ZUG {turnNumber}</Text>
+            <View style={styles.turnBadgeRow}>
+              <View style={styles.turnBadge}>
+                <Text style={styles.turnBadgeText}>ZUG {turnNumber}</Text>
+              </View>
+              <View style={styles.pairsBadge}>
+                <Text style={styles.pairsEmoji}>♠</Text>
+                <Text style={styles.pairsText}>{removedPairsCount} Paare</Text>
+              </View>
             </View>
-            <View style={[styles.timerBar, { backgroundColor: 'rgba(191,163,93,0.08)' }]}>
-              <View style={[styles.timerFill, { width: `${timerProgress * 100}%`, backgroundColor: timerColor }]} />
-            </View>
-            <View style={styles.timerTextWrap}>
-              <Timer size={11} color={timerColor} />
-              <Text style={[styles.timerText, { color: timerColor }]}>{turnTimeLeft}s</Text>
+            <View style={styles.timerRow}>
+              <View style={[styles.timerBar]}>
+                <View style={[styles.timerFill, { width: `${timerProgress * 100}%`, backgroundColor: timerColor }]} />
+              </View>
+              <View style={styles.timerTextWrap}>
+                <Timer size={11} color={timerColor} />
+                <Text style={[styles.timerText, { color: timerColor }]}>{turnTimeLeft}s</Text>
+              </View>
             </View>
           </View>
 
-          <View style={styles.topRight}>
-            <View style={styles.pairsBadge}>
-              <Text style={styles.pairsText}>{removedPairsCount} Paare</Text>
-            </View>
-            <View style={styles.syncDot} />
+          <View style={styles.syncIndicator}>
+            <View style={[styles.syncDot, { backgroundColor: GREEN_ACCENT }]} />
+            <Text style={styles.syncText}>LIVE</Text>
           </View>
         </View>
 
@@ -820,11 +1290,12 @@ export default function ShadowCardsScreen() {
         ))}
 
         <View style={styles.centerArea}>
-          {removedPairsCount > 0 && (
+          {removedPairsCount > 0 ? (
             <View style={styles.pileWrap}>
+              <View style={styles.pileGlow} />
               <View style={styles.pile}>
-                {gameState.removedPairs.slice(-3).map((rp, i) => (
-                  <View key={i} style={[styles.pileCard, { transform: [{ rotate: `${(i - 1) * 8}deg` }] }]}>
+                {gameState.removedPairs.slice(-4).map((rp, i) => (
+                  <View key={i} style={[styles.pileCard, { transform: [{ rotate: `${(i - 1.5) * 10}deg` }] }]}>
                     <Text style={styles.pileCardSymbol}>
                       {SUIT_SYMBOLS[rp.pair[0].suit]}
                     </Text>
@@ -833,17 +1304,27 @@ export default function ShadowCardsScreen() {
               </View>
               <Text style={styles.pileLabel}>ABLAGE</Text>
             </View>
+          ) : (
+            <View style={styles.centerEmpty}>
+              <View style={styles.centerRing} />
+              <Text style={styles.centerEmptyText}>ABLAGE</Text>
+            </View>
           )}
         </View>
       </View>
 
-      <View style={[styles.bottomArea, { paddingBottom: insets.bottom + 8 }]}>
+      <LinearGradient
+        colors={['transparent', BG_DARK, BG_DARK]}
+        style={[styles.bottomArea, { paddingBottom: insets.bottom + 10 }]}
+      >
+        <View style={styles.bottomDivider} />
         <MyHand
           cards={myHand}
           isMyTurn={isMyTurn}
           onShuffle={shuffleMyHand}
+          onReorder={handleReorder}
         />
-      </View>
+      </LinearGradient>
     </View>
   );
 }
@@ -851,41 +1332,71 @@ export default function ShadowCardsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0e0d0b',
+    backgroundColor: BG_DARK,
   },
   topBar: {
     paddingHorizontal: 16,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(191,163,93,0.04)',
+    paddingBottom: 12,
+    zIndex: 20,
   },
   topBarRow: {
     flexDirection: 'row' as const,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
   turnInfo: {
     flex: 1,
-    gap: 4,
+    gap: 6,
+  },
+  turnBadgeRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 8,
   },
   turnBadge: {
-    alignSelf: 'flex-start' as const,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    backgroundColor: 'rgba(191,163,93,0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: GOLD_FAINT,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
   },
   turnBadgeText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800' as const,
-    color: 'rgba(191,163,93,0.4)',
+    color: GOLD_DIM,
     letterSpacing: 1.5,
   },
+  pairsBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: GOLD_FAINT,
+  },
+  pairsEmoji: {
+    fontSize: 11,
+    color: GOLD_DIM,
+  },
+  pairsText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: GOLD_DIM,
+  },
+  timerRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 8,
+  },
   timerBar: {
+    flex: 1,
     height: 4,
     borderRadius: 2,
     overflow: 'hidden',
-    maxWidth: 180,
+    backgroundColor: GOLD_FAINT,
+    maxWidth: 200,
   },
   timerFill: {
     height: '100%',
@@ -897,38 +1408,38 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   timerText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800' as const,
     fontVariant: ['tabular-nums'] as any,
   },
-  topRight: {
+  syncIndicator: {
     flexDirection: 'row' as const,
     alignItems: 'center',
-    gap: 8,
-  },
-  pairsBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 8,
-    backgroundColor: 'rgba(191,163,93,0.06)',
-  },
-  pairsText: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-    color: 'rgba(191,163,93,0.5)',
+    backgroundColor: 'rgba(76,175,80,0.08)',
   },
   syncDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#4CAF50',
+  },
+  syncText: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    color: 'rgba(76,175,80,0.6)',
+    letterSpacing: 1,
   },
   waitingBanner: {
     alignItems: 'center',
-    marginTop: 6,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: 'rgba(191,163,93,0.04)',
+    marginTop: 8,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: GOLD_FAINT,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.06)',
   },
   waitingText: {
     fontSize: 12,
@@ -944,43 +1455,79 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pileWrap: {
-    alignItems: 'center',
-  },
-  pile: {
-    flexDirection: 'row' as const,
-    gap: -20,
-  },
-  pileCard: {
-    width: 40,
-    height: 56,
-    borderRadius: 6,
-    backgroundColor: 'rgba(191,163,93,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.12)',
+  centerEmpty: {
     alignItems: 'center',
     justifyContent: 'center',
   },
+  centerRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.06)',
+    borderStyle: 'dashed' as const,
+    marginBottom: 8,
+  },
+  centerEmptyText: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    color: 'rgba(191,163,93,0.15)',
+    letterSpacing: 2,
+  },
+  pileWrap: {
+    alignItems: 'center',
+  },
+  pileGlow: {
+    position: 'absolute' as const,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(191,163,93,0.04)',
+    top: -10,
+  },
+  pile: {
+    flexDirection: 'row' as const,
+    gap: -22,
+  },
+  pileCard: {
+    width: 44,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
   pileCardSymbol: {
-    fontSize: 16,
+    fontSize: 18,
   },
   pileLabel: {
     fontSize: 9,
     fontWeight: '800' as const,
-    color: 'rgba(191,163,93,0.25)',
+    color: 'rgba(191,163,93,0.2)',
     letterSpacing: 2,
-    marginTop: 6,
+    marginTop: 8,
   },
   bottomArea: {
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(191,163,93,0.04)',
-    backgroundColor: 'rgba(14,13,11,0.95)',
+    paddingTop: 4,
+    zIndex: 20,
+  },
+  bottomDivider: {
+    height: 1,
+    backgroundColor: 'rgba(191,163,93,0.04)',
+    marginBottom: 8,
+    marginHorizontal: 20,
   },
   loadingText: {
     fontSize: 15,
     fontWeight: '600' as const,
     color: 'rgba(232,220,200,0.3)',
-    marginTop: 12,
+    marginTop: 14,
   },
 });
