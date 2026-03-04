@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Animated,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
@@ -15,12 +16,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, Wand2, RefreshCw, Sparkles, Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import { File as ExpoFile, Paths, Directory } from 'expo-file-system';
 
 import { useMutation } from '@tanstack/react-query';
 import { useAlert } from '@/providers/AlertProvider';
 import { useSocial } from '@/providers/SocialProvider';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/providers/AuthProvider';
 
 interface AvatarStyle {
   id: string;
@@ -85,7 +85,6 @@ export default function AvatarGeneratorScreen() {
   const insets = useSafeAreaInsets();
   const { showAlert } = useAlert();
   const { updateProfile, profile } = useSocial();
-  const { user } = useAuth();
   const { imageUri } = useLocalSearchParams<{ imageUri?: string }>();
 
   const [sourceImage, setSourceImage] = useState<string>(imageUri || profile.avatarUrl || '');
@@ -196,35 +195,38 @@ export default function AvatarGeneratorScreen() {
     mutationFn: async () => {
       if (!generatedBase64) throw new Error('Kein Avatar vorhanden');
 
-      const userId = user?.id;
-      if (!userId) throw new Error('Nicht angemeldet');
+      console.log('[AVATAR] Saving avatar locally...');
+      let savedUri = '';
 
-      console.log('[AVATAR] Uploading to Supabase Storage...');
-      const fileName = `avatars/${userId}/ai_avatar_${Date.now()}.png`;
+      if (Platform.OS === 'web') {
+        savedUri = `data:image/png;base64,${generatedBase64}`;
+        console.log('[AVATAR] Web: using data URI directly');
+      } else {
+        try {
+          const avatarDir = new Directory(Paths.document, 'avatars');
+          if (!avatarDir.exists) {
+            avatarDir.create({ intermediates: true });
+          }
+          const fileName = `ai_avatar_${Date.now()}.png`;
+          const destFile = new ExpoFile(avatarDir, fileName);
 
-      const mimeType = 'image/png';
-      const dataUri = `data:${mimeType};base64,${generatedBase64}`;
-      console.log('[AVATAR] Converting data URI to blob, base64 length:', generatedBase64.length);
-
-      const response = await fetch(dataUri);
-      const blob = await response.blob();
-      console.log('[AVATAR] Blob created, size:', blob.size);
-
-      const { data, error } = await supabase.storage
-        .from('admin-uploads')
-        .upload(fileName, blob, { contentType: mimeType, upsert: true });
-
-      if (error) {
-        console.log('[AVATAR] Upload error:', error.message);
-        throw new Error('Upload fehlgeschlagen: ' + error.message);
+          const binaryString = atob(generatedBase64);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          destFile.write(bytes);
+          savedUri = destFile.uri;
+          console.log('[AVATAR] Saved locally to:', savedUri);
+        } catch (fileError) {
+          console.log('[AVATAR] File save error, falling back to data URI:', fileError);
+          savedUri = `data:image/png;base64,${generatedBase64}`;
+        }
       }
 
-      const { data: urlData } = supabase.storage.from('admin-uploads').getPublicUrl(data.path);
-      const publicUrl = urlData.publicUrl;
-      console.log('[AVATAR] Uploaded, public URL:', publicUrl);
-
-      await updateProfile({ avatarUrl: publicUrl });
-      return publicUrl;
+      await updateProfile({ avatarUrl: savedUri });
+      console.log('[AVATAR] Profile updated with avatar URI');
+      return savedUri;
     },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
