@@ -18,32 +18,39 @@ import {
   Trophy,
   Minus,
   Crown,
-  CircleDot,
 } from 'lucide-react-native';
 import { useConnectFour, type CellValue } from '@/providers/ConnectFourEngine';
 import { useLobbyEngine } from '@/providers/LobbyEngine';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BOARD_PADDING = 12;
-const BOARD_MARGIN = 16;
-const CELL_GAP = 4;
+const BOARD_MARGIN = 10;
+const BOARD_PADDING = 8;
+const CELL_GAP = 3;
 const BOARD_WIDTH = SCREEN_WIDTH - BOARD_MARGIN * 2;
 const CELL_SIZE = Math.floor((BOARD_WIDTH - BOARD_PADDING * 2 - CELL_GAP * 6) / 7);
-const COIN_SIZE = CELL_SIZE - 6;
+const COIN_SIZE = CELL_SIZE - 4;
 
-const PLAYER_COLORS = {
-  1: '#E8443A',
-  2: '#F5C842',
-} as const;
-
-const PLAYER_GLOW = {
-  1: 'rgba(232,68,58,0.35)',
-  2: 'rgba(245,200,66,0.35)',
-} as const;
-
-const PLAYER_LABELS = {
-  1: 'Rot',
-  2: 'Gold',
+const COLORS = {
+  bg: '#0C0C0E',
+  surface: '#141418',
+  boardFace: '#0F1628',
+  boardBorder: '#1C2548',
+  boardHighlight: 'rgba(80,100,180,0.12)',
+  p1: '#E84040',
+  p1Light: '#FF6B5E',
+  p1Dark: '#B82E2E',
+  p1Glow: 'rgba(232,64,64,0.3)',
+  p2: '#EDBE3E',
+  p2Light: '#FFD666',
+  p2Dark: '#C49A28',
+  p2Glow: 'rgba(237,190,62,0.3)',
+  gold: '#BFA35D',
+  goldMuted: 'rgba(191,163,93,0.5)',
+  text: '#E8DCC8',
+  textMuted: 'rgba(232,220,200,0.45)',
+  textDim: 'rgba(232,220,200,0.2)',
+  cellEmpty: 'rgba(6,6,14,0.75)',
+  cellBorder: 'rgba(50,65,120,0.2)',
 } as const;
 
 function CoinDrop({
@@ -57,9 +64,8 @@ function CoinDrop({
   player: 1 | 2;
   onComplete: () => void;
 }) {
-  const dropAnim = useRef(new Animated.Value(-CELL_SIZE - 20)).current;
+  const dropAnim = useRef(new Animated.Value(-CELL_SIZE - 16)).current;
   const bounceScale = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
 
   const targetY = targetRow * (CELL_SIZE + CELL_GAP);
 
@@ -67,15 +73,12 @@ function CoinDrop({
     Animated.sequence([
       Animated.timing(dropAnim, {
         toValue: targetY,
-        duration: 250 + targetRow * 60,
+        duration: 200 + targetRow * 55,
         useNativeDriver: true,
       }),
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(bounceScale, { toValue: 1.15, duration: 80, useNativeDriver: true }),
-          Animated.spring(bounceScale, { toValue: 1, friction: 4, tension: 300, useNativeDriver: true }),
-        ]),
-        Animated.timing(glowAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.sequence([
+        Animated.timing(bounceScale, { toValue: 1.12, duration: 70, useNativeDriver: true }),
+        Animated.spring(bounceScale, { toValue: 1, friction: 4, tension: 300, useNativeDriver: true }),
       ]),
     ]).start(() => {
       if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -83,7 +86,8 @@ function CoinDrop({
     });
   }, []);
 
-  const left = col * (CELL_SIZE + CELL_GAP) + 3;
+  const left = col * (CELL_SIZE + CELL_GAP) + 2;
+  const color = player === 1 ? COLORS.p1 : COLORS.p2;
 
   return (
     <Animated.View
@@ -98,38 +102,26 @@ function CoinDrop({
         },
       ]}
     >
-      <Animated.View
-        style={[
-          styles.coinGlow,
-          {
-            backgroundColor: PLAYER_GLOW[player],
-            opacity: glowAnim,
-            borderRadius: COIN_SIZE / 2 + 4,
-          },
-        ]}
-      />
       <LinearGradient
         colors={
           player === 1
-            ? ['#FF6B5E', '#E8443A', '#C43530']
-            : ['#FFE066', '#F5C842', '#D4A832']
+            ? [COLORS.p1Light, COLORS.p1, COLORS.p1Dark]
+            : [COLORS.p2Light, COLORS.p2, COLORS.p2Dark]
         }
         start={{ x: 0.2, y: 0.1 }}
         end={{ x: 0.8, y: 0.9 }}
         style={[styles.coinGradient, { borderRadius: COIN_SIZE / 2 }]}
       >
-        <View style={[styles.coinInnerHighlight, { borderRadius: (COIN_SIZE - 12) / 2 }]} />
+        <View style={[styles.coinShine, { borderRadius: (COIN_SIZE - 10) / 2 }]} />
       </LinearGradient>
+      <View style={[styles.coinShadowRing, { borderRadius: COIN_SIZE / 2, borderColor: color }]} />
     </Animated.View>
   );
 }
 
 const BoardCell = React.memo(function BoardCell({
   value,
-  row,
-  col,
   isWinning,
-  isLastMove,
 }: {
   value: CellValue;
   row: number;
@@ -144,8 +136,8 @@ const BoardCell = React.memo(function BoardCell({
   useEffect(() => {
     if (value !== 0 && !hasAppeared.current) {
       hasAppeared.current = true;
-      scaleAnim.setValue(0.5);
-      Animated.spring(scaleAnim, { toValue: 1, friction: 4, tension: 200, useNativeDriver: true }).start();
+      scaleAnim.setValue(0.6);
+      Animated.spring(scaleAnim, { toValue: 1, friction: 5, tension: 200, useNativeDriver: true }).start();
     }
   }, [value]);
 
@@ -153,14 +145,18 @@ const BoardCell = React.memo(function BoardCell({
     if (isWinning) {
       const loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(winPulse, { toValue: 1.12, duration: 400, useNativeDriver: true }),
-          Animated.timing(winPulse, { toValue: 0.95, duration: 400, useNativeDriver: true }),
+          Animated.timing(winPulse, { toValue: 1.1, duration: 500, useNativeDriver: true }),
+          Animated.timing(winPulse, { toValue: 0.95, duration: 500, useNativeDriver: true }),
         ]),
       );
       loop.start();
       return () => loop.stop();
     }
   }, [isWinning]);
+
+  const coinColors = value === 1
+    ? [COLORS.p1Light, COLORS.p1, COLORS.p1Dark] as const
+    : [COLORS.p2Light, COLORS.p2, COLORS.p2Dark] as const;
 
   return (
     <View style={[styles.cell, { width: CELL_SIZE, height: CELL_SIZE }]}>
@@ -178,19 +174,15 @@ const BoardCell = React.memo(function BoardCell({
             ]}
           >
             <LinearGradient
-              colors={
-                value === 1
-                  ? ['#FF6B5E', '#E8443A', '#C43530']
-                  : ['#FFE066', '#F5C842', '#D4A832']
-              }
+              colors={coinColors}
               start={{ x: 0.2, y: 0.1 }}
               end={{ x: 0.8, y: 0.9 }}
               style={[styles.coinGradient, { borderRadius: COIN_SIZE / 2 }]}
             >
-              <View style={[styles.coinInnerHighlight, { borderRadius: (COIN_SIZE - 12) / 2 }]} />
+              <View style={[styles.coinShine, { borderRadius: (COIN_SIZE - 10) / 2 }]} />
             </LinearGradient>
             {isWinning && (
-              <View style={[styles.winRing, { borderRadius: COIN_SIZE / 2 + 2 }]} />
+              <View style={[styles.winRing, { borderRadius: COIN_SIZE / 2 + 1 }]} />
             )}
           </Animated.View>
         )}
@@ -199,146 +191,59 @@ const BoardCell = React.memo(function BoardCell({
   );
 });
 
-function ColumnSelector({
-  col,
-  isMyTurn,
-  currentPlayer,
-  onPress,
-  hasSpace,
-}: {
-  col: number;
-  isMyTurn: boolean;
-  currentPlayer: 1 | 2;
-  onPress: (col: number) => void;
-  hasSpace: boolean;
-}) {
-  const hoverAnim = useRef(new Animated.Value(0)).current;
-  const pressScale = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = useCallback(() => {
-    if (!isMyTurn || !hasSpace) return;
-    Animated.parallel([
-      Animated.timing(hoverAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
-      Animated.timing(pressScale, { toValue: 0.9, duration: 100, useNativeDriver: true }),
-    ]).start();
-  }, [isMyTurn, hasSpace]);
-
-  const handlePressOut = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(hoverAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.spring(pressScale, { toValue: 1, friction: 5, useNativeDriver: true }),
-    ]).start();
-  }, []);
-
-  const handlePress = useCallback(() => {
-    if (!isMyTurn || !hasSpace) return;
-    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onPress(col);
-  }, [col, isMyTurn, hasSpace, onPress]);
-
-  return (
-    <Pressable
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      style={[styles.colSelector, { width: CELL_SIZE + CELL_GAP }]}
-      testID={`col-selector-${col}`}
-    >
-      <Animated.View
-        style={[
-          styles.colHoverIndicator,
-          {
-            opacity: hoverAnim,
-            backgroundColor: isMyTurn ? PLAYER_GLOW[currentPlayer] : 'transparent',
-            transform: [{ scale: pressScale }],
-          },
-        ]}
-      >
-        <View
-          style={[
-            styles.hoverCoinPreview,
-            {
-              width: COIN_SIZE * 0.5,
-              height: COIN_SIZE * 0.5,
-              borderRadius: COIN_SIZE * 0.25,
-              backgroundColor: isMyTurn ? PLAYER_COLORS[currentPlayer] : 'transparent',
-            },
-          ]}
-        />
-      </Animated.View>
-    </Pressable>
-  );
-}
-
-function PlayerIndicator({
+function PlayerBadge({
   playerNumber,
   displayName,
   isActive,
   isWinner,
-  side,
+  align,
 }: {
   playerNumber: 1 | 2;
   displayName: string;
   isActive: boolean;
   isWinner: boolean;
-  side: 'left' | 'right';
+  align: 'left' | 'right';
 }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (isActive) {
       const loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.08, duration: 600, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1.05, duration: 700, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
         ]),
       );
-      Animated.timing(glowAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
       loop.start();
       return () => loop.stop();
     } else {
-      Animated.timing(glowAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+      pulseAnim.setValue(1);
     }
   }, [isActive]);
 
-  const color = PLAYER_COLORS[playerNumber];
+  const color = playerNumber === 1 ? COLORS.p1 : COLORS.p2;
+  const isRight = align === 'right';
 
   return (
     <Animated.View
       style={[
-        styles.playerIndicator,
-        side === 'right' && styles.playerIndicatorRight,
-        { transform: [{ scale: isActive ? pulseAnim : new Animated.Value(1) }] },
+        styles.playerBadge,
+        isActive && { borderColor: color, backgroundColor: `${color}08` },
+        isRight && { flexDirection: 'row-reverse' as const },
+        { transform: [{ scale: isActive ? pulseAnim : 1 as any }] },
       ]}
     >
-      <Animated.View
-        style={[
-          styles.playerDot,
-          {
-            backgroundColor: color,
-            shadowColor: color,
-            shadowOpacity: isActive ? 0.8 : 0.2,
-            shadowRadius: isActive ? 12 : 4,
-            elevation: isActive ? 8 : 2,
-          },
-        ]}
-      >
-        {isWinner && <Crown size={14} color="#141416" strokeWidth={3} />}
-      </Animated.View>
-      <View style={side === 'right' ? styles.playerInfoRight : undefined}>
+      <View style={[styles.playerDot, { backgroundColor: color }]}>
+        {isWinner && <Crown size={12} color="#fff" strokeWidth={3} />}
+      </View>
+      <View style={isRight ? { alignItems: 'flex-end' as const } : undefined}>
         <Text style={[styles.playerName, isActive && { color }]} numberOfLines={1}>
           {displayName}
         </Text>
-        <Text style={[styles.playerLabel, isActive && { color, opacity: 0.7 }]}>
-          {PLAYER_LABELS[playerNumber]}
+        <Text style={[styles.playerRole, isActive && { color, opacity: 0.6 }]}>
+          {playerNumber === 1 ? 'ROT' : 'GOLD'}
         </Text>
       </View>
-      {isActive && !isWinner && (
-        <Animated.View style={[styles.turnArrow, { opacity: glowAnim }]}>
-          <CircleDot size={14} color={color} />
-        </Animated.View>
-      )}
     </Animated.View>
   );
 }
@@ -355,17 +260,17 @@ function GameOverOverlay({
   onExit: () => void;
 }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(40)).current;
-  const trophyScale = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const iconScale = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.sequence([
-      Animated.delay(600),
+      Animated.delay(500),
       Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 350, useNativeDriver: true }),
       ]),
-      Animated.spring(trophyScale, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
+      Animated.spring(iconScale, { toValue: 1, friction: 4, tension: 100, useNativeDriver: true }),
     ]).start();
 
     if (Platform.OS !== 'web') {
@@ -376,38 +281,32 @@ function GameOverOverlay({
   }, []);
 
   return (
-    <Animated.View style={[styles.gameOverOverlay, { opacity: fadeAnim }]}>
-      <Animated.View style={[styles.gameOverCard, { transform: [{ translateY: slideAnim }] }]}>
-        <Animated.View style={[styles.gameOverIcon, { transform: [{ scale: trophyScale }] }]}>
-          {isDraw ? (
-            <Minus size={36} color="#BFA35D" />
-          ) : (
-            <Trophy size={36} color="#BFA35D" />
-          )}
+    <Animated.View style={[styles.overlayBg, { opacity: fadeAnim }]}>
+      <Animated.View style={[styles.overlayCard, { transform: [{ translateY: slideAnim }] }]}>
+        <Animated.View style={[styles.overlayIcon, { transform: [{ scale: iconScale }] }]}>
+          {isDraw ? <Minus size={32} color={COLORS.gold} /> : <Trophy size={32} color={COLORS.gold} />}
         </Animated.View>
 
-        <Text style={styles.gameOverTitle}>
-          {isDraw ? 'UNENTSCHIEDEN' : 'GEWONNEN!'}
-        </Text>
+        <Text style={styles.overlayTitle}>{isDraw ? 'UNENTSCHIEDEN' : 'GEWONNEN!'}</Text>
         {!isDraw && winnerName && (
-          <Text style={styles.gameOverSubtitle}>{winnerName} hat gewonnen</Text>
+          <Text style={styles.overlaySubtitle}>{winnerName} gewinnt die Partie</Text>
         )}
 
-        <View style={styles.gameOverActions}>
+        <View style={styles.overlayActions}>
           <Pressable style={styles.rematchBtn} onPress={onRematch} testID="rematch-btn">
             <LinearGradient
-              colors={['#BFA35D', '#A08A45']}
+              colors={[COLORS.gold, '#A08A45']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.rematchBtnGrad}
+              style={styles.rematchGrad}
             >
-              <RotateCcw size={18} color="#141416" />
-              <Text style={styles.rematchBtnText}>REMATCH</Text>
+              <RotateCcw size={16} color={COLORS.bg} />
+              <Text style={styles.rematchText}>REVANCHE</Text>
             </LinearGradient>
           </Pressable>
 
           <Pressable style={styles.exitBtn} onPress={onExit} testID="exit-btn">
-            <Text style={styles.exitBtnText}>ZUR LOBBY</Text>
+            <Text style={styles.exitText}>ZURÜCK ZUR LOBBY</Text>
           </Pressable>
         </View>
       </Animated.View>
@@ -432,17 +331,18 @@ export default function ConnectFourScreen() {
   const { members, leaveRoom, rematch } = useLobbyEngine();
 
   const boardEnterAnim = useRef(new Animated.Value(0)).current;
-  const boardScaleAnim = useRef(new Animated.Value(0.9)).current;
+  const boardScaleAnim = useRef(new Animated.Value(0.92)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(boardEnterAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-      Animated.spring(boardScaleAnim, { toValue: 1, friction: 6, tension: 80, useNativeDriver: true }),
+      Animated.timing(boardEnterAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.spring(boardScaleAnim, { toValue: 1, friction: 7, tension: 60, useNativeDriver: true }),
     ]).start();
   }, []);
 
   const handleColumnPress = useCallback((col: number) => {
     if (!isMyTurn) return;
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     makeMove(col);
   }, [isMyTurn, makeMove]);
 
@@ -486,151 +386,136 @@ export default function ConnectFourScreen() {
 
   if (!gameState) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={styles.loadingText}>Lade Spiel...</Text>
+      <View style={styles.container}>
+        <LinearGradient colors={[COLORS.bg, '#101014', COLORS.bg]} style={StyleSheet.absoluteFillObject} />
+        <View style={styles.loadingWrap}>
+          <Text style={styles.loadingText}>Spiel wird geladen...</Text>
+        </View>
       </View>
     );
   }
 
+  const currentColor = gameState.currentPlayer === 1 ? COLORS.p1 : COLORS.p2;
+
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0D0D10', '#111118', '#0D0D10']}
+        colors={[COLORS.bg, '#0E0E14', COLORS.bg]}
         style={StyleSheet.absoluteFillObject}
       />
 
-      <View style={styles.bgPattern}>
-        {[...Array(8)].map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.bgLine,
-              {
-                top: 60 + i * 90,
-                opacity: 0.015 + (i % 3) * 0.005,
-                transform: [{ rotate: `${-8 + i * 3}deg` }],
-              },
-            ]}
-          />
-        ))}
-      </View>
-
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 4 }]}>
         <Pressable style={styles.closeBtn} onPress={handleClose} testID="close-game-btn">
-          <X size={20} color="rgba(232,220,200,0.6)" />
+          <X size={18} color={COLORS.textMuted} />
         </Pressable>
-
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>VIER GEWINNT</Text>
-          <View style={styles.moveCounter}>
-            <Text style={styles.moveCounterText}>Zug {gameState.moveCount + 1}</Text>
-          </View>
+        <View style={styles.topBarCenter}>
+          <Text style={styles.topBarTitle}>VIER GEWINNT</Text>
         </View>
-
-        <View style={{ width: 44 }} />
+        <View style={styles.moveChip}>
+          <Text style={styles.moveChipText}>ZUG {gameState.moveCount + 1}</Text>
+        </View>
       </View>
 
-      <View style={styles.playersRow}>
-        <PlayerIndicator
+      <View style={styles.playersSection}>
+        <PlayerBadge
           playerNumber={1}
           displayName={player1Member?.displayName?.split(' ')[0] ?? 'Spieler 1'}
           isActive={gameState.currentPlayer === 1 && gameState.phase === 'playing'}
           isWinner={gameState.winnerUserId === playerMap.player1}
-          side="left"
+          align="left"
         />
-        <View style={styles.vsContainer}>
+        <View style={styles.vsWrap}>
           <Text style={styles.vsText}>VS</Text>
         </View>
-        <PlayerIndicator
+        <PlayerBadge
           playerNumber={2}
           displayName={player2Member?.displayName?.split(' ')[0] ?? 'Spieler 2'}
           isActive={gameState.currentPlayer === 2 && gameState.phase === 'playing'}
           isWinner={gameState.winnerUserId === playerMap.player2}
-          side="right"
+          align="right"
         />
       </View>
 
       {gameState.phase === 'playing' && (
-        <View style={styles.turnBanner}>
-          <View
-            style={[
-              styles.turnDot,
-              { backgroundColor: PLAYER_COLORS[gameState.currentPlayer] },
-            ]}
-          />
-          <Text style={[styles.turnText, { color: PLAYER_COLORS[gameState.currentPlayer] }]}>
-            {isMyTurn
-              ? 'DU BIST DRAN'
-              : `${gameState.currentPlayer === 1 ? player1Member?.displayName?.split(' ')[0] : player2Member?.displayName?.split(' ')[0]} ist dran`}
+        <View style={styles.turnIndicator}>
+          <View style={[styles.turnDot, { backgroundColor: currentColor }]} />
+          <Text style={[styles.turnLabel, { color: currentColor }]}>
+            {isMyTurn ? 'DU BIST DRAN' : `${gameState.currentPlayer === 1
+              ? (player1Member?.displayName?.split(' ')[0] ?? 'Spieler 1')
+              : (player2Member?.displayName?.split(' ')[0] ?? 'Spieler 2')} ist dran`}
           </Text>
         </View>
       )}
 
-      <View style={styles.colSelectorsRow}>
-        {Array.from({ length: cols }, (_, c) => (
-          <ColumnSelector
-            key={c}
-            col={c}
-            isMyTurn={isMyTurn}
-            currentPlayer={gameState.currentPlayer}
-            onPress={handleColumnPress}
-            hasSpace={columnHasSpace[c]}
-          />
-        ))}
-      </View>
+      <View style={{ flex: 1 }} />
 
       <Animated.View
         style={[
-          styles.boardContainer,
+          styles.boardOuter,
           {
             opacity: boardEnterAnim,
             transform: [{ scale: boardScaleAnim }],
           },
         ]}
       >
-        <LinearGradient
-          colors={['#1A2040', '#162050', '#1A2040']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.boardGradient}
-        >
-          <View style={styles.boardEdgeTop} />
+        <View style={styles.boardFrame}>
+          <LinearGradient
+            colors={['#162040', '#0F1830', '#162040']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.boardGrad}
+          >
+            <View style={styles.boardGrid}>
+              {dropAnimation && (
+                <CoinDrop
+                  col={dropAnimation.col}
+                  targetRow={dropAnimation.row}
+                  player={dropAnimation.player}
+                  onComplete={confirmDrop}
+                />
+              )}
 
-          <View style={styles.boardInner}>
-            {dropAnimation && (
-              <CoinDrop
-                col={dropAnimation.col}
-                targetRow={dropAnimation.row}
-                player={dropAnimation.player}
-                onComplete={confirmDrop}
-              />
-            )}
+              {Array.from({ length: rows }, (_, r) => (
+                <View key={r} style={styles.boardRow}>
+                  {Array.from({ length: cols }, (_, c) => (
+                    <Pressable
+                      key={`${r}-${c}`}
+                      onPress={() => {
+                        if (columnHasSpace[c] && isMyTurn && gameState.phase === 'playing') {
+                          handleColumnPress(c);
+                        }
+                      }}
+                      testID={`cell-${r}-${c}`}
+                      style={styles.cellPressable}
+                    >
+                      <BoardCell
+                        value={gameState.board[r][c]}
+                        row={r}
+                        col={c}
+                        isWinning={winningCellSet.has(`${r}-${c}`)}
+                        isLastMove={gameState.lastMove?.row === r && gameState.lastMove?.col === c}
+                      />
+                    </Pressable>
+                  ))}
+                </View>
+              ))}
+            </View>
+          </LinearGradient>
+        </View>
 
-            {Array.from({ length: rows }, (_, r) => (
-              <View key={r} style={styles.boardRow}>
-                {Array.from({ length: cols }, (_, c) => (
-                  <BoardCell
-                    key={`${r}-${c}`}
-                    value={gameState.board[r][c]}
-                    row={r}
-                    col={c}
-                    isWinning={winningCellSet.has(`${r}-${c}`)}
-                    isLastMove={gameState.lastMove?.row === r && gameState.lastMove?.col === c}
-                  />
-                ))}
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.boardEdgeBottom} />
-        </LinearGradient>
-
-        <View style={styles.boardShadow} />
+        <View style={styles.boardBase}>
+          <LinearGradient
+            colors={['#1A2550', '#141C3A']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.boardBaseGrad}
+          />
+        </View>
       </Animated.View>
 
-      <View style={[styles.bottomArea, { paddingBottom: insets.bottom + 12 }]}>
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         {gameState.phase === 'playing' && isMyTurn && (
-          <Text style={styles.hintText}>Tippe auf eine Spalte um deinen Stein zu werfen</Text>
+          <Text style={styles.hintText}>Tippe auf eine Spalte</Text>
         )}
       </View>
 
@@ -649,171 +534,133 @@ export default function ConnectFourScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D0D10',
+    backgroundColor: COLORS.bg,
   },
-  bgPattern: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  bgLine: {
-    position: 'absolute' as const,
-    left: -40,
-    right: -40,
-    height: 1,
-    backgroundColor: '#BFA35D',
-  },
-  header: {
-    flexDirection: 'row' as const,
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  closeBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+  loadingWrap: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerCenter: {
+  loadingText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: COLORS.textDim,
+  },
+  topBar: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingBottom: 6,
+  },
+  closeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarCenter: {
     flex: 1,
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '900' as const,
-    color: '#E8DCC8',
-    letterSpacing: 3,
+  topBarTitle: {
+    fontSize: 15,
+    fontWeight: '800' as const,
+    color: COLORS.text,
+    letterSpacing: 2.5,
   },
-  moveCounter: {
-    marginTop: 2,
+  moveChip: {
     paddingHorizontal: 10,
-    paddingVertical: 2,
+    paddingVertical: 5,
     borderRadius: 8,
     backgroundColor: 'rgba(191,163,93,0.08)',
   },
-  moveCounterText: {
-    fontSize: 11,
+  moveChipText: {
+    fontSize: 10,
     fontWeight: '700' as const,
-    color: 'rgba(191,163,93,0.5)',
+    color: COLORS.goldMuted,
+    letterSpacing: 1,
   },
-  playersRow: {
+  playersSection: {
     flexDirection: 'row' as const,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    gap: 8,
   },
-  playerIndicator: {
-    flexDirection: 'row' as const,
-    alignItems: 'center',
-    gap: 10,
+  playerBadge: {
     flex: 1,
-  },
-  playerIndicatorRight: {
-    flexDirection: 'row-reverse' as const,
-    justifyContent: 'flex-start',
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   playerDot: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  playerInfoRight: {
-    alignItems: 'flex-end' as const,
-  },
   playerName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700' as const,
-    color: 'rgba(232,220,200,0.7)',
+    color: COLORS.textMuted,
   },
-  playerLabel: {
-    fontSize: 10,
+  playerRole: {
+    fontSize: 9,
     fontWeight: '800' as const,
-    color: 'rgba(232,220,200,0.3)',
-    letterSpacing: 1,
+    color: COLORS.textDim,
+    letterSpacing: 1.5,
     marginTop: 1,
   },
-  turnArrow: {
-    marginLeft: 4,
-  },
-  vsContainer: {
-    paddingHorizontal: 12,
+  vsWrap: {
+    paddingHorizontal: 6,
   },
   vsText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '900' as const,
-    color: 'rgba(232,220,200,0.15)',
+    color: 'rgba(232,220,200,0.12)',
     letterSpacing: 2,
   },
-  turnBanner: {
+  turnIndicator: {
     flexDirection: 'row' as const,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 6,
+    paddingTop: 12,
   },
   turnDot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: 4,
   },
-  turnText: {
-    fontSize: 13,
+  turnLabel: {
+    fontSize: 12,
     fontWeight: '800' as const,
     letterSpacing: 1.5,
   },
-  colSelectorsRow: {
-    flexDirection: 'row' as const,
-    justifyContent: 'center',
-    paddingHorizontal: BOARD_MARGIN + BOARD_PADDING - CELL_GAP / 2,
-    height: 36,
-    alignItems: 'flex-end',
-  },
-  colSelector: {
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  colHoverIndicator: {
-    width: COIN_SIZE * 0.6,
-    height: COIN_SIZE * 0.6,
-    borderRadius: COIN_SIZE * 0.3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hoverCoinPreview: {
-    opacity: 0.9,
-  },
-  boardContainer: {
+  boardOuter: {
     marginHorizontal: BOARD_MARGIN,
-    borderRadius: 20,
-    overflow: 'hidden',
-    position: 'relative' as const,
-  },
-  boardGradient: {
-    borderRadius: 20,
-    padding: BOARD_PADDING,
-    borderWidth: 2,
-    borderColor: 'rgba(26,32,64,0.8)',
-  },
-  boardEdgeTop: {
-    height: 3,
-    backgroundColor: 'rgba(100,120,200,0.15)',
-    borderRadius: 2,
     marginBottom: 6,
-    marginHorizontal: 4,
   },
-  boardEdgeBottom: {
-    height: 3,
-    backgroundColor: 'rgba(100,120,200,0.1)',
-    borderRadius: 2,
-    marginTop: 6,
-    marginHorizontal: 4,
+  boardFrame: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: COLORS.boardBorder,
   },
-  boardInner: {
+  boardGrad: {
+    padding: BOARD_PADDING,
+    borderRadius: 14,
+  },
+  boardGrid: {
     position: 'relative' as const,
   },
   boardRow: {
@@ -821,15 +668,8 @@ const styles = StyleSheet.create({
     gap: CELL_GAP,
     marginBottom: CELL_GAP,
   },
-  boardShadow: {
-    position: 'absolute' as const,
-    bottom: -8,
-    left: 10,
-    right: 10,
-    height: 16,
-    backgroundColor: 'rgba(10,10,20,0.4)',
-    borderRadius: 20,
-    zIndex: -1,
+  cellPressable: {
+    flex: 0,
   },
   cell: {
     alignItems: 'center',
@@ -838,9 +678,9 @@ const styles = StyleSheet.create({
   cellHole: {
     width: COIN_SIZE,
     height: COIN_SIZE,
-    backgroundColor: 'rgba(8,8,16,0.7)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(60,80,140,0.2)',
+    backgroundColor: COLORS.cellEmpty,
+    borderWidth: 1,
+    borderColor: COLORS.cellBorder,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -856,17 +696,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  coinInnerHighlight: {
-    width: '70%',
-    height: '70%',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+  coinShine: {
+    width: '65%',
+    height: '65%',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  coinShadowRing: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 1.5,
+    opacity: 0.25,
   },
   winRing: {
     ...StyleSheet.absoluteFillObject,
-    borderWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.6)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.55)',
   },
   droppingCoin: {
     position: 'absolute' as const,
@@ -874,101 +719,102 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  coinGlow: {
-    ...StyleSheet.absoluteFillObject,
+  boardBase: {
+    height: 10,
+    marginTop: -2,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+    overflow: 'hidden',
   },
-  bottomArea: {
+  boardBaseGrad: {
     flex: 1,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+  },
+  bottomBar: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingTop: 12,
   },
   hintText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600' as const,
-    color: 'rgba(232,220,200,0.25)',
-    textAlign: 'center' as const,
+    color: COLORS.textDim,
   },
-  loadingText: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    color: 'rgba(232,220,200,0.4)',
-  },
-  gameOverOverlay: {
+  overlayBg: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8,8,12,0.92)',
+    backgroundColor: 'rgba(6,6,10,0.93)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 50,
   },
-  gameOverCard: {
+  overlayCard: {
     alignItems: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 36,
-    borderRadius: 28,
-    backgroundColor: 'rgba(26,26,32,0.95)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(191,163,93,0.15)',
-    width: SCREEN_WIDTH - 48,
-    maxWidth: 380,
-  },
-  gameOverIcon: {
-    width: 80,
-    height: 80,
+    paddingHorizontal: 36,
+    paddingVertical: 32,
     borderRadius: 24,
-    backgroundColor: 'rgba(191,163,93,0.1)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(191,163,93,0.2)',
+    backgroundColor: 'rgba(20,20,26,0.97)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.12)',
+    width: SCREEN_WIDTH - 48,
+    maxWidth: 360,
+  },
+  overlayIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    backgroundColor: 'rgba(191,163,93,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
-  gameOverTitle: {
-    fontSize: 26,
+  overlayTitle: {
+    fontSize: 24,
     fontWeight: '900' as const,
-    color: '#E8DCC8',
-    letterSpacing: 3,
-    marginBottom: 6,
+    color: COLORS.text,
+    letterSpacing: 2,
+    marginBottom: 4,
   },
-  gameOverSubtitle: {
-    fontSize: 15,
+  overlaySubtitle: {
+    fontSize: 14,
     fontWeight: '600' as const,
-    color: 'rgba(191,163,93,0.6)',
-    marginBottom: 28,
+    color: COLORS.goldMuted,
+    marginBottom: 24,
   },
-  gameOverActions: {
+  overlayActions: {
     width: '100%',
-    gap: 10,
+    gap: 8,
   },
   rematchBtn: {
-    borderRadius: 18,
+    borderRadius: 14,
     overflow: 'hidden',
   },
-  rematchBtnGrad: {
+  rematchGrad: {
     flexDirection: 'row' as const,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 18,
+    gap: 8,
+    paddingVertical: 16,
   },
-  rematchBtnText: {
-    fontSize: 16,
+  rematchText: {
+    fontSize: 14,
     fontWeight: '900' as const,
-    color: '#141416',
-    letterSpacing: 2,
+    color: COLORS.bg,
+    letterSpacing: 1.5,
   },
   exitBtn: {
     alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    paddingVertical: 13,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(232,220,200,0.08)',
+    borderColor: 'rgba(232,220,200,0.06)',
   },
-  exitBtnText: {
-    fontSize: 14,
+  exitText: {
+    fontSize: 12,
     fontWeight: '700' as const,
-    color: 'rgba(232,220,200,0.4)',
+    color: COLORS.textDim,
     letterSpacing: 1,
   },
 });
