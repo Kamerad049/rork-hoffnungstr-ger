@@ -87,8 +87,7 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
     showSunDial: false,
   });
   const [privacy, setPrivacy] = useState<PrivacySettings>({ ...DEFAULT_PRIVACY });
-  const [flagHoistedAtState, setFlagHoistedAt] = useState<string | null>(null);
-  const [flagLocalOverride, setFlagLocalOverride] = useState<boolean>(false);
+
 
   const profileQuery = useQuery<ProfileQueryData | null>({
     queryKey: [...queryKeys.socialProfile(userId), user?.name],
@@ -188,15 +187,14 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
     gcTime: 10 * 60 * 1000,
   });
 
+  const flagHoistedAtState = profileQuery.data?.flagHoistedAt ?? null;
+
   useEffect(() => {
     if (profileQuery.data) {
       setProfile(profileQuery.data.profile);
       setPrivacy(profileQuery.data.privacy);
-      if (!flagLocalOverride) {
-        setFlagHoistedAt(profileQuery.data.flagHoistedAt);
-      }
     }
-  }, [profileQuery.data, flagLocalOverride]);
+  }, [profileQuery.data]);
 
   const isLoading = profileQuery.isLoading;
 
@@ -258,37 +256,28 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
 
   const hoistFlag = useCallback(async () => {
     const now = new Date().toISOString();
-    setFlagLocalOverride(true);
-    setFlagHoistedAt(now);
-    const profileKey = [...queryKeys.socialProfile(userId), user?.name];
-    queryClient.setQueryData<ProfileQueryData | null>(profileKey, (old) => {
-      if (!old) return old;
-      return { ...old, flagHoistedAt: now };
-    });
+    console.log('[SOCIAL] Hoisting flag at', now);
+    queryClient.setQueryData<ProfileQueryData | null | undefined>(
+      [...queryKeys.socialProfile(userId), user?.name],
+      (old) => old ? { ...old, flagHoistedAt: now } : old,
+    );
     if (!userId) return;
     await supabase.from('users').update({ flag_hoisted_at: now }).eq('id', userId);
-    setFlagLocalOverride(false);
     queryClient.invalidateQueries({ queryKey: queryKeys.socialProfile(userId) });
+    queryClient.invalidateQueries({ queryKey: ['active-flag-count'] });
   }, [userId, queryClient, user?.name]);
 
   const lowerFlag = useCallback(async () => {
-    console.log('[SOCIAL] Lowering flag');
-    setFlagLocalOverride(true);
-    setFlagHoistedAt(null);
-    const profileKey = [...queryKeys.socialProfile(userId), user?.name];
-    queryClient.setQueryData<ProfileQueryData | null>(profileKey, (old) => {
-      if (!old) return old;
-      return { ...old, flagHoistedAt: null };
-    });
-    if (!userId) {
-      setFlagLocalOverride(false);
-      return;
-    }
-    await supabase.from('users').update({ flag_hoisted_at: null }).eq('id', userId);
-    console.log('[SOCIAL] Flag lowered in DB');
-    await queryClient.invalidateQueries({ queryKey: ['active-flag-count'] });
-    await queryClient.invalidateQueries({ queryKey: queryKeys.socialProfile(userId) });
-    setFlagLocalOverride(false);
+    console.log('[SOCIAL] Lowering flag — setting cache to null');
+    queryClient.setQueryData<ProfileQueryData | null | undefined>(
+      [...queryKeys.socialProfile(userId), user?.name],
+      (old) => old ? { ...old, flagHoistedAt: null } : old,
+    );
+    if (!userId) return;
+    const { error } = await supabase.from('users').update({ flag_hoisted_at: null }).eq('id', userId);
+    console.log('[SOCIAL] Flag lowered in DB, error:', error);
+    queryClient.invalidateQueries({ queryKey: ['active-flag-count'] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.socialProfile(userId) });
   }, [userId, queryClient, user?.name]);
 
   const isFlagActive = useMemo((): boolean => {
