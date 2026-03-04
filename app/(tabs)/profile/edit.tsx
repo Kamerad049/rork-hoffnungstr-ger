@@ -14,7 +14,7 @@ import { Image } from 'expo-image';
 import { useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, Check, ImageIcon, Trash2, MapPin, Home, Sparkles, ChevronLeft, ChevronDown, User, Sun } from 'lucide-react-native';
+import { Camera, Check, ImageIcon, Trash2, MapPin, Home, Sparkles, ChevronLeft, ChevronDown, User, Sun, Wand2 } from 'lucide-react-native';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useSocial } from '@/providers/SocialProvider';
 import { useAuth } from '@/providers/AuthProvider';
@@ -320,13 +320,26 @@ export default function EditProfileScreen() {
           <Text style={styles.changeAvatarText}>Foto ändern</Text>
         </Pressable>
         {avatarUrl ? (
-          <Pressable
-            style={styles.removeAvatarBtn}
-            onPress={() => { setAvatarUrl(''); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-          >
-            <Trash2 size={14} color="#C06060" />
-            <Text style={styles.removeAvatarText}>Entfernen</Text>
-          </Pressable>
+          <View style={styles.avatarExtraRow}>
+            <Pressable
+              style={styles.aiAvatarBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({ pathname: '/(tabs)/profile/avatar-generator', params: { imageUri: avatarUrl } });
+              }}
+              testID="ai-avatar-btn"
+            >
+              <Wand2 size={14} color="#BFA35D" />
+              <Text style={styles.aiAvatarBtnText}>KI-Avatar</Text>
+            </Pressable>
+            <Pressable
+              style={styles.removeAvatarBtn}
+              onPress={() => { setAvatarUrl(''); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            >
+              <Trash2 size={14} color="#C06060" />
+              <Text style={styles.removeAvatarText}>Entfernen</Text>
+            </Pressable>
+          </View>
         ) : null}
       </View>
       </LinearGradient>
@@ -729,11 +742,32 @@ const styles = StyleSheet.create({
     borderColor: '#1e1d1a',
     backgroundColor: '#BFA35D',
   },
+  avatarExtraRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginTop: 10,
+  },
+  aiAvatarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(191,163,93,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.2)',
+  },
+  aiAvatarBtnText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#BFA35D',
+  },
   removeAvatarBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 8,
   },
   removeAvatarText: {
     fontSize: 13,

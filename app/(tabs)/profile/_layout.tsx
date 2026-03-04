@@ -25,6 +25,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="datenschutz" options={{ title: '', headerShown: true, headerTransparent: true, headerStyle: { backgroundColor: 'transparent' }, headerTintColor: '#E8DCC8' }} />
       <Stack.Screen name="impressum" options={{ title: '', headerShown: true, headerTransparent: true, headerStyle: { backgroundColor: 'transparent' }, headerTintColor: '#E8DCC8' }} />
       <Stack.Screen name="support" options={{ title: '', headerShown: true, headerTransparent: true, headerStyle: { backgroundColor: 'transparent' }, headerTintColor: '#E8DCC8' }} />
+      <Stack.Screen name="avatar-generator" options={{ title: '', headerShown: true, headerTransparent: true, headerStyle: { backgroundColor: 'transparent' }, headerTintColor: '#E8DCC8' }} />
     </Stack>
   );
 }
