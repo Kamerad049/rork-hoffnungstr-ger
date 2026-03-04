@@ -90,6 +90,111 @@ const GRID_COLS = 3;
 const TILE_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
 const TILE_HEIGHT = TILE_WIDTH * (5 / 4);
 
+const NEU_BASE = '#1c1c1f';
+const NEU_LIGHT = '#28282c';
+const NEU_DARK = '#101012';
+const NEU_SURFACE = '#1e1e21';
+
+function NeuCard({ children, style, raised = true, intensity = 1 }: {
+  children: React.ReactNode;
+  style?: any;
+  raised?: boolean;
+  intensity?: number;
+}) {
+  return (
+    <View style={[
+      {
+        backgroundColor: NEU_SURFACE,
+        borderRadius: 16,
+        ...(raised ? {
+          shadowColor: NEU_DARK,
+          shadowOffset: { width: 4 * intensity, height: 4 * intensity },
+          shadowOpacity: 0.7 * intensity,
+          shadowRadius: 8 * intensity,
+          elevation: 6 * intensity,
+        } : {}),
+      },
+      style,
+    ]}>
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: raised
+          ? `rgba(50,50,55,${0.5 * intensity})`
+          : `rgba(14,14,16,${0.4 * intensity})`,
+        borderBottomColor: raised
+          ? `rgba(14,14,16,${0.3 * intensity})`
+          : `rgba(50,50,55,${0.3 * intensity})`,
+        borderRightColor: raised
+          ? `rgba(14,14,16,${0.3 * intensity})`
+          : `rgba(50,50,55,${0.3 * intensity})`,
+      }} />
+      {children}
+    </View>
+  );
+}
+
+function NeuButton({ children, onPress, style, hitSlop, testID }: {
+  children: React.ReactNode;
+  onPress?: () => void;
+  style?: any;
+  hitSlop?: number;
+  testID?: string;
+}) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const shadowAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = useCallback(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, { toValue: 0.96, useNativeDriver: true, speed: 50 }),
+      Animated.timing(shadowAnim, { toValue: 0, duration: 100, useNativeDriver: false }),
+    ]).start();
+  }, [scaleAnim, shadowAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 30 }),
+      Animated.timing(shadowAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
+    ]).start();
+  }, [scaleAnim, shadowAnim]);
+
+  return (
+    <Animated.View style={[
+      {
+        transform: [{ scale: scaleAnim }],
+        backgroundColor: NEU_SURFACE,
+        borderRadius: 14,
+        shadowColor: NEU_DARK,
+        shadowOffset: { width: 3, height: 3 },
+        shadowOpacity: shadowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0.6] }),
+        shadowRadius: shadowAnim.interpolate({ inputRange: [0, 1], outputRange: [2, 6] }),
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(50,50,55,0.4)',
+        borderBottomColor: 'rgba(14,14,16,0.3)',
+        borderRightColor: 'rgba(14,14,16,0.3)',
+      },
+      style,
+    ]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        hitSlop={hitSlop}
+        testID={testID}
+        style={{ alignItems: 'center', justifyContent: 'center' }}
+      >
+        {children}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 type ProfileTab = 'posts' | 'tagged' | 'archive' | 'saved';
 
 const VALUE_ICONS: Record<string, React.ComponentType<{ size: number; color: string }>> = {
@@ -725,13 +830,13 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.headerTopRow}>
-            <Pressable
-              style={styles.settingsBtn}
+            <NeuButton
               onPress={() => router.push('/(tabs)/profile/settings' as any)}
               hitSlop={10}
+              style={styles.settingsBtn}
             >
               <Settings size={20} color="rgba(232,220,200,0.6)" />
-            </Pressable>
+            </NeuButton>
           </View>
 
           <View style={styles.avatarArea}>
@@ -810,8 +915,7 @@ export default function ProfileScreen() {
             </View>
           ) : null}
 
-          <Pressable
-            style={styles.rankPill}
+          <NeuButton
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               const next = !showRankProgress;
@@ -824,6 +928,7 @@ export default function ProfileScreen() {
               }).start();
             }}
             testID="rank-pill-toggle"
+            style={styles.rankPill}
           >
             <RankIcon icon={rank.icon} size={14} color="#BFA35D" />
             <Text style={styles.rankPillText}>{rank.name}</Text>
@@ -836,7 +941,7 @@ export default function ProfileScreen() {
                 </Animated.View>
               </View>
             )}
-          </Pressable>
+          </NeuButton>
 
           {nextRank && (
             <Animated.View
@@ -925,26 +1030,30 @@ export default function ProfileScreen() {
           )}
 
           {isFlagActive ? (
-            <Pressable
-              style={styles.flagActiveStrip}
+            <NeuButton
               onPress={handleFlagBannerPress}
               testID="flag-active-banner"
+              style={styles.flagActiveStrip}
             >
-              <WavingFlag width={18} height={12} borderRadius={2} />
-              <Text style={styles.flagActiveStripText}>
-                Heute aktiv mit <Text style={styles.flagCountHighlight}>{flagCount > 0 ? flagCount.toLocaleString('de-DE') : '0'}</Text> Patrioten
-              </Text>
-              <ChevronRight size={14} color="rgba(191,163,93,0.5)" />
-            </Pressable>
+              <View style={styles.flagActiveStripInner}>
+                <WavingFlag width={18} height={12} borderRadius={2} />
+                <Text style={styles.flagActiveStripText}>
+                  Heute aktiv mit <Text style={styles.flagCountHighlight}>{flagCount > 0 ? flagCount.toLocaleString('de-DE') : '0'}</Text> Patrioten
+                </Text>
+                <ChevronRight size={14} color="rgba(191,163,93,0.5)" />
+              </View>
+            </NeuButton>
           ) : (
-            <Pressable
-              style={styles.flagBtnBanner}
+            <NeuButton
               onPress={handleHoistFlag}
               testID="hoist-flag-btn"
+              style={styles.flagBtnBanner}
             >
-              <Flag size={16} color="#E8DCC8" />
-              <Text style={styles.flagBtnBannerText}>Heute Flagge zeigen</Text>
-            </Pressable>
+              <View style={styles.flagBtnBannerInner}>
+                <Flag size={16} color="#E8DCC8" />
+                <Text style={styles.flagBtnBannerText}>Heute Flagge zeigen</Text>
+              </View>
+            </NeuButton>
           )}
         </LinearGradient>
       </Animated.View>
@@ -954,7 +1063,7 @@ export default function ProfileScreen() {
         <NowPlayingWidget track={currentTrack!} isOwnProfile />
       ) : null}
 
-      <View style={styles.statsBar}>
+      <NeuCard style={styles.statsBar} raised intensity={0.8}>
         {[
           { label: 'Beiträge', value: ownPostCount, icon: FileText, onPress: () => handleTabChange('posts') },
           { label: 'Freunde', value: friends.length, icon: Users, onPress: () => router.push('/(tabs)/profile/friends' as any) },
@@ -981,16 +1090,16 @@ export default function ProfileScreen() {
             {idx < 2 && <View style={styles.statDivider} />}
           </Animated.View>
         ))}
-      </View>
+      </NeuCard>
 
-      <Pressable
-        style={styles.ordenPreview}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          router.push('/(tabs)/profile/ordenshalle' as any);
-        }}
-        testID="profile-orden-preview"
-      >
+      <NeuCard style={styles.ordenPreview} raised intensity={0.7}>
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/(tabs)/profile/ordenshalle' as any);
+          }}
+          testID="profile-orden-preview"
+        >
         <View style={styles.ordenPreviewHeader}>
           <View style={styles.ordenPreviewLeft}>
             <View style={styles.ordenPreviewIcon}>
@@ -1020,9 +1129,10 @@ export default function ProfileScreen() {
             </View>
           )}
         </ScrollView>
-      </Pressable>
+        </Pressable>
+      </NeuCard>
 
-      <View style={styles.tabBar}>
+      <NeuCard style={styles.tabBar} raised={false} intensity={0.6}>
         <Pressable
           style={styles.tabBtn}
           onPress={() => handleTabChange('posts')}
@@ -1065,7 +1175,7 @@ export default function ProfileScreen() {
             { width: TAB_WIDTH, transform: [{ translateX: tabIndicatorTranslateX }] },
           ]}
         />
-      </View>
+      </NeuCard>
 
       {activeTab === 'saved' && (
         <View style={styles.savedVisibilityBar}>
@@ -1209,11 +1319,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#1e1e20',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   avatarArea: {
     marginBottom: 16,
@@ -1298,12 +1403,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(191,163,93,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.12)',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 22,
   },
   rankPillChevron: {
     marginLeft: 2,
@@ -1396,16 +1498,15 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
   },
   flagActiveStrip: {
+    marginTop: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+  },
+  flagActiveStripInner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    marginTop: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    backgroundColor: 'rgba(191,163,93,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.1)',
   },
   flagActiveStripText: {
     color: 'rgba(191,163,93,0.6)',
@@ -1417,16 +1518,15 @@ const styles = StyleSheet.create({
     fontWeight: '800' as const,
   },
   flagBtnBanner: {
+    marginTop: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 18,
+  },
+  flagBtnBannerInner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    backgroundColor: 'rgba(191,163,93,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.15)',
   },
   flagBtnBannerText: {
     color: '#E8DCC8',
@@ -1438,11 +1538,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: 16,
     marginTop: -1,
-    backgroundColor: '#1e1e20',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.06)',
-    paddingVertical: 10,
+    borderRadius: 16,
+    paddingVertical: 12,
   },
   statItem: {
     flex: 1,
@@ -1455,13 +1552,22 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   statIconWrap: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(191,163,93,0.06)',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: NEU_BASE,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 1,
+    marginBottom: 2,
+    shadowColor: NEU_DARK,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 0.5,
+    borderColor: 'rgba(50,50,55,0.3)',
+    borderBottomColor: 'rgba(14,14,16,0.2)',
+    borderRightColor: 'rgba(14,14,16,0.2)',
   },
   statValue: {
     color: '#E8DCC8',
@@ -1476,10 +1582,14 @@ const styles = StyleSheet.create({
   statDivider: {
     position: 'absolute',
     right: 0,
-    top: '15%',
-    bottom: '15%',
+    top: '20%',
+    bottom: '20%',
     width: 1,
-    backgroundColor: 'rgba(191,163,93,0.08)',
+    backgroundColor: 'rgba(40,40,44,0.6)',
+    shadowColor: NEU_DARK,
+    shadowOffset: { width: 1, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 1,
   },
 
   faithGenderRow: {
@@ -1493,12 +1603,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    backgroundColor: 'rgba(191,163,93,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: NEU_SURFACE,
+    shadowColor: NEU_DARK,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 0.5,
+    borderColor: 'rgba(50,50,55,0.3)',
+    borderBottomColor: 'rgba(14,14,16,0.2)',
+    borderRightColor: 'rgba(14,14,16,0.2)',
   },
   faithGenderChipText: {
     color: 'rgba(191,163,93,0.6)',
@@ -1506,22 +1623,37 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
   },
   crossBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(191,163,93,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.2)',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: NEU_SURFACE,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: NEU_DARK,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 0.5,
+    borderColor: 'rgba(50,50,55,0.35)',
+    borderBottomColor: 'rgba(14,14,16,0.25)',
+    borderRightColor: 'rgba(14,14,16,0.25)',
   },
 
   rankProgressBarBg: {
     width: '100%',
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(191,163,93,0.08)',
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#161618',
     overflow: 'hidden',
+    shadowColor: NEU_DARK,
+    shadowOffset: { width: 1, height: 1 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
+    borderWidth: 0.5,
+    borderColor: 'rgba(14,14,16,0.4)',
+    borderTopColor: 'rgba(50,50,55,0.2)',
+    borderLeftColor: 'rgba(50,50,55,0.2)',
   },
   rankProgressBarFill: {
     height: '100%',
@@ -1565,12 +1697,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 14,
     marginBottom: 4,
-    backgroundColor: '#1e1e20',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.06)',
+    borderRadius: 16,
     position: 'relative',
     overflow: 'hidden',
+    backgroundColor: '#191919',
   },
   tabBtn: {
     flex: 1,
@@ -1605,9 +1735,14 @@ const styles = StyleSheet.create({
   gridTile: {
     width: TILE_WIDTH,
     height: TILE_HEIGHT,
-    borderRadius: 8,
+    borderRadius: 10,
     position: 'relative' as const,
     overflow: 'hidden',
+    shadowColor: NEU_DARK,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 3,
   },
   gridTileImage: {
     width: '100%',
@@ -1669,9 +1804,16 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 20,
-    backgroundColor: 'rgba(191,163,93,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.2)',
+    backgroundColor: NEU_SURFACE,
+    shadowColor: NEU_DARK,
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(50,50,55,0.4)',
+    borderBottomColor: 'rgba(14,14,16,0.3)',
+    borderRightColor: 'rgba(14,14,16,0.3)',
   },
   emptyTabBtnText: {
     color: '#BFA35D',
@@ -1719,10 +1861,7 @@ const styles = StyleSheet.create({
   ordenPreview: {
     marginHorizontal: 16,
     marginTop: 10,
-    backgroundColor: '#1e1e20',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.08)',
+    borderRadius: 16,
     padding: 12,
   },
   ordenPreviewHeader: {
@@ -1737,12 +1876,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   ordenPreviewIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: 'rgba(191,163,93,0.08)',
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: NEU_BASE,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: NEU_DARK,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 0.5,
+    borderColor: 'rgba(50,50,55,0.3)',
+    borderBottomColor: 'rgba(14,14,16,0.2)',
+    borderRightColor: 'rgba(14,14,16,0.2)',
   },
   ordenPreviewTitle: {
     color: '#E8DCC8',
@@ -1766,11 +1914,18 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(191,163,93,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.1)',
+    backgroundColor: NEU_BASE,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: NEU_DARK,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 0.5,
+    borderColor: 'rgba(50,50,55,0.3)',
+    borderBottomColor: 'rgba(14,14,16,0.2)',
+    borderRightColor: 'rgba(14,14,16,0.2)',
   },
   ordenMoreText: {
     color: 'rgba(191,163,93,0.5)',
@@ -1795,16 +1950,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 14,
-    backgroundColor: 'rgba(191,163,93,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.1)',
+    backgroundColor: NEU_SURFACE,
+    shadowColor: NEU_DARK,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 0.5,
+    borderColor: 'rgba(50,50,55,0.3)',
+    borderBottomColor: 'rgba(14,14,16,0.2)',
+    borderRightColor: 'rgba(14,14,16,0.2)',
   },
   savedVisibilityBtnActive: {
     backgroundColor: '#BFA35D',
-    borderColor: '#BFA35D',
+    borderColor: 'rgba(191,163,93,0.6)',
+    shadowColor: 'rgba(191,163,93,0.3)',
+    shadowOpacity: 0.6,
   },
   savedVisibilityBtnText: {
     color: 'rgba(232,220,200,0.5)',
