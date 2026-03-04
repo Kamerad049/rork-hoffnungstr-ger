@@ -1091,26 +1091,26 @@ function GoScreen({ distance, onStart }: { distance: DistanceOption; onStart: ()
   );
 }
 
-function CheerBubble({ cheer }: { cheer: CheerMessage }) {
-  const slideAnim = useRef(new Animated.Value(60)).current;
+function FloatingCheerBubble({ cheer }: { cheer: CheerMessage }) {
+  const floatAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.5)).current;
+  const scaleAnim = useRef(new Animated.Value(0.3)).current;
+  const horizontalOffset = useRef(Math.random() * 60 - 30).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(slideAnim, { toValue: 0, friction: 5, tension: 120, useNativeDriver: true }),
-      Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 4, tension: 150, useNativeDriver: true }),
+      Animated.timing(floatAnim, { toValue: -120, duration: 2200, useNativeDriver: true }),
+      Animated.sequence([
+        Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.delay(1200),
+        Animated.timing(opacityAnim, { toValue: 0, duration: 800, useNativeDriver: true }),
+      ]),
+      Animated.sequence([
+        Animated.spring(scaleAnim, { toValue: 1, friction: 4, tension: 150, useNativeDriver: true }),
+        Animated.delay(1000),
+        Animated.timing(scaleAnim, { toValue: 0.5, duration: 600, useNativeDriver: true }),
+      ]),
     ]).start();
-
-    const fadeTimer = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(slideAnim, { toValue: -40, duration: 400, useNativeDriver: true }),
-        Animated.timing(opacityAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
-      ]).start();
-    }, CHEER_DISPLAY_DURATION_MS - 500);
-
-    return () => clearTimeout(fadeTimer);
   }, []);
 
   const cheerData = CHEER_TYPES.find(c => c.type === cheer.type);
@@ -1119,39 +1119,45 @@ function CheerBubble({ cheer }: { cheer: CheerMessage }) {
   return (
     <Animated.View
       style={[
-        cheerBubbleStyles.container,
+        cheerBubbleStyles.floatingContainer,
         {
           opacity: opacityAnim,
-          transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+          transform: [
+            { translateY: floatAnim },
+            { translateX: horizontalOffset },
+            { scale: scaleAnim },
+          ],
         },
       ]}
     >
-      <Text style={cheerBubbleStyles.emoji}>{emoji}</Text>
-      <Text style={cheerBubbleStyles.name} numberOfLines={1}>{cheer.fromName}</Text>
+      <Text style={cheerBubbleStyles.floatingEmoji}>{emoji}</Text>
+      <Text style={cheerBubbleStyles.floatingName} numberOfLines={1}>{cheer.fromName}</Text>
     </Animated.View>
   );
 }
 
 const cheerBubbleStyles = StyleSheet.create({
-  container: {
+  floatingContainer: {
+    position: 'absolute' as const,
+    bottom: 10,
+    alignSelf: 'center' as const,
     flexDirection: 'row' as const,
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: 'rgba(191,163,93,0.12)',
+    backgroundColor: 'rgba(191,163,93,0.18)',
     borderWidth: 1,
-    borderColor: 'rgba(191,163,93,0.2)',
-    alignSelf: 'flex-start' as const,
+    borderColor: 'rgba(191,163,93,0.3)',
   },
-  emoji: {
-    fontSize: 18,
+  floatingEmoji: {
+    fontSize: 20,
   },
-  name: {
+  floatingName: {
     fontSize: 11,
     fontWeight: '700' as const,
-    color: 'rgba(232,220,200,0.6)',
+    color: 'rgba(232,220,200,0.7)',
     maxWidth: 80,
   },
 });
@@ -1431,9 +1437,9 @@ function LiveRaceTrack({
       </View>
 
       {cheers.length > 0 && (
-        <View style={liveTrackStyles.cheersOverlay}>
+        <View style={liveTrackStyles.cheersFloat} pointerEvents="none">
           {cheers.slice(-3).map((c) => (
-            <CheerBubble key={c.id} cheer={c} />
+            <FloatingCheerBubble key={c.id} cheer={c} />
           ))}
         </View>
       )}
@@ -1448,7 +1454,8 @@ const liveTrackStyles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: 'rgba(191,163,93,0.08)',
-    overflow: 'hidden',
+    overflow: 'visible',
+    position: 'relative' as const,
   },
   header: {
     flexDirection: 'row' as const,
@@ -1567,9 +1574,13 @@ const liveTrackStyles = StyleSheet.create({
     fontWeight: '600' as const,
     color: 'rgba(191,163,93,0.2)',
   },
-  cheersOverlay: {
-    marginTop: 10,
-    gap: 4,
+  cheersFloat: {
+    position: 'absolute' as const,
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 30,
   },
 });
 
@@ -1631,6 +1642,7 @@ export default function LobbyScreen() {
   const finishTimesRef = useRef<Record<string, number>>({});
   const raceEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopwatchIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cheerTimeoutRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const heroAnim = useRef(new Animated.Value(0)).current;
@@ -1747,9 +1759,13 @@ export default function LobbyScreen() {
     }));
     setRacerPositions(initialPositions);
 
-    gpsIntervalRef.current = setInterval(() => {
+    stopwatchIntervalRef.current = setInterval(() => {
       const elapsed = (Date.now() - raceStartTime.current) / 1000;
       setRaceElapsed(elapsed);
+    }, 50);
+
+    gpsIntervalRef.current = setInterval(() => {
+      const elapsed = (Date.now() - raceStartTime.current) / 1000;
 
       setRacerPositions(prev => {
         const updated = prev.map((rp, idx) => {
@@ -1808,6 +1824,7 @@ export default function LobbyScreen() {
 
     return () => {
       if (gpsIntervalRef.current) clearInterval(gpsIntervalRef.current);
+      if (stopwatchIntervalRef.current) clearInterval(stopwatchIntervalRef.current);
     };
   }, [distance, players, allowSpectators]);
 
@@ -1836,6 +1853,7 @@ export default function LobbyScreen() {
     if (allFinished && phase === 'racing') {
       console.log('[LOBBY] All racers finished! Showing results...');
       if (gpsIntervalRef.current) clearInterval(gpsIntervalRef.current);
+      if (stopwatchIntervalRef.current) clearInterval(stopwatchIntervalRef.current);
 
       raceEndTimerRef.current = setTimeout(() => {
         const myFinishTime = finishTimesRef.current[userId];
@@ -1860,6 +1878,7 @@ export default function LobbyScreen() {
   useEffect(() => {
     return () => {
       if (gpsIntervalRef.current) clearInterval(gpsIntervalRef.current);
+      if (stopwatchIntervalRef.current) clearInterval(stopwatchIntervalRef.current);
       if (raceEndTimerRef.current) clearTimeout(raceEndTimerRef.current);
       cheerTimeoutRef.current.forEach(t => clearTimeout(t));
     };
