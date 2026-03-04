@@ -55,6 +55,7 @@ export default function FeedScreen() {
   const [adminDeletePost, setAdminDeletePost] = useState<FeedPost | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [feedMode, setFeedMode] = useState<'discover' | 'foryou'>('discover');
+  const [headerHidden, setHeaderHidden] = useState<boolean>(false);
   const tabIndicatorX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -352,7 +353,27 @@ export default function FeedScreen() {
         </Animated.View>
       </LinearGradient>
 
-      <View style={[styles.heroHeader, { paddingTop: insets.top + 12 }]}>
+      <Animated.View
+        style={[
+          styles.heroHeader,
+          { paddingTop: insets.top + 12 },
+          {
+            opacity: scrollY.interpolate({
+              inputRange: [0, 60, 140],
+              outputRange: [1, 0.6, 0],
+              extrapolate: 'clamp',
+            }),
+            transform: [{
+              translateY: scrollY.interpolate({
+                inputRange: [0, 140],
+                outputRange: [0, -20],
+                extrapolate: 'clamp',
+              }),
+            }],
+          },
+        ]}
+        pointerEvents={headerHidden ? 'none' : 'auto'}
+      >
         <View style={styles.heroLeft} />
 
         <View style={styles.feedToggleContainer}>
@@ -401,7 +422,7 @@ export default function FeedScreen() {
         >
           <Bell size={20} color="#BFA35D" />
         </Pressable>
-      </View>
+      </Animated.View>
 
       {!ready ? (
         <View style={styles.loadingPlaceholder}>
@@ -421,7 +442,14 @@ export default function FeedScreen() {
           ]}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true }
+            {
+              useNativeDriver: true,
+              listener: (event: any) => {
+                const y = event.nativeEvent.contentOffset.y;
+                if (y > 100 && !headerHidden) setHeaderHidden(true);
+                else if (y <= 100 && headerHidden) setHeaderHidden(false);
+              },
+            }
           )}
           scrollEventThrottle={16}
           initialNumToRender={3}
@@ -486,6 +514,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 8,
+    zIndex: 10,
   },
   heroLeft: {
     width: 42,
