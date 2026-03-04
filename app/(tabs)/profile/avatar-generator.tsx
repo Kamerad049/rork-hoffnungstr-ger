@@ -202,15 +202,17 @@ export default function AvatarGeneratorScreen() {
       console.log('[AVATAR] Uploading to Supabase Storage...');
       const fileName = `avatars/${userId}/ai_avatar_${Date.now()}.png`;
 
-      const binaryString = atob(generatedBase64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
+      const mimeType = 'image/png';
+      const dataUri = `data:${mimeType};base64,${generatedBase64}`;
+      console.log('[AVATAR] Converting data URI to blob, base64 length:', generatedBase64.length);
+
+      const response = await fetch(dataUri);
+      const blob = await response.blob();
+      console.log('[AVATAR] Blob created, size:', blob.size);
 
       const { data, error } = await supabase.storage
         .from('admin-uploads')
-        .upload(fileName, bytes.buffer, { contentType: 'image/png', upsert: true });
+        .upload(fileName, blob, { contentType: mimeType, upsert: true });
 
       if (error) {
         console.log('[AVATAR] Upload error:', error.message);
