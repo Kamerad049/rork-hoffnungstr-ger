@@ -188,12 +188,17 @@ export default function FeedScreen() {
         }),
       );
 
-      const action = await adminRemovePost(post, user?.id ?? 'admin', reason, details);
-      if (action) {
-        console.log('[FEED] Post removed by admin, action:', action.id);
-      } else {
-        console.log('[FEED] Admin remove failed, refreshing...');
+      try {
+        const action = await adminRemovePost(post, user?.id ?? 'admin', reason, details);
+        if (action) {
+          console.log('[FEED] Post removed by admin, action:', action.id);
+        } else {
+          console.log('[FEED] Admin remove returned null but post is locally removed');
+        }
+      } catch (e) {
+        console.log('[FEED] Admin remove error:', e);
       }
+
       await queryClient.invalidateQueries({ queryKey: queryKeys.posts(user?.id ?? '') });
     },
     [adminRemovePost, user?.id, queryClient]

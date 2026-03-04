@@ -1,8 +1,11 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import type { SocialUser, FeedPost, ModerationAction, ModerationAppeal, ModerationActionStatus, AppealStatus } from '@/constants/types';
+
+const STORAGE_KEY_REMOVED_POSTS = 'admin_removed_post_ids';
 
 export const HAUPTADMIN_ID = 'admin';
 
@@ -571,6 +574,23 @@ export const [ModerationProvider, useModeration] = createContextHook(() => {
   const [moderationActions, setModerationActions] = useState<ModerationAction[]>([]);
   const [moderationAppeals, setModerationAppeals] = useState<ModerationAppeal[]>([]);
   const [actionsLoaded, setActionsLoaded] = useState<boolean>(false);
+  const [removedPostIds, setRemovedPostIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY_REMOVED_POSTS).then((raw) => {
+      if (raw) {
+        const parsed: string[] = JSON.parse(raw);
+        setRemovedPostIds(new Set(parsed));
+        console.log('[MODERATION] Loaded', parsed.length, 'removed post IDs from storage');
+      }
+    }).catch((e) => console.log('[MODERATION] Error loading removed posts:', e));
+  }, []);
+
+  const persistRemovedPosts = useCallback((ids: Set<string>) => {
+    AsyncStorage.setItem(STORAGE_KEY_REMOVED_POSTS, JSON.stringify([...ids])).catch((e) =>
+      console.log('[MODERATION] Error persisting removed posts:', e),
+    );
+  }, []);
 
   const loadModerationActions = useCallback(async () => {
     try {
@@ -617,6 +637,23 @@ export const [ModerationProvider, useModeration] = createContextHook(() => {
     }
   }, []);
 
+  const addRemovedPostId = useCallback((postId: string) => {
+    setRemovedPostIds((prev) => {
+      const next = new Set([...prev, postId]);
+      persistRemovedPosts(next);
+      return next;
+    });
+  }, [persistRemovedPosts]);
+
+  const restoreRemovedPostId = useCallback((postId: string) => {
+    setRemovedPostIds((prev) => {
+      const next = new Set(prev);
+      next.delete(postId);
+      persistRemovedPosts(next);
+      return next;
+    });
+  }, [persistRemovedPosts]);
+
   const adminRemovePost = useCallback(async (
     post: FeedPost,
     moderatorId: string,
@@ -625,6 +662,10 @@ export const [ModerationProvider, useModeration] = createContextHook(() => {
   ): Promise<ModerationAction | null> => {
     try {
       console.log('[MODERATION] Admin removing post:', post.id, 'reason:', reason);
+
+      addRemovedPostId(post.id);
+      console.log('[MODERATION] Post added to local removed set:', post.id);
+
       const snapshot: FeedPost = { ...post };
       const { data, error } = await supabase
         .from('moderation_actions')
@@ -642,36 +683,52 @@ export const [ModerationProvider, useModeration] = createContextHook(() => {
         .single();
 
       if (error || !data) {
-        console.log('[MODERATION] Admin remove post error:', error?.message);
-        return null;
+        console.log('[MODERATION] Admin remove post DB insert error:', error?.message);
       }
 
-      const action = mapDbModerationAction(data);
-      setModerationActions((prev) => [action, ...prev]);
+      let action: ModerationAction | null = null;
+      if (data) {
+        action = mapDbModerationAction(data);
+        setModerationActions((prev) => [action!, ...prev]);
+      }
 
       const targetUserId = post.userId === 'me' ? moderatorId : post.userId;
 
       const { error: deleteError } = await supabase.from('posts').delete().eq('id', post.id);
       if (deleteError) {
         console.log('[MODERATION] Post delete from DB error:', deleteError.message);
+        let deleteError2: { message: string } | null = null;
+        try {
+          const rpcRes = await supabase.rpc('admin_delete_post', { post_id_param: post.id });
+          deleteError2 = rpcRes.error;
+        } catch {
+          deleteError2 = { message: 'rpc not available' };
+        }
+        if (deleteError2) {
+          console.log('[MODERATION] RPC delete also failed:', deleteError2.message);
+        }
       } else {
         console.log('[MODERATION] Post deleted from DB:', post.id);
       }
 
-      await supabase.from('inbox_notifications').insert({
-        user_id: targetUserId,
-        title: 'Beitrag entfernt',
-        message: `Dein Beitrag wurde von einem Moderator entfernt. Grund: ${reason}${details ? ' – ' + details : ''}. Du kannst Widerspruch einlegen, wenn du die Entscheidung für ungerechtfertigt hältst.`,
-        sent_at: new Date().toISOString(),
-      });
+      try {
+        await supabase.from('inbox_notifications').insert({
+          user_id: targetUserId,
+          title: 'Beitrag entfernt',
+          message: `Dein Beitrag wurde von einem Moderator entfernt. Grund: ${reason}${details ? ' – ' + details : ''}. Du kannst Widerspruch einlegen, wenn du die Entscheidung für ungerechtfertigt hältst.`,
+          sent_at: new Date().toISOString(),
+        });
+      } catch (notifErr) {
+        console.log('[MODERATION] Notification insert error:', notifErr);
+      }
 
-      console.log('[MODERATION] Post removed and notification sent, action id:', action.id);
+      console.log('[MODERATION] Post removed, action id:', action?.id ?? 'local-only');
       return action;
     } catch (e) {
       console.log('[MODERATION] Admin remove post exception:', e);
       return null;
     }
-  }, []);
+  }, [addRemovedPostId]);
 
   const submitAppeal = useCallback(async (
     actionId: string,
@@ -866,9 +923,10 @@ export const [ModerationProvider, useModeration] = createContextHook(() => {
 
   const isPostModerated = useCallback(
     (postId: string): boolean => {
+      if (removedPostIds.has(postId)) return true;
       return moderationActions.some((a) => a.postId === postId && a.status === 'active');
     },
-    [moderationActions],
+    [moderationActions, removedPostIds],
   );
 
   return {
@@ -919,5 +977,8 @@ export const [ModerationProvider, useModeration] = createContextHook(() => {
     activeModActions,
     isPostModerated,
     actionsLoaded,
+    removedPostIds,
+    addRemovedPostId,
+    restoreRemovedPostId,
   };
 });
