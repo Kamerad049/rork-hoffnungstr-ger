@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { WifiOff } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOnlineManager } from '@/hooks/useNetworkStatus';
 
 function OfflineBannerInner() {
   const isOnline = useOnlineManager();
+  const insets = useSafeAreaInsets();
   const [wasOffline, setWasOffline] = useState<boolean>(false);
   const slideAnim = useRef(new Animated.Value(-60)).current;
   const reconnectAnim = useRef(new Animated.Value(0)).current;
@@ -51,6 +53,7 @@ function OfflineBannerInner() {
         styles.container,
         {
           backgroundColor: bgColor,
+          paddingTop: insets.top + 8,
           transform: [{ translateY: slideAnim }],
         },
       ]}
@@ -76,7 +79,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 9999,
-    paddingTop: 50,
     paddingBottom: 8,
     paddingHorizontal: 16,
     alignItems: 'center',

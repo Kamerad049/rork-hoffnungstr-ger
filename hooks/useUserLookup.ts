@@ -2,27 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { SocialUser } from '@/constants/types';
-
-function mapDbUser(u: any): SocialUser {
-  return {
-    id: u.id,
-    username: u.username ?? '',
-    displayName: u.display_name ?? '',
-    bio: u.bio ?? '',
-    avatarUrl: u.avatar_url ?? null,
-    rank: u.rank ?? 'Neuling',
-    rankIcon: u.rank_icon ?? 'Eye',
-    ep: u.xp ?? 0,
-    stampCount: u.stamp_count ?? 0,
-    postCount: u.post_count ?? 0,
-    friendCount: u.friend_count ?? 0,
-    flagHoistedAt: u.flag_hoisted_at ?? null,
-    values: [],
-    birthplace: u.birthplace ?? '',
-    residence: u.residence ?? '',
-    bundesland: u.bundesland ?? '',
-  };
-}
+import { mapDbUser } from '@/lib/mapDb';
 
 export { mapDbUser };
 

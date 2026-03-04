@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/providers/AuthProvider';
@@ -29,7 +29,6 @@ export const [SpotifyProvider, useSpotify] = createContextHook(() => {
   const [settings, setSettings] = useState<SpotifySettings>({ ...DEFAULT_SETTINGS });
   const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
-  const trackRotationRef = useRef<number>(0);
 
   useEffect(() => {
     const load = async () => {

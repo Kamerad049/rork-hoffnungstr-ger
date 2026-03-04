@@ -41,7 +41,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [stayLoggedIn, setStayLoggedIn] = useState<boolean>(true);
   const initDone = useRef<boolean>(false);
-  const retryCount = useRef<number>(0);
+  const initComplete = useRef<boolean>(false);
   const userRef = useRef<AuthUser | null>(null);
 
   useEffect(() => {
@@ -103,6 +103,52 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     if (initDone.current) return;
     initDone.current = true;
 
+    let subscription: { unsubscribe: () => void } | null = null;
+    try {
+      const result = supabase.auth.onAuthStateChange(async (event: any, newSession: any) => {
+        console.log('[AUTH] Auth state changed:', event, 'session:', !!newSession, 'initComplete:', initComplete.current);
+
+        if (event === 'SIGNED_OUT') {
+          console.log('[AUTH] User signed out');
+          setUser(null);
+          userRef.current = null;
+          setSession(null);
+          return;
+        }
+
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('[AUTH] Token refreshed successfully');
+          setSession(newSession);
+          return;
+        }
+
+        if (!initComplete.current) {
+          console.log('[AUTH] Init still running, skipping auth state change handler');
+          return;
+        }
+
+        if (newSession?.user) {
+          setSession(newSession);
+          if (!userRef.current) {
+            console.log('[AUTH] No user in ref, fetching profile after auth state change');
+            const profile = await fetchProfile(newSession.user);
+            if (profile) {
+              setUser(profile);
+              userRef.current = profile;
+            }
+          }
+        } else if (!newSession) {
+          console.log('[AUTH] Session lost (null session in state change)');
+          setUser(null);
+          userRef.current = null;
+          setSession(null);
+        }
+      });
+      subscription = result?.data?.subscription ?? null;
+    } catch (e: any) {
+      console.log('[AUTH] onAuthStateChange setup error:', e?.message ?? e);
+    }
+
     const initAuth = async () => {
       try {
         console.log('[AUTH] Initializing auth...');
@@ -132,7 +178,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         if (profile) {
           setUser(profile);
           userRef.current = profile;
-          retryCount.current = 0;
         } else {
           console.log('[AUTH] Profile fetch failed on init, retrying once...');
           await new Promise((r) => setTimeout(r, 1500));
@@ -140,7 +185,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           if (retryProfile) {
             setUser(retryProfile);
             userRef.current = retryProfile;
-            retryCount.current = 0;
           } else {
             console.log('[AUTH] Profile fetch failed after retry - session exists but no profile');
             setUser(null);
@@ -153,54 +197,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         setUser(null);
       } finally {
         markTime('auth_init_complete');
+        initComplete.current = true;
         setIsLoading(false);
       }
     };
 
     initAuth();
-
-    let subscription: { unsubscribe: () => void } | null = null;
-    try {
-      const result = supabase.auth.onAuthStateChange(async (event: any, newSession: any) => {
-        console.log('[AUTH] Auth state changed:', event, 'session:', !!newSession);
-
-        if (event === 'SIGNED_OUT') {
-          console.log('[AUTH] User signed out');
-          setUser(null);
-          setSession(null);
-          return;
-        }
-
-        if (event === 'TOKEN_REFRESHED') {
-          console.log('[AUTH] Token refreshed successfully');
-          setSession(newSession);
-          if (userRef.current) {
-            console.log('[AUTH] Token refreshed, user already set — skipping profile fetch');
-          }
-          return;
-        }
-
-        if (newSession?.user) {
-          setSession(newSession);
-          if (!userRef.current) {
-            console.log('[AUTH] No user in ref, fetching profile after auth state change');
-            const profile = await fetchProfile(newSession.user);
-            if (profile) {
-              setUser(profile);
-              userRef.current = profile;
-            }
-          }
-        } else if (!newSession) {
-          console.log('[AUTH] Session lost (null session in state change)');
-          setUser(null);
-          userRef.current = null;
-          setSession(null);
-        }
-      });
-      subscription = result?.data?.subscription ?? null;
-    } catch (e: any) {
-      console.log('[AUTH] onAuthStateChange setup error:', e?.message ?? e);
-    }
 
     return () => {
       subscription?.unsubscribe();
@@ -234,7 +236,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       if (profile) {
         setUser(profile);
         userRef.current = profile;
-        retryCount.current = 0;
         return profile;
       }
       throw new Error('Profil nicht gefunden. Bitte kontaktiere den Support.');

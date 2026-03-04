@@ -16,22 +16,49 @@ export const [ReelsProvider, useReels] = createContextHook(() => {
 
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
     const load = async () => {
       try {
         console.log('[REELS] Loading reel data for user:', userId);
-        const [savedRes, likedRcRes] = await Promise.all([
+        const [savedRes, likedRcRes, reelsRes] = await Promise.all([
           supabase.from('reel_bookmarks').select('reel_id').eq('user_id', userId),
           supabase.from('reel_comment_likes').select('reel_comment_id').eq('user_id', userId),
+          supabase.from('reels').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         ]);
+        if (cancelled) return;
         setSavedReels((savedRes.data ?? []).map((r: any) => r.reel_id));
         setLikedReelComments((likedRcRes.data ?? []).map((l: any) => l.reel_comment_id));
-        console.log('[REELS] Loaded bookmarks:', (savedRes.data ?? []).length);
+        const loadedReels: Reel[] = (reelsRes.data ?? []).map((r: any) => ({
+          id: r.id,
+          userId: r.user_id === userId ? 'me' : r.user_id,
+          mediaType: r.media_type ?? 'video',
+          caption: r.caption ?? '',
+          videoUrl: r.video_url ?? '',
+          thumbnailUrl: r.thumbnail_url ?? '',
+          imageUrl: r.image_url ?? undefined,
+          reactionCounts: r.reaction_counts ?? { respekt: 0, anerkennung: 0, zuspruch: 0, verbundenheit: 0 },
+          totalReactions: r.total_reactions ?? 0,
+          commentCount: r.comment_count ?? 0,
+          shareCount: r.share_count ?? 0,
+          bookmarkCount: r.bookmark_count ?? 0,
+          createdAt: r.created_at,
+          location: r.location ?? undefined,
+          tags: r.tags ?? undefined,
+          duration: r.duration ?? undefined,
+          isUserUpload: true,
+          aspectRatio: r.aspect_ratio ?? undefined,
+          taggedUsers: r.tagged_users ?? undefined,
+          isArchived: r.is_archived ?? false,
+        }));
+        setUserReels(loadedReels);
+        console.log('[REELS] Loaded', loadedReels.length, 'reels, bookmarks:', (savedRes.data ?? []).length);
       } catch (e) {
         console.log('[REELS] Load error:', e);
       }
     };
     load();
-  }, [user]);
+    return () => { cancelled = true; };
+  }, [user, userId]);
 
   const toggleSaveReel = useCallback(
     async (reelId: string) => {
@@ -156,20 +183,35 @@ export const [ReelsProvider, useReels] = createContextHook(() => {
     [reelReactions],
   );
 
-  const archiveReel = useCallback((reelId: string) => {
+  const archiveReel = useCallback(async (reelId: string) => {
     setUserReels((prev) => prev.map((r) => (r.id === reelId ? { ...r, isArchived: true } : r)));
-    console.log('[REELS] Reel archived:', reelId);
+    try {
+      await supabase.from('reels').update({ is_archived: true }).eq('id', reelId);
+      console.log('[REELS] Reel archived:', reelId);
+    } catch (e) {
+      console.log('[REELS] Archive reel DB error:', e);
+    }
   }, []);
 
-  const unarchiveReel = useCallback((reelId: string) => {
+  const unarchiveReel = useCallback(async (reelId: string) => {
     setUserReels((prev) => prev.map((r) => (r.id === reelId ? { ...r, isArchived: false } : r)));
-    console.log('[REELS] Reel unarchived:', reelId);
+    try {
+      await supabase.from('reels').update({ is_archived: false }).eq('id', reelId);
+      console.log('[REELS] Reel unarchived:', reelId);
+    } catch (e) {
+      console.log('[REELS] Unarchive reel DB error:', e);
+    }
   }, []);
 
-  const deleteReel = useCallback((reelId: string) => {
+  const deleteReel = useCallback(async (reelId: string) => {
     setUserReels((prev) => prev.filter((r) => r.id !== reelId));
-    console.log('[REELS] Reel deleted:', reelId);
-  }, []);
+    try {
+      await supabase.from('reels').delete().eq('id', reelId).eq('user_id', userId);
+      console.log('[REELS] Reel deleted:', reelId);
+    } catch (e) {
+      console.log('[REELS] Delete reel DB error:', e);
+    }
+  }, [userId]);
 
   const getOwnReels = useCallback(
     (): Reel[] => userReels.filter((r) => r.userId === 'me' && !r.isArchived),
@@ -201,11 +243,38 @@ export const [ReelsProvider, useReels] = createContextHook(() => {
       if (!userId) return null;
       try {
         console.log('[REELS] Creating reel:', params.mediaType);
+        const caption = params.caption + (params.tags?.length ? `\n\n${params.tags.map(t => `#${t.trim()}`).join(' ')}` : '');
+        const insertData: Record<string, unknown> = {
+          user_id: userId,
+          media_type: params.mediaType,
+          caption,
+          video_url: params.mediaType === 'video' ? params.mediaUri : '',
+          thumbnail_url: params.thumbnailUri || params.mediaUri,
+          image_url: params.mediaType === 'photo' ? params.mediaUri : null,
+          location: params.location ?? null,
+          tags: params.tags ?? null,
+          duration: params.duration ?? null,
+          aspect_ratio: params.aspectRatio ?? null,
+          tagged_users: params.taggedUsers ?? null,
+          is_archived: false,
+        };
+        const { data: dbData, error: dbError } = await supabase
+          .from('reels')
+          .insert(insertData)
+          .select('id, created_at')
+          .single();
+
+        const reelId = dbData?.id ?? `reel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const createdAt = dbData?.created_at ?? new Date().toISOString();
+        if (dbError) {
+          console.log('[REELS] DB insert error (continuing locally):', dbError.message);
+        }
+
         const newReel: Reel = {
-          id: `reel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          id: reelId,
           userId: 'me',
           mediaType: params.mediaType,
-          caption: params.caption + (params.tags?.length ? `\n\n${params.tags.map(t => `#${t.trim()}`).join(' ')}` : ''),
+          caption,
           videoUrl: params.mediaType === 'video' ? params.mediaUri : '',
           thumbnailUrl: params.thumbnailUri || params.mediaUri,
           imageUrl: params.mediaType === 'photo' ? params.mediaUri : undefined,
@@ -214,7 +283,7 @@ export const [ReelsProvider, useReels] = createContextHook(() => {
           commentCount: 0,
           shareCount: 0,
           bookmarkCount: 0,
-          createdAt: new Date().toISOString(),
+          createdAt,
           location: params.location,
           tags: params.tags,
           duration: params.duration,

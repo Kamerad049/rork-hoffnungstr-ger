@@ -3,50 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { queryKeys } from '@/constants/queryKeys';
 import type { NewsArticle, Place, Restaurant } from '@/constants/types';
-
-function mapDbPlace(p: any): Place {
-  return {
-    id: p.id,
-    title: p.title,
-    description: p.description ?? '',
-    city: p.city,
-    bundesland: p.bundesland,
-    images: p.images ?? [],
-    category: p.category,
-    latitude: p.latitude ?? 0,
-    longitude: p.longitude ?? 0,
-    rating: p.rating ?? 0,
-    reviewCount: p.review_count ?? 0,
-  };
-}
-
-function mapDbRestaurant(r: any): Restaurant {
-  return {
-    id: r.id,
-    name: r.name,
-    description: r.description ?? '',
-    city: r.city,
-    bundesland: r.bundesland,
-    images: r.images ?? [],
-    cuisine: r.cuisine ?? [],
-    priceRange: r.price_range ?? 1,
-    latitude: r.latitude ?? 0,
-    longitude: r.longitude ?? 0,
-    rating: r.rating ?? 0,
-    reviewCount: r.review_count ?? 0,
-  };
-}
-
-function mapDbNews(n: any): NewsArticle {
-  return {
-    id: n.id,
-    title: n.title,
-    text: n.text,
-    image: n.image ?? '',
-    author: n.author ?? 'Heldentum Redaktion',
-    publishDate: n.publish_date ?? n.created_at,
-  };
-}
+import { mapDbPlace, mapDbRestaurant, mapDbNews } from '@/lib/mapDb';
 
 export function useContent() {
   const newsQuery = useQuery({

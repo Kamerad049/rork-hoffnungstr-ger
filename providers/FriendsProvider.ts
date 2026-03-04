@@ -5,29 +5,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { setUserCache, addToUserCache } from '@/lib/userCache';
 import type { SocialUser } from '@/constants/types';
 import { useQuery } from '@tanstack/react-query';
-
-function mapDbUser(u: any): SocialUser {
-  return {
-    id: u.id,
-    username: u.username ?? '',
-    displayName: u.display_name ?? '',
-    bio: u.bio ?? '',
-    avatarUrl: u.avatar_url ?? null,
-    rank: u.rank ?? 'Neuling',
-    rankIcon: u.rank_icon ?? 'Eye',
-    ep: u.xp ?? 0,
-    stampCount: u.stamp_count ?? 0,
-    postCount: u.post_count ?? 0,
-    friendCount: u.friend_count ?? 0,
-    flagHoistedAt: u.flag_hoisted_at ?? null,
-    values: [],
-    birthplace: u.birthplace ?? '',
-    birthplacePlz: u.birthplace_plz ?? '',
-    residence: u.residence ?? '',
-    residencePlz: u.residence_plz ?? '',
-    bundesland: u.bundesland ?? '',
-  };
-}
+import { mapDbUser } from '@/lib/mapDb';
 
 export { mapDbUser };
 
@@ -49,6 +27,7 @@ export const [FriendsProvider, useFriends] = createContextHook(() => {
       setIsLoading(false);
       return;
     }
+    let cancelled = false;
     const load = async () => {
       try {
         console.log('[FRIENDS] Loading friends data for:', userId);
@@ -58,6 +37,8 @@ export const [FriendsProvider, useFriends] = createContextHook(() => {
           supabase.from('friend_requests').select('from_user_id').eq('to_user_id', userId).eq('status', 'pending'),
           supabase.from('blocked_users').select('blocked_id, created_at').eq('blocker_id', userId),
         ]);
+
+        if (cancelled) return;
 
         const computedFriendIds = (friendsRes.data ?? []).map((f: any) =>
           f.user_id === userId ? f.friend_id : f.user_id,
@@ -89,6 +70,8 @@ export const [FriendsProvider, useFriends] = createContextHook(() => {
           relevantUsersData = batchResults.flatMap((r: any) => r.data ?? []);
         }
 
+        if (cancelled) return;
+
         const dbUsers = relevantUsersData.map(mapDbUser);
         setAllUsersState(dbUsers);
         setUserCache(dbUsers);
@@ -96,16 +79,21 @@ export const [FriendsProvider, useFriends] = createContextHook(() => {
       } catch (e) {
         console.log('[FRIENDS] Load error:', e);
       }
-      setIsLoading(false);
+      if (!cancelled) setIsLoading(false);
     };
     load();
-  }, [user]);
+    return () => { cancelled = true; };
+  }, [user, userId]);
 
   const sendFriendRequest = useCallback(
     async (targetUserId: string) => {
       if (!userId || friends.includes(targetUserId) || friendRequestsSent.includes(targetUserId)) return;
       setFriendRequestsSent((prev) => [...prev, targetUserId]);
-      await supabase.from('friend_requests').insert({ from_user_id: userId, to_user_id: targetUserId });
+      const { error } = await supabase.from('friend_requests').insert({ from_user_id: userId, to_user_id: targetUserId });
+      if (error) {
+        console.log('[FRIENDS] Send friend request error, rolling back:', error.message);
+        setFriendRequestsSent((prev) => prev.filter((id) => id !== targetUserId));
+      }
     },
     [userId, friends, friendRequestsSent],
   );
@@ -122,8 +110,17 @@ export const [FriendsProvider, useFriends] = createContextHook(() => {
     async (fromUserId: string) => {
       setFriends((prev) => [...prev, fromUserId]);
       setFriendRequestsReceived((prev) => prev.filter((id) => id !== fromUserId));
-      await supabase.from('friend_requests').update({ status: 'accepted' }).eq('from_user_id', fromUserId).eq('to_user_id', userId);
-      await supabase.from('friendships').insert({ user_id: userId, friend_id: fromUserId });
+      const { error: reqError } = await supabase.from('friend_requests').update({ status: 'accepted' }).eq('from_user_id', fromUserId).eq('to_user_id', userId);
+      if (reqError) {
+        console.log('[FRIENDS] Accept request error, rolling back:', reqError.message);
+        setFriends((prev) => prev.filter((id) => id !== fromUserId));
+        setFriendRequestsReceived((prev) => [...prev, fromUserId]);
+        return;
+      }
+      const { error: friendError } = await supabase.from('friendships').insert({ user_id: userId, friend_id: fromUserId });
+      if (friendError) {
+        console.log('[FRIENDS] Create friendship error:', friendError.message);
+      }
     },
     [userId],
   );
@@ -154,7 +151,17 @@ export const [FriendsProvider, useFriends] = createContextHook(() => {
       setFriendRequestsSent((prev) => prev.filter((id) => id !== targetId));
       setFriendRequestsReceived((prev) => prev.filter((id) => id !== targetId));
       setAcceptedMessageUsers((prev) => prev.filter((id) => id !== targetId));
-      await supabase.from('blocked_users').insert({ blocker_id: userId, blocked_id: targetId });
+      const { error } = await supabase.from('blocked_users').insert({ blocker_id: userId, blocked_id: targetId });
+      if (error) {
+        console.log('[FRIENDS] Block user DB error:', error.message);
+        setBlockedUsers((prev) => prev.filter((id) => id !== targetId));
+        setBlockedAt((prev) => {
+          const next = { ...prev };
+          delete next[targetId];
+          return next;
+        });
+        return;
+      }
       await supabase.from('friendships').delete().or(`and(user_id.eq.${userId},friend_id.eq.${targetId}),and(user_id.eq.${targetId},friend_id.eq.${userId})`);
     },
     [userId, blockedUsers],
@@ -186,12 +193,45 @@ export const [FriendsProvider, useFriends] = createContextHook(() => {
     return allUsersState.filter((u) => friendRequestsReceived.includes(u.id));
   }, [allUsersState, friendRequestsReceived]);
 
+  const [otherUserFriendsCache, setOtherUserFriendsCache] = useState<Record<string, SocialUser[]>>({});
+
+  const loadFriendsForUser = useCallback(
+    async (uid: string) => {
+      if (uid === 'me' || !uid) return;
+      if (otherUserFriendsCache[uid]) return;
+      try {
+        console.log('[FRIENDS] Loading friends for other user:', uid);
+        const { data } = await supabase
+          .from('friendships')
+          .select('user_id, friend_id')
+          .or(`user_id.eq.${uid},friend_id.eq.${uid}`);
+        const friendIds = (data ?? []).map((f: any) =>
+          f.user_id === uid ? f.friend_id : f.user_id,
+        );
+        if (friendIds.length === 0) {
+          setOtherUserFriendsCache((prev) => ({ ...prev, [uid]: [] }));
+          return;
+        }
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('*')
+          .in('id', friendIds.slice(0, 50));
+        const users = (usersData ?? []).map(mapDbUser);
+        setOtherUserFriendsCache((prev) => ({ ...prev, [uid]: users }));
+        console.log('[FRIENDS] Loaded', users.length, 'friends for user:', uid);
+      } catch (e) {
+        console.log('[FRIENDS] Load friends for user error:', e);
+      }
+    },
+    [otherUserFriendsCache],
+  );
+
   const getFriendsForUser = useCallback(
     (uid: string): SocialUser[] => {
       if (uid === 'me') return friendUsers;
-      return allUsersState.filter((u) => u.id !== uid).slice(0, 10);
+      return otherUserFriendsCache[uid] ?? [];
     },
-    [friendUsers, allUsersState],
+    [friendUsers, otherUserFriendsCache],
   );
 
   const leaderboardQuery = useQuery({
@@ -243,6 +283,7 @@ export const [FriendsProvider, useFriends] = createContextHook(() => {
     blockedUsers,
     blockedAt,
     getFriendsForUser,
+    loadFriendsForUser,
     leaderboard,
     allUsersState,
     addUserToCache,

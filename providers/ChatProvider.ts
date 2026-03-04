@@ -39,6 +39,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
     const loadInboxPreview = async () => {
       try {
         console.log('[CHAT] Loading inbox preview (latest per conversation) for user:', userId);
@@ -48,6 +49,8 @@ export const [ChatProvider, useChat] = createContextHook(() => {
           .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`)
           .order('created_at', { ascending: false })
           .limit(PAGE_SIZE * 3);
+
+        if (cancelled) return;
 
         const msgMap: Record<string, ChatMessage[]> = {};
         for (const m of (data ?? [])) {
@@ -62,6 +65,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
       }
     };
     loadInboxPreview();
+    return () => { cancelled = true; };
   }, [user, userId, mapRow]);
 
   useEffect(() => {
@@ -276,34 +280,60 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   const editMessage = useCallback(
     async (partnerId: string, messageId: string, newContent: string) => {
+      const prevMessages = messages[partnerId] ?? [];
+      const originalMsg = prevMessages.find((m) => m.id === messageId);
+      if (!originalMsg || originalMsg.fromUserId !== 'me' || originalMsg.read || originalMsg.recalled) return;
+
       setMessages((prev) => {
         const convo = prev[partnerId] ?? [];
-        const msg = convo.find((m) => m.id === messageId);
-        if (!msg || msg.fromUserId !== 'me' || msg.read || msg.recalled) return prev;
         return {
           ...prev,
           [partnerId]: convo.map((m) => (m.id === messageId ? { ...m, content: newContent, edited: true } : m)),
         };
       });
-      await supabase.from('chat_messages').update({ content: newContent, edited: true }).eq('id', messageId);
+
+      const { error } = await supabase.from('chat_messages').update({ content: newContent, edited: true }).eq('id', messageId);
+      if (error) {
+        console.log('[CHAT] Edit message DB error, rolling back:', error.message);
+        setMessages((prev) => {
+          const convo = prev[partnerId] ?? [];
+          return {
+            ...prev,
+            [partnerId]: convo.map((m) => (m.id === messageId ? originalMsg : m)),
+          };
+        });
+      }
     },
-    [],
+    [messages],
   );
 
   const recallMessage = useCallback(
     async (partnerId: string, messageId: string) => {
+      const prevMessages = messages[partnerId] ?? [];
+      const originalMsg = prevMessages.find((m) => m.id === messageId);
+      if (!originalMsg || originalMsg.fromUserId !== 'me' || originalMsg.read || originalMsg.recalled) return;
+
       setMessages((prev) => {
         const convo = prev[partnerId] ?? [];
-        const msg = convo.find((m) => m.id === messageId);
-        if (!msg || msg.fromUserId !== 'me' || msg.read || msg.recalled) return prev;
         return {
           ...prev,
           [partnerId]: convo.map((m) => (m.id === messageId ? { ...m, recalled: true, content: '' } : m)),
         };
       });
-      await supabase.from('chat_messages').update({ recalled: true, content: '' }).eq('id', messageId);
+
+      const { error } = await supabase.from('chat_messages').update({ recalled: true, content: '' }).eq('id', messageId);
+      if (error) {
+        console.log('[CHAT] Recall message DB error, rolling back:', error.message);
+        setMessages((prev) => {
+          const convo = prev[partnerId] ?? [];
+          return {
+            ...prev,
+            [partnerId]: convo.map((m) => (m.id === messageId ? originalMsg : m)),
+          };
+        });
+      }
     },
-    [],
+    [messages],
   );
 
   const deleteConversation = useCallback(
@@ -314,9 +344,16 @@ export const [ChatProvider, useChat] = createContextHook(() => {
         return next;
       });
       if (!userId) return;
-      await supabase.from('chat_messages').delete().or(
-        `and(from_user_id.eq.${userId},to_user_id.eq.${partnerId}),and(from_user_id.eq.${partnerId},to_user_id.eq.${userId})`,
-      );
+      try {
+        await supabase
+          .from('chat_messages')
+          .delete()
+          .eq('from_user_id', userId)
+          .eq('to_user_id', partnerId);
+        console.log('[CHAT] Deleted own messages in conversation with:', partnerId);
+      } catch (e) {
+        console.log('[CHAT] Delete conversation error:', e);
+      }
     },
     [userId],
   );

@@ -10,6 +10,7 @@ import type { FeedPost, PostComment } from '@/constants/types';
 
 const STORAGE_KEY_SAVED = 'posts_saved_ids';
 const STORAGE_KEY_ARCHIVED = 'posts_archived_ids';
+const STORAGE_KEY_DISABLED_COMMENTS = 'posts_disabled_comments_ids';
 
 function mapDbPost(p: any, userId: string): FeedPost {
   const location = p.location ?? undefined;
@@ -81,6 +82,16 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
   }, []);
   const [savedVisibility, setSavedVisibility] = useState<'public' | 'friends' | 'private'>('private');
   const [disabledCommentsIds, setDisabledCommentsIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY_DISABLED_COMMENTS).then((raw) => {
+      if (raw) {
+        const parsed: string[] = JSON.parse(raw);
+        setDisabledCommentsIds(new Set(parsed));
+        console.log('[POSTS] Loaded', parsed.length, 'disabled comment IDs from storage');
+      }
+    }).catch((e) => console.log('[POSTS] Error loading disabled comments:', e));
+  }, []);
 
   const postsQuery = useQuery({
     queryKey: queryKeys.posts(userId),
@@ -354,6 +365,12 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
     queryClient.invalidateQueries({ queryKey: queryKeys.posts(userId) });
   }, [userId, queryClient]);
 
+  const persistDisabledComments = useCallback((ids: Set<string>) => {
+    AsyncStorage.setItem(STORAGE_KEY_DISABLED_COMMENTS, JSON.stringify([...ids])).catch((e) =>
+      console.log('[POSTS] Error persisting disabled comments:', e),
+    );
+  }, []);
+
   const toggleCommentsDisabled = useCallback((postId: string) => {
     console.log('[POSTS] Toggling comments for post:', postId);
     setDisabledCommentsIds((prev) => {
@@ -363,9 +380,10 @@ export const [PostsProvider, usePosts] = createContextHook(() => {
       } else {
         next.add(postId);
       }
+      persistDisabledComments(next);
       return next;
     });
-  }, []);
+  }, [persistDisabledComments]);
 
   const savePost = useCallback((postId: string) => {
     console.log('[POSTS] Saving post:', postId);

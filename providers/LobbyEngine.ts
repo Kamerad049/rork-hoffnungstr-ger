@@ -49,9 +49,11 @@ export const [LobbyEngineProvider, useLobbyEngine] = createContextHook(() => {
   }, []);
 
   useEffect(() => {
+    const countdownInterval = countdownRef.current;
+    const botTimer = botTimerRef.current;
     return () => {
-      if (countdownRef.current) clearInterval(countdownRef.current);
-      if (botTimerRef.current) clearTimeout(botTimerRef.current);
+      if (countdownInterval) clearInterval(countdownInterval);
+      if (botTimer) clearTimeout(botTimer);
     };
   }, []);
 
@@ -121,20 +123,83 @@ export const [LobbyEngineProvider, useLobbyEngine] = createContextHook(() => {
     if (!userId) return false;
     console.log('[LOBBY] Joining room:', roomId);
 
-    const room = currentRoom;
+    let room = currentRoom;
+
     if (!room || room.id !== roomId) {
-      setError('Raum nicht gefunden');
-      return false;
-    }
+      try {
+        const { data: roomData, error: roomError } = await supabase
+          .from('game_rooms')
+          .select('*')
+          .eq('id', roomId)
+          .single();
 
-    if (members.length >= room.maxPlayers) {
-      setError('Raum ist voll');
-      return false;
-    }
+        if (roomError || !roomData) {
+          console.log('[LOBBY] Room not found in DB:', roomId, roomError?.message);
+          setError('Raum nicht gefunden');
+          return false;
+        }
 
-    if (members.some(m => m.userId === userId)) {
-      console.log('[LOBBY] Already in room');
-      return true;
+        if (roomData.status === 'cancelled' || roomData.status === 'finished') {
+          setError('Raum ist nicht mehr aktiv');
+          return false;
+        }
+
+        room = {
+          id: roomData.id,
+          gameType: roomData.game_type,
+          hostUserId: roomData.host_user_id,
+          maxPlayers: roomData.max_players,
+          isPrivate: roomData.is_private,
+          settings: roomData.settings_json ?? { ...DEFAULT_GAME_SETTINGS },
+          status: roomData.status,
+          inviteCode: roomData.invite_code,
+          createdAt: roomData.created_at,
+          expiresAt: roomData.expires_at,
+        };
+
+        const { data: memberData } = await supabase
+          .from('game_room_members')
+          .select('*')
+          .eq('room_id', roomId);
+
+        const existingMembers: LobbyMember[] = (memberData ?? []).map((m: any) => ({
+          userId: m.user_id,
+          displayName: m.display_name ?? 'Spieler',
+          avatarUrl: null,
+          isReady: m.is_ready ?? false,
+          isHost: m.is_host ?? false,
+          joinedAt: m.created_at ?? new Date().toISOString(),
+          lastSeen: new Date().toISOString(),
+        }));
+
+        setCurrentRoom(room);
+        setMembers(existingMembers);
+
+        if (existingMembers.some(m => m.userId === userId)) {
+          console.log('[LOBBY] Already in room');
+          setError(null);
+          return true;
+        }
+
+        if (existingMembers.length >= room.maxPlayers) {
+          setError('Raum ist voll');
+          return false;
+        }
+      } catch (e: any) {
+        console.log('[LOBBY] Join room DB lookup error:', e?.message);
+        setError('Fehler beim Beitreten');
+        return false;
+      }
+    } else {
+      if (members.some(m => m.userId === userId)) {
+        console.log('[LOBBY] Already in room');
+        return true;
+      }
+
+      if (members.length >= room.maxPlayers) {
+        setError('Raum ist voll');
+        return false;
+      }
     }
 
     const newMember: LobbyMember = {

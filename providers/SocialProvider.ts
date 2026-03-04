@@ -310,9 +310,8 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
   });
 
   const flagCount = useMemo((): number => {
-    const dbCount = flagCountQuery.data ?? 0;
-    return dbCount + (isFlagActive ? 1 : 0);
-  }, [isFlagActive, flagCountQuery.data]);
+    return flagCountQuery.data ?? 0;
+  }, [flagCountQuery.data]);
 
   const canViewContent = useCallback(
     (setting: PrivacyLevel, viewerUserId: string): boolean => {

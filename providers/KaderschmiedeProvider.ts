@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
+import { haversineDistanceM } from '@/lib/geo';
 import type {
   TrainingActivity,
   Trupp,
@@ -134,16 +135,7 @@ function haversineDistance(
   lat1: number, lon1: number,
   lat2: number, lon2: number,
 ): number {
-  const R = 6371000;
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return haversineDistanceM(lat1, lon1, lat2, lon2);
 }
 
 export const [KaderschmiedeProvider, useKaderschmiede] = createContextHook(() => {
@@ -317,7 +309,7 @@ export const [KaderschmiedeProvider, useKaderschmiede] = createContextHook(() =>
       setDataLoaded(true);
     };
     load();
-  }, [user, dataLoaded]);
+  }, [user, userId, dataLoaded]);
 
   const upcomingActivities = useMemo(() => {
     const nowMs = Date.now();

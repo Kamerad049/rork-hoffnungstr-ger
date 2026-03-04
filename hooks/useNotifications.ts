@@ -55,12 +55,16 @@ export function useNotifications() {
   const addNotification = useCallback(
     async (notification: Omit<InboxNotification, 'read' | 'readAt'>) => {
       if (!user) return;
-      const exists = notifications.some((n) => n.id === notification.id);
-      if (exists) return;
+      const current = queryClient.getQueryData<InboxNotification[]>(queryKeys.notifications(user.id)) ?? [];
+      if (current.some((n) => n.id === notification.id)) return;
       const item: InboxNotification = { ...notification, read: false, readAt: null };
       queryClient.setQueryData<InboxNotification[]>(
         queryKeys.notifications(user.id),
-        (old) => [item, ...(old ?? [])],
+        (old) => {
+          const existing = old ?? [];
+          if (existing.some((n) => n.id === notification.id)) return existing;
+          return [item, ...existing];
+        },
       );
       const { error } = await supabase.from('inbox_notifications').insert({
         id: notification.id,
@@ -75,7 +79,7 @@ export function useNotifications() {
         console.log('[NOTIFICATIONS] Insert error:', error.message);
       }
     },
-    [user, notifications, queryClient],
+    [user, queryClient],
   );
 
   const markAsRead = useCallback(
