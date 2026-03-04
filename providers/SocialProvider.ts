@@ -260,6 +260,13 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
     await supabase.from('users').update({ flag_hoisted_at: now }).eq('id', userId);
   }, [userId]);
 
+  const lowerFlag = useCallback(async () => {
+    setFlagHoistedAt(null);
+    if (!userId) return;
+    await supabase.from('users').update({ flag_hoisted_at: null }).eq('id', userId);
+    queryClient.invalidateQueries({ queryKey: ['active-flag-count'] });
+  }, [userId, queryClient]);
+
   const isFlagActive = useMemo((): boolean => {
     if (!flagHoistedAtState) return false;
     return Date.now() - new Date(flagHoistedAtState).getTime() < FLAG_EXPIRY_HOURS * 3600000;
@@ -311,6 +318,7 @@ export const [SocialProvider, useSocial] = createContextHook(() => {
     updatePrivacy,
     canViewContent,
     hoistFlag,
+    lowerFlag,
     isFlagActive,
     flagHoistedAt: flagHoistedAtState,
     isUserFlagActive,

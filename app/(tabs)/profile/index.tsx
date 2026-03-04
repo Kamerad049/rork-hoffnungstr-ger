@@ -226,7 +226,7 @@ export default function ProfileScreen() {
   const { showAlert } = useAlert();
   const { user, isLoggedIn, isLoading: authLoading, logout } = useAuth();
   const { stamps, rank, nextRank, progress } = useStampPass();
-  const { profile, hoistFlag, isFlagActive, flagCount } = useSocial();
+  const { profile, hoistFlag, lowerFlag, isFlagActive, flagCount, flagHoistedAt } = useSocial();
   const { friends, friendRequestUsers } = useFriends();
   const { conversations } = useChat();
   const { allPosts, archivedPosts, savedPosts, savedVisibility, setSavedVisibility, archivePost, unarchivePost, deletePost, editPost, toggleCommentsDisabled } = usePosts();
@@ -300,6 +300,53 @@ export default function ProfileScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     hoistFlag();
   }, [isFlagActive, hoistFlag]);
+
+  const getFlagDurationText = useCallback((): string => {
+    if (!flagHoistedAt) return '';
+    const diff = Date.now() - new Date(flagHoistedAt).getTime();
+    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    if (hours > 0) {
+      return `Seit ${hours} Std. ${minutes} Min. gehisst`;
+    }
+    if (minutes > 0) {
+      return `Seit ${minutes} Min. gehisst`;
+    }
+    return 'Gerade eben gehisst';
+  }, [flagHoistedAt]);
+
+  const handleFlagBannerPress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const durationText = getFlagDurationText();
+    showAlert(
+      'Deine Fahne',
+      `${durationText}\n\nDu bist heute aktiv mit ${flagCount > 0 ? flagCount.toLocaleString('de-DE') : '0'} Patrioten.`,
+      [
+        {
+          text: 'Fahne einholen',
+          style: 'destructive',
+          onPress: () => {
+            showAlert(
+              'Fahne einholen?',
+              'Möchtest du deine Fahne wirklich einholen? Du kannst sie jederzeit erneut hissen.',
+              [
+                { text: 'Abbrechen', style: 'cancel' },
+                {
+                  text: 'Einholen',
+                  style: 'destructive',
+                  onPress: () => {
+                    lowerFlag();
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                  },
+                },
+              ],
+            );
+          },
+        },
+        { text: 'Schließen', style: 'cancel' },
+      ],
+    );
+  }, [flagCount, getFlagDurationText, lowerFlag, showAlert]);
 
   const flagRotate = flagWaveAnim.interpolate({
     inputRange: [0, 1],
@@ -878,12 +925,17 @@ export default function ProfileScreen() {
           )}
 
           {isFlagActive ? (
-            <View style={styles.flagActiveStrip}>
+            <Pressable
+              style={styles.flagActiveStrip}
+              onPress={handleFlagBannerPress}
+              testID="flag-active-banner"
+            >
               <WavingFlag width={18} height={12} borderRadius={2} />
               <Text style={styles.flagActiveStripText}>
                 Heute aktiv mit <Text style={styles.flagCountHighlight}>{flagCount > 0 ? flagCount.toLocaleString('de-DE') : '0'}</Text> Patrioten
               </Text>
-            </View>
+              <ChevronRight size={14} color="rgba(191,163,93,0.5)" />
+            </Pressable>
           ) : (
             <Pressable
               style={styles.flagBtnBanner}
