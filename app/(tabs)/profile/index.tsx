@@ -657,7 +657,7 @@ export default function ProfileScreen() {
             style={styles.emptyTabBtn}
             onPress={() => router.push('/(tabs)/feed/create' as any)}
           >
-            <Text style={styles.emptyTabBtnText}>Reel erstellen</Text>
+            <Text style={styles.emptyTabBtnText}>Beitrag erstellen</Text>
           </Pressable>
         )}
       </View>
