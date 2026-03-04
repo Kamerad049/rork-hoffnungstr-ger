@@ -438,7 +438,7 @@ export default function FeedScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.listContent,
-            { paddingBottom: insets.bottom + 80 },
+            { paddingTop: insets.top + 56, paddingBottom: insets.bottom + 80 },
           ]}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -509,6 +509,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#BFA35D',
   },
   heroHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -577,7 +581,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   listContent: {
-    paddingTop: 0,
   },
   cardWrapper: {
     paddingHorizontal: CARD_HORIZONTAL_MARGIN,
