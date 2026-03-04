@@ -565,19 +565,16 @@ function OpponentHand({
   displayName,
   isCurrentTurn,
   isDrawTarget,
-  position,
   onDrawFrom,
 }: {
   playerState: { userId: string; handCount: number; isEliminated: boolean };
   displayName: string;
   isCurrentTurn: boolean;
   isDrawTarget: boolean;
-  position: 'left' | 'top' | 'right';
   onDrawFrom: (cardIndex: number) => void;
 }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (isDrawTarget) {
@@ -611,25 +608,21 @@ function OpponentHand({
 
   if (playerState.isEliminated) {
     return (
-      <View style={[opStyles.container, opStyles[position]]}>
-        <View style={opStyles.eliminatedWrap}>
-          <View style={opStyles.eliminatedCheck}>
-            <Text style={opStyles.eliminatedCheckText}>✓</Text>
-          </View>
-          <Text style={opStyles.eliminatedName} numberOfLines={1}>{displayName.split(' ')[0]}</Text>
-          <Text style={opStyles.eliminatedLabel}>RAUS</Text>
+      <View style={opStyles.eliminatedWrap}>
+        <View style={opStyles.eliminatedCheck}>
+          <Text style={opStyles.eliminatedCheckText}>✓</Text>
         </View>
+        <Text style={opStyles.eliminatedName} numberOfLines={1}>{displayName.split(' ')[0]}</Text>
+        <Text style={opStyles.eliminatedLabel}>RAUS</Text>
       </View>
     );
   }
 
-  const rotationForPosition = position === 'left' ? '90deg' : position === 'right' ? '-90deg' : '180deg';
-
   return (
-    <Animated.View style={[opStyles.container, opStyles[position], { transform: [{ scale: pulseAnim }] }]}>
+    <Animated.View style={[opStyles.opponentItem, { transform: [{ scale: pulseAnim }] }]}>
       <View
         style={[opStyles.handWrap, isDrawTarget && opStyles.handWrapTarget]}
-        testID={`opponent-${position}`}
+        testID={`opponent-hand`}
       >
         {isDrawTarget && (
           <Animated.View style={[opStyles.targetGlow, { opacity: glowAnim }]} />
@@ -645,16 +638,12 @@ function OpponentHand({
           </View>
         </View>
 
-        <Animated.View style={[
-          { transform: [{ rotate: rotationForPosition }, { scale: scaleAnim }] },
-        ]}>
-          <FannedCardBacks
-            count={playerState.handCount}
-            maxFan={7}
-            interactive={isDrawTarget}
-            onTapCard={isDrawTarget ? (cardIndex) => onDrawFrom(cardIndex) : undefined}
-          />
-        </Animated.View>
+        <FannedCardBacks
+          count={playerState.handCount}
+          maxFan={7}
+          interactive={isDrawTarget}
+          onTapCard={isDrawTarget ? (cardIndex) => onDrawFrom(cardIndex) : undefined}
+        />
 
         {isDrawTarget && (
           <View style={opStyles.drawHintWrap}>
@@ -668,23 +657,9 @@ function OpponentHand({
 }
 
 const opStyles = StyleSheet.create({
-  container: {
-    position: 'absolute' as const,
-    zIndex: 10,
-  },
-  left: {
-    left: 4,
-    top: '25%' as any,
-  },
-  top: {
-    top: 4,
-    alignSelf: 'center' as const,
-    left: '50%' as any,
-    marginLeft: -80,
-  },
-  right: {
-    right: 4,
-    top: '25%' as any,
+  opponentItem: {
+    flex: 1,
+    maxWidth: SCREEN_W / 2,
   },
   handWrap: {
     alignItems: 'center',
@@ -1407,7 +1382,7 @@ export default function ShadowCardsScreen() {
     return gameState.players.filter(p => p.userId !== userId);
   }, [gameState, userId]);
 
-  const positions: ('left' | 'top' | 'right')[] = ['left', 'top', 'right'];
+
 
   const handleDrawFromOpponent = useCallback((cardIndex: number) => {
     if (!isMyTurn) return;
@@ -1506,17 +1481,18 @@ export default function ShadowCardsScreen() {
       </LinearGradient>
 
       <View style={styles.gameArea}>
-        {opponents.map((opp, i) => (
-          <OpponentHand
-            key={opp.userId}
-            playerState={{ userId: opp.userId, handCount: opp.handCount, isEliminated: opp.isEliminated }}
-            displayName={memberNames[opp.userId] ?? 'Spieler'}
-            isCurrentTurn={gameState.currentTurnUserId === opp.userId}
-            isDrawTarget={isMyTurn && gameState.drawFromUserId === opp.userId}
-            position={positions[i % positions.length]}
-            onDrawFrom={handleDrawFromOpponent}
-          />
-        ))}
+        <View style={styles.opponentsRow}>
+          {opponents.map((opp) => (
+            <OpponentHand
+              key={opp.userId}
+              playerState={{ userId: opp.userId, handCount: opp.handCount, isEliminated: opp.isEliminated }}
+              displayName={memberNames[opp.userId] ?? 'Spieler'}
+              isCurrentTurn={gameState.currentTurnUserId === opp.userId}
+              isDrawTarget={isMyTurn && gameState.drawFromUserId === opp.userId}
+              onDrawFrom={handleDrawFromOpponent}
+            />
+          ))}
+        </View>
 
         <View style={styles.centerArea}>
           {removedPairsCount > 0 ? (
@@ -1678,6 +1654,14 @@ const styles = StyleSheet.create({
   gameArea: {
     flex: 1,
     position: 'relative' as const,
+  },
+  opponentsRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingHorizontal: 10,
+    paddingTop: 4,
   },
   centerArea: {
     flex: 1,
