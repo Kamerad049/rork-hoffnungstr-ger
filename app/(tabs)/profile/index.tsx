@@ -728,13 +728,6 @@ export default function ProfileScreen() {
           <View style={styles.headerTopRow}>
             <Pressable
               style={styles.settingsBtn}
-              onPress={() => router.push('/neumorphism-demo' as any)}
-              hitSlop={10}
-            >
-              <Sparkles size={20} color="rgba(191,163,93,0.7)" />
-            </Pressable>
-            <Pressable
-              style={styles.settingsBtn}
               onPress={() => router.push('/(tabs)/profile/settings' as any)}
               hitSlop={10}
             >

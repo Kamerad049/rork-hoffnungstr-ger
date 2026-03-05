@@ -190,13 +190,6 @@ function RootLayoutNav() {
             headerShown: false,
           }}
         />
-        <Stack.Screen
-          name="neumorphism-demo"
-          options={{
-            headerShown: false,
-            presentation: 'modal',
-          }}
-        />
         <Stack.Screen name="+not-found" />
       </Stack>
     </>
