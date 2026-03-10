@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Home, Award, Trophy, User, Dumbbell, MapPin, Newspaper, Gamepad2 } from 'lucide-react-native';
+import { Home, Award, Trophy, User, Dumbbell, MapPin, Newspaper } from 'lucide-react-native';
 import { Platform } from 'react-native';
 import { useTheme } from '@/providers/ThemeProvider';
 
@@ -70,8 +70,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="spiele"
           options={{
-            title: 'Spiele',
-            tabBarIcon: ({ color, size }) => <Gamepad2 size={size} color={color} />,
+            href: null,
           }}
         />
         <Tabs.Screen
