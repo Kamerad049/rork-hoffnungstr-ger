@@ -20,6 +20,7 @@ import { getUserById } from '@/lib/utils';
 import type { FeedPost, SocialUser } from '@/constants/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAlert } from '@/providers/AlertProvider';
+import { useLocationSearch } from '@/hooks/useLocationSearch';
 
 const GOLD = '#BFA35D';
 const MAX_LENGTH = 2000;
@@ -44,6 +45,7 @@ export default function EditPostModal({ visible, post, onClose }: EditPostModalP
   const [tagSearch, setTagSearch] = useState<string>('');
   const [saving, setSaving] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<EditTab>('text');
+  const locationSearchHook = useLocationSearch();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
 
@@ -165,22 +167,7 @@ export default function EditPostModal({ visible, post, onClose }: EditPostModalP
 
   const hasImage = post.mediaUrls.length > 0;
 
-  const LOCATION_SUGGESTIONS = [
-    'Berlin, Deutschland',
-    'München, Bayern',
-    'Hamburg, Deutschland',
-    'Dresden, Sachsen',
-    'Köln, NRW',
-    'Frankfurt, Hessen',
-    'Stuttgart, Baden-Württemberg',
-    'Düsseldorf, NRW',
-    'Leipzig, Sachsen',
-    'Nürnberg, Bayern',
-  ];
 
-  const filteredLocations = location.trim().length > 0
-    ? LOCATION_SUGGESTIONS.filter((l) => l.toLowerCase().includes(location.toLowerCase()))
-    : LOCATION_SUGGESTIONS;
 
   const TAB_CONFIG: { key: EditTab; label: string; icon: typeof MapPin }[] = [
     { key: 'text', label: 'Text', icon: Hash },
@@ -310,29 +297,51 @@ export default function EditPostModal({ visible, post, onClose }: EditPostModalP
                     style={styles.locationInput}
                     placeholder="Ort suchen oder eingeben..."
                     placeholderTextColor="rgba(142,142,147,0.4)"
-                    value={location}
-                    onChangeText={setLocation}
+                    value={locationSearchHook.query || location}
+                    onChangeText={(text) => {
+                      locationSearchHook.onChangeQuery(text);
+                      if (!text.trim()) setLocation('');
+                    }}
                     autoFocus
                     testID="edit-post-location"
                   />
-                  {location.length > 0 && (
-                    <Pressable onPress={() => setLocation('')} hitSlop={8}>
+                  {(locationSearchHook.query.length > 0 || location.length > 0) && (
+                    <Pressable onPress={() => { setLocation(''); locationSearchHook.onChangeQuery(''); }} hitSlop={8}>
                       <X size={16} color="rgba(191,163,93,0.6)" />
                     </Pressable>
                   )}
                 </View>
-                <ScrollView style={styles.suggestionList} showsVerticalScrollIndicator={false}>
-                  {filteredLocations.map((loc) => (
+                {locationSearchHook.isSearching && (
+                  <View style={styles.searchingRow}>
+                    <Text style={styles.searchingText}>Suche...</Text>
+                  </View>
+                )}
+                <ScrollView style={styles.suggestionList} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                  {!locationSearchHook.isSearching && locationSearchHook.results.length === 0 && locationSearchHook.query.trim().length >= 2 && (
                     <Pressable
-                      key={loc}
                       style={styles.suggestionRow}
                       onPress={() => {
-                        setLocation(loc);
+                        setLocation(locationSearchHook.query.trim());
+                        locationSearchHook.reset();
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }}
                     >
                       <MapPin size={13} color="rgba(191,163,93,0.5)" />
-                      <Text style={styles.suggestionText}>{loc}</Text>
+                      <Text style={styles.suggestionText}>"{locationSearchHook.query.trim()}" verwenden</Text>
+                    </Pressable>
+                  )}
+                  {locationSearchHook.results.map((loc) => (
+                    <Pressable
+                      key={loc.id}
+                      style={styles.suggestionRow}
+                      onPress={() => {
+                        setLocation(loc.name);
+                        locationSearchHook.reset();
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                    >
+                      <MapPin size={13} color="rgba(191,163,93,0.5)" />
+                      <Text style={styles.suggestionText} numberOfLines={2}>{loc.name}</Text>
                     </Pressable>
                   ))}
                 </ScrollView>
@@ -691,6 +700,15 @@ const styles = StyleSheet.create({
   suggestionText: {
     fontSize: 14,
     color: '#E8DCC8',
+    flex: 1,
+  },
+  searchingRow: {
+    paddingVertical: 10,
+    alignItems: 'center' as const,
+  },
+  searchingText: {
+    color: 'rgba(142,142,147,0.5)',
+    fontSize: 13,
   },
   taggedSection: {
     marginBottom: 8,

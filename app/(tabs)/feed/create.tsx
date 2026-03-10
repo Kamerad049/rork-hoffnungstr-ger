@@ -48,6 +48,7 @@ import { usePosts } from '@/providers/PostsProvider';
 import { useFriends } from '@/providers/FriendsProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import type { SocialUser } from '@/constants/types';
+import { useLocationSearch } from '@/hooks/useLocationSearch';
 import { useAlert } from '@/providers/AlertProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -313,18 +314,7 @@ const FONT_OPTIONS: FontOption[] = [
   { id: 'display', name: 'Display', family: Platform.OS === 'ios' ? 'Copperplate' : 'serif', weight: '700' },
 ];
 
-const LOCATION_SUGGESTIONS = [
-  'Berlin, Deutschland',
-  'München, Bayern',
-  'Hamburg, Deutschland',
-  'Dresden, Sachsen',
-  'Köln, NRW',
-  'Frankfurt, Hessen',
-  'Stuttgart, Baden-Württemberg',
-  'Düsseldorf, NRW',
-  'Leipzig, Sachsen',
-  'Nürnberg, Bayern',
-];
+
 
 export default function CreatePostScreen() {
   const { colors } = useTheme();
@@ -348,7 +338,7 @@ export default function CreatePostScreen() {
   const [showTagModal, setShowTagModal] = useState<boolean>(false);
   const [tagSearch, setTagSearch] = useState<string>('');
   const [showLocationModal, setShowLocationModal] = useState<boolean>(false);
-  const [locationSearch, setLocationSearch] = useState<string>('');
+  const locationSearchHook = useLocationSearch();
   const [showGestureHint, setShowGestureHint] = useState<boolean>(false);
   const [gestureHintDismissedPermanently, setGestureHintDismissedPermanently] = useState<boolean>(false);
   const [dontShowAgainChecked, setDontShowAgainChecked] = useState<boolean>(false);
@@ -427,11 +417,7 @@ export default function CreatePostScreen() {
     );
   }, [friendUsers, taggedUsers, tagSearch]);
 
-  const filteredLocations = useMemo(() => {
-    if (!locationSearch.trim()) return LOCATION_SUGGESTIONS;
-    const q = locationSearch.toLowerCase();
-    return LOCATION_SUGGESTIONS.filter((l) => l.toLowerCase().includes(q));
-  }, [locationSearch]);
+
 
   const dismissGestureHint = useCallback(() => {
     Animated.timing(gestureHintOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
@@ -1150,11 +1136,11 @@ export default function CreatePostScreen() {
       <Modal visible={showLocationModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowLocationModal(false)}>
         <View style={styles.tagModalContainer}>
           <View style={[styles.tagModalHeader, { paddingTop: Platform.OS === 'ios' ? 16 : insets.top + 8 }]}>
-            <Pressable style={styles.tagModalClose} onPress={() => { setShowLocationModal(false); setLocationSearch(''); }}>
+            <Pressable style={styles.tagModalClose} onPress={() => { setShowLocationModal(false); locationSearchHook.reset(); }}>
               <X size={20} color="#E8DCC8" />
             </Pressable>
             <Text style={styles.tagModalTitle}>Ort hinzufügen</Text>
-            <Pressable style={styles.tagModalDone} onPress={() => { setShowLocationModal(false); setLocationSearch(''); }}>
+            <Pressable style={styles.tagModalDone} onPress={() => { setShowLocationModal(false); locationSearchHook.reset(); }}>
               <Text style={styles.tagModalDoneText}>Fertig</Text>
             </Pressable>
           </View>
@@ -1164,24 +1150,38 @@ export default function CreatePostScreen() {
               style={styles.tagSearchInput}
               placeholder="Ort suchen..."
               placeholderTextColor="rgba(142,142,147,0.5)"
-              value={locationSearch}
-              onChangeText={setLocationSearch}
+              value={locationSearchHook.query}
+              onChangeText={locationSearchHook.onChangeQuery}
               autoFocus
             />
-            {locationSearch.length > 0 && (
-              <Pressable onPress={() => setLocationSearch('')}><X size={14} color="rgba(142,142,147,0.5)" /></Pressable>
+            {locationSearchHook.query.length > 0 && (
+              <Pressable onPress={() => locationSearchHook.onChangeQuery('')}><X size={14} color="rgba(142,142,147,0.5)" /></Pressable>
             )}
           </View>
-          <ScrollView style={styles.locationList} contentContainerStyle={styles.locationListInner}>
-            {filteredLocations.map((loc) => (
+          {locationSearchHook.isSearching && (
+            <View style={styles.locationSearchingRow}>
+              <Text style={styles.locationSearchingText}>Suche...</Text>
+            </View>
+          )}
+          <ScrollView style={styles.locationList} contentContainerStyle={styles.locationListInner} keyboardShouldPersistTaps="handled">
+            {!locationSearchHook.isSearching && locationSearchHook.results.length === 0 && locationSearchHook.query.trim().length >= 2 && (
               <Pressable
-                key={loc}
                 style={styles.locationRow}
-                onPress={() => { setLocationText(loc); setShowLocationModal(false); setLocationSearch(''); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                onPress={() => { setLocationText(locationSearchHook.query.trim()); setShowLocationModal(false); locationSearchHook.reset(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
               >
                 <View style={styles.locationRowIcon}><MapPin size={16} color="#BFA35D" /></View>
-                <Text style={styles.locationRowText}>{loc}</Text>
-                {locationText === loc && <Check size={16} color="#BFA35D" />}
+                <Text style={styles.locationRowText}>"{locationSearchHook.query.trim()}" verwenden</Text>
+              </Pressable>
+            )}
+            {locationSearchHook.results.map((loc) => (
+              <Pressable
+                key={loc.id}
+                style={styles.locationRow}
+                onPress={() => { setLocationText(loc.name); setShowLocationModal(false); locationSearchHook.reset(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+              >
+                <View style={styles.locationRowIcon}><MapPin size={16} color="#BFA35D" /></View>
+                <Text style={styles.locationRowText} numberOfLines={2}>{loc.name}</Text>
+                {locationText === loc.name && <Check size={16} color="#BFA35D" />}
               </Pressable>
             ))}
           </ScrollView>
@@ -1831,6 +1831,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500' as const,
     flex: 1,
+  },
+  locationSearchingRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: 'center' as const,
+  },
+  locationSearchingText: {
+    color: 'rgba(142,142,147,0.5)',
+    fontSize: 13,
   },
   tagModalContainer: {
     flex: 1,
