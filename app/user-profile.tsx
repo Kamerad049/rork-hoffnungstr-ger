@@ -689,13 +689,23 @@ export default function UserProfileScreen() {
                   </View>
                 ) : null}
                 {profile.crossStyle && profile.crossStyle !== 'none' ? (
-                  <View style={styles.crossBadge}>
+                  <Pressable
+                    style={styles.crossBadge}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      const religionLabel = profile.religion
+                        ? RELIGION_OPTIONS.find(r => r.value === profile.religion)?.label ?? 'Unbekannt'
+                        : 'Keine Angabe';
+                      const crossLabel = profile.crossStyle === 'orthodox' ? 'Orthodoxes Kreuz' : 'Lateinisches Kreuz';
+                      showAlert('Glaube', `${profile.displayName} ist ${religionLabel.toLowerCase()}.\n\nKreuzstil: ${crossLabel}`);
+                    }}
+                  >
                     {profile.crossStyle === 'orthodox' ? (
                       <OrthodoxCrossIcon size={16} color="#BFA35D" />
                     ) : (
                       <LatinCrossIcon size={16} color="#BFA35D" />
                     )}
-                  </View>
+                  </Pressable>
                 ) : null}
               </View>
             ) : null}
