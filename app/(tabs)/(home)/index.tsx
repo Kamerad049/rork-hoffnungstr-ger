@@ -1,11 +1,10 @@
 import React, { useMemo, useCallback, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, FlatList, Pressable, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, FlatList, Pressable, Platform, Dimensions, RefreshControl } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '@/providers/ThemeProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { useContent } from '@/hooks/useContent';
 import { getLeitsatzDesTages } from '@/mocks/leitsaetze';
@@ -21,10 +20,8 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 
 export default function HomeScreen() {
-  const { colors } = useTheme();
   const { user } = useAuth();
   const contentCtx = useContent();
-  const news = contentCtx?.news ?? [];
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
@@ -44,11 +41,15 @@ export default function HomeScreen() {
   }, [pathname]);
 
   const isContentLoading = contentCtx?.isLoading ?? false;
-  const places = contentCtx?.places ?? [];
-  const restaurants = contentCtx?.restaurants ?? [];
-  const featuredPlaces = useMemo(() => places.slice(0, 8), [places]);
-  const featuredRestaurants = useMemo(() => restaurants.slice(0, 6), [restaurants]);
-  const latestNews = useMemo(() => news.slice(0, 4), [news]);
+  const places = contentCtx?.places;
+  const restaurants = contentCtx?.restaurants;
+  const news = contentCtx?.news;
+  const placesError = contentCtx?.placesError;
+  const restaurantsError = contentCtx?.restaurantsError;
+  const refetchAll = contentCtx?.refetchAll;
+  const featuredPlaces = useMemo(() => (places ?? []).slice(0, 8), [places]);
+  const featuredRestaurants = useMemo(() => (restaurants ?? []).slice(0, 6), [restaurants]);
+  const latestNews = useMemo(() => (news ?? []).slice(0, 4), [news]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -97,6 +98,14 @@ export default function HomeScreen() {
         ref={scrollRef}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={refetchAll}
+            tintColor="#BFA35D"
+            colors={['#BFA35D']}
+          />
+        }
       >
         <View style={[styles.heroSection, { paddingTop: insets.top + 16 }]}>
           <View style={styles.header}>
@@ -111,7 +120,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.contentArea}>
-          {isContentLoading && places.length === 0 ? (
+          {isContentLoading && (places ?? []).length === 0 ? (
             <HomeSkeleton />
           ) : (
           <>
@@ -124,21 +133,32 @@ export default function HomeScreen() {
               <ChevronRight size={16} color="#BFA35D" />
             </Pressable>
           </View>
-          <FlatList
-            ref={placesRef}
-            data={featuredPlaces}
-            renderItem={renderPlace}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalList}
-            scrollEnabled
-            initialNumToRender={3}
-            maxToRenderPerBatch={3}
-            windowSize={5}
-            removeClippedSubviews={Platform.OS !== 'web'}
-            getItemLayout={(_, index) => ({ length: 172, offset: 172 * index, index })}
-          />
+          {placesError ? (
+            <Pressable onPress={refetchAll} style={styles.errorBox}>
+              <Text style={styles.errorText}>Orte konnten nicht geladen werden</Text>
+              <Text style={styles.retryText}>Tippen zum Neuladen</Text>
+            </Pressable>
+          ) : featuredPlaces.length === 0 && !isContentLoading ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>Noch keine Orte vorhanden</Text>
+            </View>
+          ) : (
+            <FlatList
+              ref={placesRef}
+              data={featuredPlaces}
+              renderItem={renderPlace}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+              scrollEnabled
+              initialNumToRender={3}
+              maxToRenderPerBatch={3}
+              windowSize={5}
+              removeClippedSubviews={Platform.OS !== 'web'}
+              getItemLayout={(_, index) => ({ length: 172, offset: 172 * index, index })}
+            />
+          )}
 
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Deutsche Küche</Text>
@@ -147,21 +167,32 @@ export default function HomeScreen() {
               <ChevronRight size={16} color="#BFA35D" />
             </Pressable>
           </View>
-          <FlatList
-            ref={restaurantsRef}
-            data={featuredRestaurants}
-            renderItem={renderRestaurant}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalList}
-            scrollEnabled
-            initialNumToRender={3}
-            maxToRenderPerBatch={3}
-            windowSize={5}
-            removeClippedSubviews={Platform.OS !== 'web'}
-            getItemLayout={(_, index) => ({ length: 172, offset: 172 * index, index })}
-          />
+          {restaurantsError ? (
+            <Pressable onPress={refetchAll} style={styles.errorBox}>
+              <Text style={styles.errorText}>Restaurants konnten nicht geladen werden</Text>
+              <Text style={styles.retryText}>Tippen zum Neuladen</Text>
+            </Pressable>
+          ) : featuredRestaurants.length === 0 && !isContentLoading ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>Noch keine Restaurants vorhanden</Text>
+            </View>
+          ) : (
+            <FlatList
+              ref={restaurantsRef}
+              data={featuredRestaurants}
+              renderItem={renderRestaurant}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+              scrollEnabled
+              initialNumToRender={3}
+              maxToRenderPerBatch={3}
+              windowSize={5}
+              removeClippedSubviews={Platform.OS !== 'web'}
+              getItemLayout={(_, index) => ({ length: 172, offset: 172 * index, index })}
+            />
+          )}
 
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Neuigkeiten</Text>
@@ -260,5 +291,38 @@ const styles = StyleSheet.create({
   },
   newsWrapper: {
     paddingHorizontal: 0,
+  },
+  errorBox: {
+    backgroundColor: 'rgba(224,82,82,0.08)',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center' as const,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(224,82,82,0.15)',
+  },
+  errorText: {
+    color: '#E05252',
+    fontSize: 14,
+    fontWeight: '600' as const,
+    marginBottom: 4,
+  },
+  retryText: {
+    color: 'rgba(224,82,82,0.6)',
+    fontSize: 12,
+  },
+  emptyBox: {
+    backgroundColor: 'rgba(191,163,93,0.06)',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center' as const,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(191,163,93,0.1)',
+  },
+  emptyText: {
+    color: 'rgba(232,220,200,0.4)',
+    fontSize: 13,
+    fontWeight: '500' as const,
   },
 });

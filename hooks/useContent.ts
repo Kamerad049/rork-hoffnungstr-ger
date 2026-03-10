@@ -10,9 +10,15 @@ export function useContent() {
     queryKey: queryKeys.news(),
     queryFn: async () => {
       console.log('[CONTENT] Loading news...');
-      const { data } = await supabase.from('news').select('*').order('publish_date', { ascending: false });
+      const { data, error } = await supabase.from('news').select('*').order('publish_date', { ascending: false });
+      if (error) {
+        console.log('[CONTENT] News query error:', error.message, error.details, error.hint);
+        throw error;
+      }
+      console.log('[CONTENT] News loaded:', data?.length ?? 0, 'items');
       return (data ?? []).map(mapDbNews);
     },
+    retry: 2,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
@@ -21,9 +27,15 @@ export function useContent() {
     queryKey: queryKeys.places(),
     queryFn: async () => {
       console.log('[CONTENT] Loading places...');
-      const { data } = await supabase.from('places').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('places').select('*').order('created_at', { ascending: false });
+      if (error) {
+        console.log('[CONTENT] Places query error:', error.message, error.details, error.hint);
+        throw error;
+      }
+      console.log('[CONTENT] Places loaded:', data?.length ?? 0, 'items');
       return (data ?? []).map(mapDbPlace);
     },
+    retry: 2,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
@@ -32,9 +44,15 @@ export function useContent() {
     queryKey: queryKeys.restaurants(),
     queryFn: async () => {
       console.log('[CONTENT] Loading restaurants...');
-      const { data } = await supabase.from('restaurants').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('restaurants').select('*').order('created_at', { ascending: false });
+      if (error) {
+        console.log('[CONTENT] Restaurants query error:', error.message, error.details, error.hint);
+        throw error;
+      }
+      console.log('[CONTENT] Restaurants loaded:', data?.length ?? 0, 'items');
       return (data ?? []).map(mapDbRestaurant);
     },
+    retry: 2,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
@@ -43,6 +61,14 @@ export function useContent() {
   const places = useMemo(() => placesQuery.data ?? [], [placesQuery.data]);
   const restaurants = useMemo(() => restaurantsQuery.data ?? [], [restaurantsQuery.data]);
   const isLoading = newsQuery.isLoading || placesQuery.isLoading || restaurantsQuery.isLoading;
+  const placesError = placesQuery.error;
+  const restaurantsError = restaurantsQuery.error;
+  const newsError = newsQuery.error;
+
+  const refetchAll = useCallback(async () => {
+    console.log('[CONTENT] Refetching all content...');
+    await Promise.all([newsQuery.refetch(), placesQuery.refetch(), restaurantsQuery.refetch()]);
+  }, [newsQuery, placesQuery, restaurantsQuery]);
 
   const queryClient = useQueryClient();
 
@@ -98,5 +124,5 @@ export function useContent() {
     queryClient.setQueryData<Restaurant[]>(queryKeys.restaurants(), (old) => (old ?? []).map((r) => (r.id === id ? { ...r, ...updates } : r)));
   }, [queryClient]);
 
-  return { news, places, restaurants, isLoading, updateNews, updatePlace, updateRestaurant };
+  return { news, places, restaurants, isLoading, placesError, restaurantsError, newsError, refetchAll, updateNews, updatePlace, updateRestaurant };
 }
