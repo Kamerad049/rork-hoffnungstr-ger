@@ -8,6 +8,53 @@ import { PLACE_CATEGORIES } from '@/constants/types';
 import PlaceCard from '@/components/PlaceCard';
 import type { Place, PlaceCategory } from '@/constants/types';
 
+const BRANDENBURGER_TOR_IMAGE = 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/rsqmlve8l1qtin3bjr8vb';
+
+const DEMO_PLACES: Place[] = [
+  {
+    id: 'demo-brandenburger-1',
+    title: 'Brandenburger Tor',
+    description: 'Das Brandenburger Tor ist das Wahrzeichen Berlins.',
+    city: 'Berlin',
+    plz: '10117',
+    bundesland: 'Berlin',
+    images: [BRANDENBURGER_TOR_IMAGE],
+    category: 'Denkmal',
+    latitude: 52.5163,
+    longitude: 13.3777,
+    rating: 4.8,
+    reviewCount: 312,
+  },
+  {
+    id: 'demo-brandenburger-2',
+    title: 'Brandenburger Tor (Variante 2)',
+    description: 'Historisches Wahrzeichen an der Pariser Platz.',
+    city: 'Berlin',
+    plz: '10117',
+    bundesland: 'Berlin',
+    images: [BRANDENBURGER_TOR_IMAGE],
+    category: 'Historische Stätte',
+    latitude: 52.5163,
+    longitude: 13.3777,
+    rating: 4.9,
+    reviewCount: 189,
+  },
+  {
+    id: 'demo-brandenburger-3',
+    title: 'Brandenburger Tor (Variante 3)',
+    description: 'Symbol der deutschen Einheit.',
+    city: 'Berlin',
+    plz: '10117',
+    bundesland: 'Berlin',
+    images: [BRANDENBURGER_TOR_IMAGE],
+    category: 'Gedenkstätte',
+    latitude: 52.5163,
+    longitude: 13.3777,
+    rating: 4.7,
+    reviewCount: 256,
+  },
+];
+
 export default function PlacesScreen() {
   const { colors } = useTheme();
   const { places } = useContent();
@@ -29,7 +76,14 @@ export default function PlacesScreen() {
     if (selectedCategory) {
       result = result.filter((p) => p.category === selectedCategory);
     }
-    return result;
+    return [...DEMO_PLACES.filter(dp => {
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        if (!dp.title.toLowerCase().includes(q) && !dp.city.toLowerCase().includes(q)) return false;
+      }
+      if (selectedCategory && dp.category !== selectedCategory) return false;
+      return true;
+    }), ...result];
   }, [search, selectedCategory, places]);
 
   const renderItem = useCallback(({ item }: { item: Place }) => (
