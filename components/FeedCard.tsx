@@ -75,7 +75,7 @@ function FeedCardInner({
   onReaction,
   isActive = true,
 }: FeedCardProps) {
-  const { toggleLike, isLiked, isCommentsDisabled } = usePosts();
+  const { toggleLike, isLiked, isCommentsDisabled, savePost, isPostSaved } = usePosts();
   const { profile: socialProfile } = useSocial();
   const { user } = useAuth();
   const { showAlert } = useAlert();
@@ -789,8 +789,15 @@ function FeedCardInner({
           </Pressable>
         </View>
 
-        <Pressable style={cardStyles.actionBtn}>
-          <Bookmark size={20} color="rgba(232,220,200,0.5)" />
+        <Pressable
+          style={cardStyles.actionBtn}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            savePost(post.id);
+          }}
+          testID={`save-btn-${post.id}`}
+        >
+          <Bookmark size={20} color={isPostSaved(post.id) ? '#BFA35D' : 'rgba(232,220,200,0.5)'} fill={isPostSaved(post.id) ? '#BFA35D' : 'none'} />
         </Pressable>
       </View>
 
