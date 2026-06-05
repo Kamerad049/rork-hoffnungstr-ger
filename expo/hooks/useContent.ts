@@ -5,6 +5,54 @@ import { queryKeys } from '@/constants/queryKeys';
 import type { NewsArticle, Place, Restaurant } from '@/constants/types';
 import { mapDbPlace, mapDbRestaurant, mapDbNews } from '@/lib/mapDb';
 
+/** Demo-Places für Vorschau – werden vor den echten Daten angezeigt */
+const BRANDENBURGER_TOR_IMAGE = 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/rsqmlve8l1qtin3bjr8vb';
+
+const DEMO_PLACES: Place[] = [
+  {
+    id: 'demo-brandenburger-1',
+    title: 'Brandenburger Tor',
+    description: 'Das Brandenburger Tor ist das Wahrzeichen Berlins.',
+    city: 'Berlin',
+    plz: '10117',
+    bundesland: 'Berlin',
+    images: [BRANDENBURGER_TOR_IMAGE],
+    category: 'Denkmal',
+    latitude: 52.5163,
+    longitude: 13.3777,
+    rating: 4.8,
+    reviewCount: 312,
+  },
+  {
+    id: 'demo-brandenburger-2',
+    title: 'Brandenburger Tor (Variante 2)',
+    description: 'Historisches Wahrzeichen an der Pariser Platz.',
+    city: 'Berlin',
+    plz: '10117',
+    bundesland: 'Berlin',
+    images: [BRANDENBURGER_TOR_IMAGE],
+    category: 'Historische Stätte',
+    latitude: 52.5163,
+    longitude: 13.3777,
+    rating: 4.9,
+    reviewCount: 189,
+  },
+  {
+    id: 'demo-brandenburger-3',
+    title: 'Brandenburger Tor (Variante 3)',
+    description: 'Symbol der deutschen Einheit.',
+    city: 'Berlin',
+    plz: '10117',
+    bundesland: 'Berlin',
+    images: [BRANDENBURGER_TOR_IMAGE],
+    category: 'Gedenkstätte',
+    latitude: 52.5163,
+    longitude: 13.3777,
+    rating: 4.7,
+    reviewCount: 256,
+  },
+];
+
 export function useContent() {
   const newsQuery = useQuery({
     queryKey: queryKeys.news(),
@@ -58,7 +106,7 @@ export function useContent() {
   });
 
   const news = useMemo(() => newsQuery.data ?? [], [newsQuery.data]);
-  const places = useMemo(() => placesQuery.data ?? [], [placesQuery.data]);
+  const places = useMemo(() => [...DEMO_PLACES, ...(placesQuery.data ?? [])], [placesQuery.data]);
   const restaurants = useMemo(() => restaurantsQuery.data ?? [], [restaurantsQuery.data]);
   const isLoading = newsQuery.isLoading || placesQuery.isLoading || restaurantsQuery.isLoading;
   const placesError = placesQuery.error;
