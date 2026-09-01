@@ -4,7 +4,11 @@
 > ohne dass Kontext aus früheren Gesprächen nötig ist. Dieses Dokument ist die zentrale Wahrheit
 > ("Single Source of Truth") über den Ist-Zustand. Es wird bei größeren Änderungen aktualisiert.
 >
-> Letzte Aktualisierung: 2026-08-31
+> Letzte Aktualisierung: 2026-09-01
+> Begleitdokument: **`HANDOVER_FEATURES.md`** — das VOLLSTÄNDIGE Feature-Inventar
+> (jeder Screen, jede Komponente, jeder Provider, alle Easter Eggs wie die Sonnenuhr,
+> alle Demo-/Mock-Stellen, kompletter Supabase-Tabellen-Katalog). Beide Dokumente zusammen
+> sind die Übergabe-Basis für jede weitere KI / jeden Entwickler.
 
 ---
 
@@ -225,3 +229,39 @@ Datenbank komplett neu aufsetzen: SQL-Skripte in `expo/supabase/` in Reihenfolge
 4. Spiele-Tab: zurück in die Tab-Bar wann?
 5. Monetarisierung: Abo-Modell (RevenueCat) überhaupt gewünscht?
 6. Branding: Splash-Screen nutzt noch generisches Icon statt `heldentum-splash.jpg`
+7. Stempel-Verifikation: Dreistufen-Modell (§11) — ab welcher Stufe für welche Orte?
+
+---
+
+## 11. BESCHLOSSENE PLANUNG: STEMPEL-VERIFIKATION (NOCH NICHT UMGESETZT)
+
+**Problem:** GPS allein ist trivial fälschbar (Fake-GPS-Apps). Ziel: Betrug teurer machen
+als der Stempel wert ist — mehrstufige Verifikation statt 100%-Schutz.
+
+**Bereits vorhandene Grundlage (Kaderschmiede-Check-in als Vorbild!):** In
+`app/(tabs)/kaderschmiede/checkin.tsx` existiert bereits ein funktionierendes
+Anti-Cheat-Muster: 6-stelliger Code + QR, Token `KADER:{id}:{epoch}:{nonce}` mit
+30 s Rotation / 60 s Gültigkeit, GPS-Radius 50 m, max. Accuracy 100 m,
+**`location.mocked` → BLOCKIERT**. Dieses Muster auf den Stempel-Check-in übertragen
+(`app/(tabs)/stamps/checkin.tsx`, aktuell nur Distanz + Foto).
+
+### Serverseitige Grundprüfung (Stufe 1, Pflicht für alle Orte)
+- Validierung NUR serverseitig (Supabase RPC/Edge Function), dem Client nicht vertrauen
+- Plausibilität: GPS-Genauigkeit, **Teleport-Erkennung** (Position 5 min vorher zu weit weg?)
+- Muster-Erkennung: viele Stempel in kurzer Zeit quer über Deutschland → Flag für Moderation
+- **Zeit-in-der-Zone:** Stempel erst nach 10+ Min Aufenthalt im Umkreis
+
+### Dreistufen-Modell
+| Stufe | Für welche Orte | Mechanismen |
+|---|---|---|
+| 🥉 Bronze | Alle normalen Orte | GPS + Plausibilität + Zeit-in-Zone |
+| 🥈 Silber | Wichtige Orte | + Foto **in der App aufgenommen** (nicht Galerie), EXIF-GPS/Timestamp-Abgleich, `location.mocked`-Block |
+| 🥇 Gold | Raritäten/Premium | + **Orts-Quiz** (Frage, deren Antwort nur physisch vor Ort lesbar ist, z.B. „Welches Jahr steht auf der Tafel?" — günstig & praktisch unfälschbar) ODER physischer QR-Code am Ort (stündlich rotierend) ODER NFC-Chip |
+
+### Ergänzend
+- **Community-Kontrolle:** Verdächtige Stempel meldbar → bestehendes Moderations-System
+  (`reports`) greift unverändert
+- DB-Erweiterung: `places.verification_level` (bronze/silver/gold); `collected_stamps`
+  erweitern um `verified_at`, `verification_data` (JSON: accuracy, dwell, photo_exif,
+  quiz_answer_hash)
+- Admin-Panel (`admin/places.tsx`) erweitern: Verifikations-Stufe + Quiz-Frage/Antwort pro Ort
